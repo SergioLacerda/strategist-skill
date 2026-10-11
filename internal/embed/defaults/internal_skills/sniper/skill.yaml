@@ -7,12 +7,14 @@ category: documentation
 
 description: >
   Documentation materialization skill for the Strategist pipeline. Materializes approved
-  documentation_targets one task at a time. Requires gate_analysis_accepted in artifact
+  execution_snapshot artifacts one at a time. Requires gate_analysis_accepted in artifact
   frontmatter before any action. Git mutating commands and code file writes are forbidden.
 
 input:
   refined_plan: object           # from Archivist handoff
-  documentation_targets: object  # allowed documentation files from approval gate acceptance
+  execution_snapshot: object     # immutable hierarchical snapshot from the execution entry
+    fields: [version, mission_id, groups]
+  execution_targets: array       # legacy flat projection; never expands authorization
   base_path: string
   mission_id: string
   treasure_chests: array         # chests scoped to documentation materialization
@@ -36,8 +38,11 @@ claim_protocol:
 
 behavior:
   - Execute claim_protocol before any action.
-  - Declare the active documentation task at the start of each loop.
-  - Materialize exactly ONE documentation target per loop — never batch.
+  - Consume execution_snapshot as the only authorized target set; never infer targets from the selected Weapon, plan prose, or a re-read of tasks.md.
+  - Declare the active execution artifact at the start of each loop.
+  - Materialize exactly ONE declared artifact per loop — never batch.
+  - Complete a group only after every declared artifact in that group is materialized.
+  - Use generic artifact metadata for completion evidence; do not branch on ADR, Runbook, OpenSpec, or Weapon names.
   - Run targeted validation after each materialization.
   - Update task checklist before advancing.
   - Stop and report on documentation_scope_violation, ambiguity, or validation failure.
@@ -57,4 +62,5 @@ forbidden_behaviors:
 failure_modes:
   - gate_approval_missing: mission_status is not gate_analysis_accepted. Stop. Emit reason=gate_approval_missing.
   - already_claimed: mission_status is sniper_running on claim check. Stop. Emit reason=already_claimed.
-  - documentation_scope_violation: attempted write outside documentation_targets. Stop. Report to user.
+  - execution_target_missing: execution_snapshot is absent or empty. Stop. Report to user.
+  - documentation_scope_violation: attempted write outside execution_snapshot artifacts. Stop. Report to user.

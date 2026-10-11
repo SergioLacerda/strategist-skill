@@ -16,7 +16,7 @@ on_start:                       # run when this role's phase starts; {role} and 
 # Listed here for reference when writing custom_brief below.
 canonical:
   - requires_approval_gate_acceptance    # enforced by Strategist — slot cannot bypass
-  - load_archivist_handoff             # read handoff contract fields + documentation_targets
+  - load_archivist_handoff             # read handoff contract fields + immutable execution_snapshot
   - consult_treasure_chests            # consult chests scoped to documentation before acting
   - materialize_one_target_per_loop    # never batch multiple documentation tasks
   - scope_violation_detection:         # surface out-of-scope writes during materialization
@@ -42,7 +42,7 @@ must:
 must_not:
   - materialize documentation without approval gate acceptance
   - materialize multiple tasks in a single loop
-  - write files outside documentation_targets
+  - write files outside the immutable execution_snapshot artifacts
   - write runtime memory outside .strategist/memory/sniper-materializations.jsonl for materialization history
   - write code files (.go, .ts, .py, .js, .sh, etc.) EXCEPT .astro/.css/.js/.ts/.tsx
     files explicitly declared task_type:documentation_target in the gate-accepted

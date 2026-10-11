@@ -35,6 +35,20 @@ func TestSink_Emit_ForwardsThroughDefaultSlog(t *testing.T) {
 	assert.Contains(t, out, "severity_number=9")
 }
 
+func TestSink_Emit_UsesEventNameForEmptyBody(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	err := otelsink.New().Emit(context.Background(), telemetry.Event{
+		Name:           "strategist.empty.body",
+		SeverityNumber: telemetry.SeverityInfo,
+	})
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "strategist.empty.body")
+}
+
 func TestSink_Emit_SeverityLevelMapping(t *testing.T) {
 	tests := []struct {
 		name     string

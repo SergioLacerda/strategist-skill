@@ -277,7 +277,7 @@
       "type": "string"
     },
     "side_quests_approved": {
-      "description": "Side quest strategy decisions made by Archivist — surfaced at approval gate. An accepted OA-ADR-<mission_id> entry is recorded by `strategist mission accept-side-quest` and becomes the mission's gate-derived ADR documentation target",
+      "description": "Side quest strategy decisions made by Archivist — surfaced at approval gate. Accepted documentation intents are resolved into execution_snapshot groups before Sniper invocation.",
       "field_descriptions": {
         "confidence_percent": "optional, integer 0-100. Present only when investigation_required is false/absent. Never fabricate a low or placeholder value to fill this field — a side quest without enough evidence to assess is investigation_required, not a low confidence_percent.\n",
         "dependencies": "list of other SQ ids or task ids this depends on",
@@ -332,6 +332,51 @@
     "tasks_path": {
       "required": true,
       "type": "string"
+    }
+  },
+  "runtime_inputs": {
+    "execution_snapshot": {
+      "description": "Immutable hierarchical execution authorization. Groups are independent; every artifact in one group is required for that group to complete. Resolver selection is domain-based and never exposes a Weapon protocol.\n",
+      "fields": {
+        "groups": {
+          "item_fields": {
+            "artifacts": {
+              "item_fields": {
+                "id": "stable artifact identifier",
+                "kind": "artifact kind",
+                "metadata": "generic completion metadata",
+                "path": "workspace-relative materialization path",
+                "role": "primary, sidecar, or supporting"
+              },
+              "type": "list"
+            },
+            "completion_policy": "all_required",
+            "id": "stable execution group identifier",
+            "kind": "group domain kind",
+            "origin": "refined_package or accepted_side_quest",
+            "resolver": "object with kind and origin",
+            "side_quest_id": "accepted side-quest identifier when applicable"
+          },
+          "type": "list"
+        },
+        "mission_id": "execution mission identifier",
+        "version": "snapshot schema version"
+      },
+      "required": true,
+      "source": "mission execution entry",
+      "type": "object"
+    },
+    "execution_targets": {
+      "description": "Legacy flat projection of execution_snapshot for compatibility only.\n",
+      "item_fields": {
+        "kind": "artifact kind, such as documentation or adr",
+        "origin": "refined_package or accepted_side_quest",
+        "path": "workspace-relative reserved materialization path",
+        "side_quest_id": "accepted side-quest identifier when origin is accepted_side_quest"
+      },
+      "required": false,
+      "source": "mission execution entry",
+      "type": "list"
     }
   },
   "schema_version": "1"

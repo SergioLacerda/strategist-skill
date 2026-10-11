@@ -31,6 +31,8 @@ type InvocationRequestInput struct {
 	StageCorrelationID        string
 	ExecutionContract         string
 	OutputContract            string
+	ExecutionTargets          []domain.ExecutionTarget
+	ExecutionSnapshot         *domain.ExecutionSnapshot
 }
 
 // NewInvocationRequest creates the immutable request envelope and its issue
@@ -51,12 +53,7 @@ func NewInvocationRequest(ctx context.Context, input InvocationRequestInput) (do
 	if input.OutputContract != "" {
 		requestInput["output_contract"] = input.OutputContract
 	}
-	if input.Role == "sniper" && input.Slot == string(domain.SlotExecution) {
-		requestInput["refined_package"] = filepath.ToSlash(filepath.Join(input.BasePath, "refined", input.MissionID))
-		requestInput["report_path"] = filepath.ToSlash(filepath.Join(input.BasePath, "archived", input.MissionID+"-report.md"))
-		requestInput["approval_gate_package_digest"] = input.ApprovalGatePackageDigest
-		addStageCorrelation(requestInput, input.StageCorrelationID)
-	}
+	addSniperExecutionInput(requestInput, input)
 	addArchivistRefinementInput(requestInput, input)
 	if strings.TrimSpace(input.RequestContext) != "" {
 		requestInput["request_context"] = input.RequestContext
@@ -69,6 +66,22 @@ func NewInvocationRequest(ctx context.Context, input InvocationRequestInput) (do
 		ExecutionMode: input.Binding.ExecutionMode, Entrypoint: input.Binding.Entrypoint,
 		Payload: string(input.Payload), Input: requestInput, Nonce: NewPromptNonce(),
 	}, now, nil
+}
+
+func addSniperExecutionInput(requestInput map[string]any, input InvocationRequestInput) {
+	if input.Role != "sniper" || input.Slot != string(domain.SlotExecution) {
+		return
+	}
+	requestInput["refined_package"] = filepath.ToSlash(filepath.Join(input.BasePath, "refined", input.MissionID))
+	requestInput["report_path"] = filepath.ToSlash(filepath.Join(input.BasePath, "archived", input.MissionID+"-report.md"))
+	requestInput["approval_gate_package_digest"] = input.ApprovalGatePackageDigest
+	if len(input.ExecutionTargets) > 0 {
+		requestInput["execution_targets"] = append([]domain.ExecutionTarget(nil), input.ExecutionTargets...)
+	}
+	if input.ExecutionSnapshot != nil {
+		requestInput["execution_snapshot"] = *input.ExecutionSnapshot
+	}
+	addStageCorrelation(requestInput, input.StageCorrelationID)
 }
 
 // addArchivistRefinementInput tells an embedded Archivist Weapon where the

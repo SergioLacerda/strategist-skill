@@ -31,30 +31,72 @@ func RecordSniperClaims(strategistRoot, basePath, missionID string, now time.Tim
 
 // RecordSniperClaimsForEntry projects the immutable target snapshot of one
 // execution entry. It never re-parses tasks when targets are supplied.
-func RecordSniperClaimsForEntry(strategistRoot, basePath, missionID, entryID string, targets []string, now time.Time) (int, error) {
+func RecordSniperClaimsForEntry(strategistRoot, basePath, missionID, entryID string, targets []domain.ExecutionTarget, now time.Time) (int, error) {
 	var err error
-	targets, err = resolveSniperClaimTargets(basePath, missionID, targets)
+	if targets == nil {
+		targets, err = resolveLegacyExecutionTargets(basePath, missionID)
+	}
 	if err != nil {
 		return 0, err
 	}
-	if len(targets) == 0 {
+	claimTargets := claimableExecutionTargets(targets)
+	if len(claimTargets) == 0 {
 		return 0, nil
 	}
 	claimPath := telemetry.SniperClaimHistoryPath(strategistRoot)
 	packageDigest := sniperClaimPackageDigest(basePath, missionID)
-	return appendSniperClaims(claimPath, entryID, missionID, basePath, targets, packageDigest, now)
+	return appendSniperClaims(claimPath, entryID, missionID, basePath, claimTargets, packageDigest, now)
 }
 
-func resolveSniperClaimTargets(basePath, missionID string, targets []string) ([]string, error) {
-	if targets != nil {
-		return targets, nil
+// RecordSniperClaimsForSnapshot projects claims from the immutable execution
+// snapshot. It never reparses tasks.md and treats all side-quest artifacts as
+// resolver-owned claims.
+func RecordSniperClaimsForSnapshot(strategistRoot, basePath, missionID, entryID string, snapshot domain.ExecutionSnapshot, now time.Time) (int, error) {
+	if err := snapshot.Validate(); err != nil {
+		return 0, fmt.Errorf("record sniper claims: %w", err)
 	}
+	paths := make([]string, 0)
+	for _, group := range snapshot.Groups {
+		if group.Origin == domain.ExecutionTargetOriginAcceptedSideQuest {
+			continue
+		}
+		for _, artifact := range group.Artifacts {
+			paths = append(paths, artifact.Path)
+		}
+	}
+	if len(paths) == 0 {
+		return 0, nil
+	}
+	return appendSniperClaims(telemetry.SniperClaimHistoryPath(strategistRoot), entryID, missionID, basePath, paths, sniperClaimPackageDigest(basePath, missionID), now)
+}
+
+func resolveLegacyExecutionTargets(basePath, missionID string) ([]domain.ExecutionTarget, error) {
 	tasksPath := filepath.Join(basePath, "refined", missionID, "tasks.md")
 	resolved, err := refinement.DocumentationTargetPaths(tasksPath)
 	if err != nil {
 		return nil, fmt.Errorf("record sniper claims: %w", err)
 	}
-	return resolved, nil
+	targets := make([]domain.ExecutionTarget, 0, len(resolved))
+	for _, path := range resolved {
+		targets = append(targets, domain.ExecutionTarget{
+			Path: path, Kind: domain.ExecutionTargetKindDocumentation,
+			Origin: domain.ExecutionTargetOriginRefinedPackage,
+		})
+	}
+	return targets, nil
+}
+
+func claimableExecutionTargets(targets []domain.ExecutionTarget) []string {
+	paths := make([]string, 0, len(targets))
+	for _, target := range targets {
+		// The ADR side-quest command owns the claim at materialization time.
+		// Ordinary refined targets retain the execution-entry claim behavior.
+		if target.Origin == domain.ExecutionTargetOriginAcceptedSideQuest {
+			continue
+		}
+		paths = append(paths, target.Path)
+	}
+	return paths
 }
 
 func sniperClaimPackageDigest(basePath, missionID string) string {

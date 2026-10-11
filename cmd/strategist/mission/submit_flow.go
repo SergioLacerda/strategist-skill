@@ -140,7 +140,13 @@ func consumeExecutionOutcome(root string, outcome handoff.Outcome) error {
 }
 
 func recordExecutionEntryClaims(root, basePath, missionID string, entry *executionEntry) error {
-	if _, err := executionEntryRecordClaims(root, basePath, missionID, entry.ID, entry.Targets, time.Now().UTC()); err != nil {
+	var err error
+	if entry.ExecutionSnapshot != nil && len(entry.ExecutionSnapshot.Groups) > 0 {
+		_, err = executionEntryRecordSnapshotClaims(root, basePath, missionID, entry.ID, *entry.ExecutionSnapshot, time.Now().UTC())
+	} else {
+		_, err = executionEntryRecordClaims(root, basePath, missionID, entry.ID, executionTargetsForEntry(entry), time.Now().UTC())
+	}
+	if err != nil {
 		return fmt.Errorf("record sniper claims: %w", err)
 	}
 	entry.ClaimsRecorded, entry.Completed = true, true

@@ -51,6 +51,9 @@ type Report struct {
 	Delegation *handoff.Delegation
 	Hints      []Hint
 	Attempted  bool
+	// WouldApprove is the decision a shadow provider would have taken. It is
+	// populated only when Status is StatusShadow.
+	WouldApprove bool
 	// Reused is true when the report restates an earlier answer for the same
 	// revision instead of a new provider call.
 	Reused bool
@@ -176,25 +179,4 @@ func (c *Consumer) now() time.Time {
 		return c.Now()
 	}
 	return time.Now()
-}
-
-// appliedID is the calibration id only when that calibration decided the threshold.
-func appliedID(use CalibrationUse) string {
-	if use.Applied {
-		return use.ID
-	}
-	return ""
-}
-
-// withProbability drops a calibration when the answer has no probability of accept: a
-// calibrated threshold is a threshold on that quantity, and the documented confidence
-// is a different one, so the configured threshold applies and the reason is recorded.
-func withProbability(use CalibrationUse, result integration.Result) CalibrationUse {
-	if !use.Applied {
-		return use
-	}
-	if _, reported := result.Answers[AggregateKey].Probabilities[OptionAccept]; reported {
-		return use
-	}
-	return CalibrationUse{ID: use.ID, Reason: ReasonProbabilityUnavailable}
 }

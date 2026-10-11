@@ -1,6 +1,6 @@
 # ADR-0069 — Mission and phase token telemetry: lifecycle ledger, usage ledger and shared read surface
 
-**Status:** Accepted (decision and contract amendment applied; Waves 1 and 2 implemented: lifecycle ledger, usage ledger and `mission usage`; Wave 3 host adapters pending)
+**Status:** Accepted (decision and contract amendment applied; Waves 1 to 4 implemented in this repository: lifecycle ledger, usage ledger, `mission usage`, `mission observe-usage`, event export and `mission verify-telemetry`; Wave 5 reframed by the operator as a non-blocking per-stage volume report at the Approval Gate, with no price table, budget or blocking threshold)
 **Date:** 2026-10-10
 **Mission:** `20261010-token-telemetry-waves-refinement` (refined package `.analysis/refined/20261010-token-telemetry-waves-refinement/`; original demand `.analysis/pending/ondas-implementacao-telemetria-tokens-strategist.md`)
 **Related:** [ADR-0050](0050-confidence-governance-contract.md), [ADR-0057](0057-mission-state-concurrency-and-atomicity.md), [ADR-0064](0064-canonical-seven-family-taxonomy.md), [ADR-0044](0044-preflight-startup-consumes-preflightresult.md)

@@ -19,6 +19,11 @@ type Config struct {
 	// library's default error handling behavior... to run with strict error
 	// handling in a staging environment").
 	Strict bool
+	// EventsFile, when set (STRATEGIST_TELEMETRY_JSONL), additionally appends
+	// every event as one JSON line to that file. It needs no collector and no
+	// governance provider, and it is the stream the integrity verifier and
+	// `mission usage --from-events` read back.
+	EventsFile string
 }
 
 // FromEnv reads OTel configuration from environment variables.
@@ -37,6 +42,7 @@ func FromEnv() Config {
 		ServiceName: svcName,
 		Insecure:    insecure,
 		Strict:      strict,
+		EventsFile:  os.Getenv("STRATEGIST_TELEMETRY_JSONL"),
 	}
 }
 

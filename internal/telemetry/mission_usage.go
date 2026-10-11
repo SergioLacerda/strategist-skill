@@ -44,7 +44,10 @@ type MissionUsageRecord struct {
 	MeasurementSource  string `json:"measurement_source"`
 	MeasurementQuality string `json:"measurement_quality"`
 	DedupUnavailable   bool   `json:"dedup_unavailable,omitempty"`
-	ObservedAt         string `json:"observed_at"`
+	// Calls is how many host API calls an observed window summed; zero for a
+	// declared observation.
+	Calls      int    `json:"calls,omitempty"`
+	ObservedAt string `json:"observed_at"`
 }
 
 // MissionUsagePath returns the default ledger path under strategistRoot.

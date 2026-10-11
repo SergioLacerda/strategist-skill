@@ -37,6 +37,25 @@ func ReserveADRTarget(req ADRTargetRequest) (string, error) {
 	return rec.ReservedPath, err
 }
 
+// ResolveADRTarget reserves the accepted ADR destination without recording a
+// standalone claim. The execution entry records claims for ordinary refined
+// targets, while Sniper's `mission adr-target` command records the ADR claim at
+// the materialization boundary. Keeping those operations separate prevents one
+// ADR from receiving two claims for the same execution.
+func ResolveADRTarget(req ADRTargetRequest) (string, error) {
+	rec, err := acceptedRecord(req)
+	if err != nil {
+		return "", err
+	}
+	if rec.ReservedPath == "" {
+		rec, err = reservePath(req, rec)
+		if err != nil {
+			return "", err
+		}
+	}
+	return rec.ReservedPath, nil
+}
+
 func acceptedRecord(req ADRTargetRequest) (AcceptedSideQuest, error) {
 	if req.State != domain.StateExecution {
 		return AcceptedSideQuest{}, fmt.Errorf("adr_target_wrong_state: the ADR target is resolved at materialization, mission is %s", req.State)

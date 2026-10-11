@@ -13,6 +13,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/governancebridge"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	externalsink "github.com/SergioLacerda/strategist-skill/internal/telemetry/sink/external"
+	jsonlsink "github.com/SergioLacerda/strategist-skill/internal/telemetry/sink/jsonl"
 	otelsink "github.com/SergioLacerda/strategist-skill/internal/telemetry/sink/otel"
 	slogsink "github.com/SergioLacerda/strategist-skill/internal/telemetry/sink/slog"
 )
@@ -34,6 +35,9 @@ func Select(cfg telemetry.Config, bridge governancebridge.GovernanceBridge) tele
 	}
 	if bridge != nil {
 		base = externalsink.New(base)
+	}
+	if cfg.EventsFile != "" {
+		base = Fanout(base, jsonlsink.New(cfg.EventsFile))
 	}
 	return Resilient(base, cfg.Strict)
 }

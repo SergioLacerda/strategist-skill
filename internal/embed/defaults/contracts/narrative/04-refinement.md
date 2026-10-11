@@ -118,10 +118,11 @@ Archivist (`refinement`)
 - classify side quests and surface them at the approval gate
 - classify every `tasks.md` / `implementation_plan` item by `task_type`: `documentation_target`,
   `analysis_artifact`, `implementation_handoff`, or `out_of_scope` (see
-  `handoff-archivist-to-sniper.schema.yaml`). Only `documentation_target` items are
-  Sniper-executable. `implementation_handoff` items (code, hook, config, or test mutation)
-  must never be phrased as executable Sniper tasks — they are handed off, not queued
-  for materialization.
+  `handoff-archivist-to-sniper.schema.yaml`). Ordinary `documentation_target` items are
+  Sniper-executable; an accepted OA-ADR is additionally published as a typed,
+  gate-derived execution target at execution entry. `implementation_handoff` items (code,
+  hook, config, or test mutation) must never be phrased as executable Sniper tasks — they are
+  handed off, not queued for materialization.
 - declare the typed `handoff_policy_facts` block in the frontmatter of `analysis.md`
   (`handoff-archivist-to-sniper.schema.yaml#handoff_policy_facts`): `mandatory_constraints`,
   `unresolved_questions` and `forbidden_scope` as lists, `destructive_operation_possible`,
@@ -196,7 +197,8 @@ package looks like, and a failed predicate is surfaced at the gate
   `implementation_handoff`, `analysis_artifact` or `out_of_scope`), submit
   `refinement_done` and present the gate; on acceptance the mission resolves as
   `analysis_delivered` through `gate_approved_analysis_only` (see
-  `05-approval-gate.md`). This is the same rule the gate contract states.
+  `05-approval-gate.md`), unless the user accepts an OA-ADR side quest, which creates
+  the typed execution target needed for Sniper.
 
 ## Language
 

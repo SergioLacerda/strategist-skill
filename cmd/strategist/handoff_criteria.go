@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
@@ -21,7 +22,8 @@ var handoffCriteriaCmd = &cobra.Command{
 	Long: `Prints the quality criteria the Approval Gate shows, gathered only from records earlier
 stages already wrote: route and claim confidence, the confidence review, the deterministic
 handoff outcomes, the critic and mission-quality results, the refinement handoff metrics and
-the provider (JEV) readings. Every row is always present and filled: a value, "não avaliado"
+the provider (JEV) readings, then the token volume per stage (discovery, refining,
+delivering; volumes and their quality only, never cost). Every row is always present and filled: a value, "não avaliado"
 (the stage did not run or was not enabled) or "não sei" (data exists but cannot support a
 statement). The command never calls the provider and never recomputes a criterion.`,
 	SilenceUsage: true,
@@ -43,10 +45,11 @@ func runHandoffCriteria(cmd *cobra.Command, opts handoffCriteriaOptions) error {
 		}
 		return printLines(cmd, string(raw))
 	}
-	lines := make([]string, 0, len(report.Rows))
+	lines := make([]string, 0, len(report.Rows)+4)
 	for _, row := range report.Rows {
 		lines = append(lines, fmt.Sprintf("%s: %s  [%s; %s; %s]", row.Criterion, row.Value, row.State, row.Source, row.Detail))
 	}
+	lines = append(lines, strings.Split(strings.TrimRight(gatecriteria.RenderTokenStages(report.TokenStages), "\n"), "\n")...)
 	return printLines(cmd, lines...)
 }
 

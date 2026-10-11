@@ -34,7 +34,11 @@ func (Sink) Emit(ctx context.Context, event telemetry.Event) error {
 	for k, v := range event.Attributes {
 		attrs = append(attrs, k, v)
 	}
-	slog.Log(ctx, severityToSlogLevel(event.SeverityNumber), event.Body, attrs...)
+	body := event.Body
+	if body == "" {
+		body = event.Name // a log record with an empty body is unreadable in a collector
+	}
+	slog.Log(ctx, severityToSlogLevel(event.SeverityNumber), body, attrs...)
 	return nil
 }
 

@@ -22,11 +22,24 @@ func authorizeSniperEntry(input missionadapter.InvocationBuildInput) error {
 	if status.Stage == domain.StageShort && status.StageFeat == "critical_hit" {
 		return authorizeCriticalHitEntry(status)
 	}
-	tasksPath := filepath.Join(input.BasePath, "refined", input.MissionID, "tasks.md")
-	if err := requireSniperTargets(tasksPath); err != nil {
+	if err := requireSniperExecutionTargets(input); err != nil {
 		return err
 	}
 	return requireSniperGateDigest(input)
+}
+
+func requireSniperExecutionTargets(input missionadapter.InvocationBuildInput) error {
+	snapshot, err := missionadapter.LoadExecutionSnapshot(input.Root, input.BasePath, input.MissionID)
+	if err != nil {
+		return fmt.Errorf("role_invocation_failed: %w", err)
+	}
+	if err := snapshot.Validate(); err != nil {
+		return fmt.Errorf("role_invocation_failed: %w", err)
+	}
+	if len(snapshot.Groups) == 0 {
+		return fmt.Errorf("role_invocation_failed: execution requires at least one approved execution target")
+	}
+	return nil
 }
 
 func authorizeCriticalHitEntry(status domain.MissionEngineStatus) error {

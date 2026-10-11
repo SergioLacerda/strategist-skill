@@ -14,15 +14,23 @@ import (
 // rejects the batch and nothing is written. It reports how many lines were
 // appended. The file and its directory are created when absent.
 func AppendMissionLifecycleRecords(path string, recs []MissionLifecycleRecord) (appended int, err error) {
+	written, err := AppendNewMissionLifecycleRecords(path, recs)
+	return len(written), err
+}
+
+// AppendNewMissionLifecycleRecords is AppendMissionLifecycleRecords returning
+// the records that were actually written (not the duplicates), so an exporter
+// can emit exactly one event per new marker.
+func AppendNewMissionLifecycleRecords(path string, recs []MissionLifecycleRecord) (written []MissionLifecycleRecord, err error) {
 	if err = validateLifecycleBatch(recs); err != nil {
-		return 0, err
+		return nil, err
 	}
 	err = withLockedJSONL(path, "mission lifecycle ledger", func(f *os.File) error {
-		n, appendErr := appendNewLifecycleRecords(f, recs)
-		appended = n
+		var appendErr error
+		written, appendErr = appendNewLifecycleRecords(f, recs)
 		return appendErr
 	})
-	return appended, err
+	return written, err
 }
 
 func validateLifecycleBatch(recs []MissionLifecycleRecord) error {
@@ -34,23 +42,23 @@ func validateLifecycleBatch(recs []MissionLifecycleRecord) error {
 	return nil
 }
 
-func appendNewLifecycleRecords(f *os.File, recs []MissionLifecycleRecord) (int, error) {
+func appendNewLifecycleRecords(f *os.File, recs []MissionLifecycleRecord) ([]MissionLifecycleRecord, error) {
 	seen, err := lifecycleMarkerIDs(f)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	appended := 0
+	var written []MissionLifecycleRecord
 	for _, rec := range recs {
 		if seen[rec.MarkerID] {
 			continue
 		}
 		if err := writeLifecycleRecord(f, rec); err != nil {
-			return appended, err
+			return written, err
 		}
 		seen[rec.MarkerID] = true
-		appended++
+		written = append(written, rec)
 	}
-	return appended, nil
+	return written, nil
 }
 
 func writeLifecycleRecord(f *os.File, rec MissionLifecycleRecord) error {

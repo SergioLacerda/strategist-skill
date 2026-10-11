@@ -18,17 +18,19 @@ import (
 // executionEntry is a durable intent record. Filesystem operations cannot be
 // atomic together, so replaying this record is the transaction boundary.
 type executionEntry struct {
-	ID              string                     `json:"id"`
-	MissionID       string                     `json:"mission_id"`
-	PackageDigest   string                     `json:"package_digest"`
-	Targets         []string                   `json:"targets"`
-	Outcome         handoff.Outcome            `json:"outcome"`
-	DesiredStatus   domain.MissionEngineStatus `json:"desired_status"`
-	StateSaved      bool                       `json:"state_saved"`
-	SideQuestSealed bool                       `json:"side_quest_sealed"`
-	OutcomeConsumed bool                       `json:"outcome_consumed"`
-	ClaimsRecorded  bool                       `json:"claims_recorded"`
-	Completed       bool                       `json:"completed"`
+	ID                string                     `json:"id"`
+	MissionID         string                     `json:"mission_id"`
+	PackageDigest     string                     `json:"package_digest"`
+	Targets           []string                   `json:"targets"`
+	TargetMetadata    []domain.ExecutionTarget   `json:"target_metadata,omitempty"`
+	ExecutionSnapshot *domain.ExecutionSnapshot  `json:"execution_snapshot,omitempty"`
+	Outcome           handoff.Outcome            `json:"outcome"`
+	DesiredStatus     domain.MissionEngineStatus `json:"desired_status"`
+	StateSaved        bool                       `json:"state_saved"`
+	SideQuestSealed   bool                       `json:"side_quest_sealed"`
+	OutcomeConsumed   bool                       `json:"outcome_consumed"`
+	ClaimsRecorded    bool                       `json:"claims_recorded"`
+	Completed         bool                       `json:"completed"`
 }
 
 // I/O seams keep failure-path tests hermetic while production uses os calls.
@@ -36,49 +38,76 @@ var executionEntryLink = os.Link
 var executionEntryRename = os.Rename
 var executionEntryConsume = livemission.ConsumeHandoffOutcome
 var executionEntryRecordClaims = livemission.RecordSniperClaimsForEntry
+var executionEntryRecordSnapshotClaims = livemission.RecordSniperClaimsForSnapshot
 
 func executionEntryPath(root, missionID string) string {
 	return filepath.Join(root, "missions", "execution-entry", missionID+".json")
 }
 
-func prepareExecutionEntry(root, missionID, digest string, targets []string, outcome *handoff.Outcome, desired domain.MissionEngineStatus) (*executionEntry, error) {
+func prepareExecutionEntry(root, missionID, digest string, targets []string, targetMetadata []domain.ExecutionTarget, outcome *handoff.Outcome, desired domain.MissionEngineStatus) (*executionEntry, error) {
+	metadata := targetMetadata
+	if len(metadata) == 0 && len(targets) > 0 {
+		metadata = executionTargetsFromPaths(targets)
+	}
+	snapshot, err := domain.SnapshotFromTargets(missionID, metadata)
+	if err != nil {
+		return nil, fmt.Errorf("prepare execution entry: build execution snapshot: %w", err)
+	}
+	return prepareExecutionEntryWithSnapshot(root, missionID, digest, targets, targetMetadata, snapshot, outcome, desired)
+}
+
+func prepareExecutionEntryWithSnapshot(root, missionID, digest string, targets []string, targetMetadata []domain.ExecutionTarget, snapshot domain.ExecutionSnapshot, outcome *handoff.Outcome, desired domain.MissionEngineStatus) (*executionEntry, error) {
 	if outcome == nil {
 		return nil, nil
 	}
 	path := executionEntryPath(root, missionID)
 	existing, err := loadExecutionEntry(path)
 	if err == nil {
-		return reconcileExecutionEntry(root, existing, missionID, digest, targets, outcome, desired)
+		return reconcileExecutionEntryWithSnapshot(root, existing, missionID, digest, targets, targetMetadata, snapshot, outcome, desired)
 	}
 	if !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
-	e := newExecutionEntry(missionID, digest, targets, outcome, desired)
+	e := newExecutionEntryWithSnapshot(missionID, digest, targets, targetMetadata, &snapshot, outcome, desired)
 	if err := saveNewExecutionEntry(path, e); err != nil {
 		return nil, err
 	}
 	return &e, nil
 }
 
-func newExecutionEntry(missionID, digest string, targets []string, outcome *handoff.Outcome, desired domain.MissionEngineStatus) executionEntry {
+func newExecutionEntryWithSnapshot(missionID, digest string, targets []string, targetMetadata []domain.ExecutionTarget, snapshot *domain.ExecutionSnapshot, outcome *handoff.Outcome, desired domain.MissionEngineStatus) executionEntry {
 	return executionEntry{
 		ID: fmt.Sprintf("%s-%d", missionID, time.Now().UTC().UnixNano()), MissionID: missionID,
-		PackageDigest: digest, Targets: append([]string(nil), targets...), Outcome: *outcome, DesiredStatus: desired,
+		PackageDigest: digest, Targets: append([]string(nil), targets...), TargetMetadata: append([]domain.ExecutionTarget(nil), targetMetadata...), ExecutionSnapshot: snapshot, Outcome: *outcome, DesiredStatus: desired,
 	}
 }
 
-func reconcileExecutionEntry(root string, existing executionEntry, missionID, digest string, targets []string, outcome *handoff.Outcome, desired domain.MissionEngineStatus) (*executionEntry, error) {
-	if existing.Completed && (existing.PackageDigest != digest || existing.Outcome.Integrity != outcome.Integrity) {
-		e := newExecutionEntry(missionID, digest, targets, outcome, desired)
+func reconcileExecutionEntryWithSnapshot(root string, existing executionEntry, missionID, digest string, targets []string, targetMetadata []domain.ExecutionTarget, snapshot domain.ExecutionSnapshot, outcome *handoff.Outcome, desired domain.MissionEngineStatus) (*executionEntry, error) {
+	if executionEntryNeedsReplacement(existing, digest, outcome) {
+		e := newExecutionEntryWithSnapshot(missionID, digest, targets, targetMetadata, &snapshot, outcome, desired)
 		if err := saveExecutionEntry(root, &e); err != nil {
 			return nil, err
 		}
 		return &e, nil
 	}
-	if existing.MissionID != missionID || existing.PackageDigest != digest || existing.Outcome.Integrity != outcome.Integrity || !reflect.DeepEqual(existing.DesiredStatus, desired) {
+	if !executionEntryMatches(existing, missionID, digest, targetMetadata, snapshot, outcome, desired) {
 		return nil, fmt.Errorf("execution entry tampered: identity mismatch")
 	}
 	return &existing, nil
+}
+
+func executionEntryNeedsReplacement(existing executionEntry, digest string, outcome *handoff.Outcome) bool {
+	return existing.Completed && (existing.PackageDigest != digest || existing.Outcome.Integrity != outcome.Integrity)
+}
+
+func executionEntryMatches(existing executionEntry, missionID, digest string, targetMetadata []domain.ExecutionTarget, snapshot domain.ExecutionSnapshot, outcome *handoff.Outcome, desired domain.MissionEngineStatus) bool {
+	if existing.MissionID != missionID || existing.PackageDigest != digest || existing.Outcome.Integrity != outcome.Integrity {
+		return false
+	}
+	if !reflect.DeepEqual(existing.DesiredStatus, desired) || !reflect.DeepEqual(existing.TargetMetadata, targetMetadata) {
+		return false
+	}
+	return existing.ExecutionSnapshot == nil || reflect.DeepEqual(*existing.ExecutionSnapshot, snapshot)
 }
 
 func loadExecutionEntry(path string) (executionEntry, error) {
@@ -108,7 +137,13 @@ func recoverExecutionOutcome(root string, e *executionEntry) error {
 }
 
 func recoverExecutionClaims(root, basePath, missionID string, e *executionEntry) error {
-	if _, err := executionEntryRecordClaims(root, basePath, missionID, e.ID, e.Targets, time.Now().UTC()); err != nil {
+	var err error
+	if e.ExecutionSnapshot != nil && len(e.ExecutionSnapshot.Groups) > 0 {
+		_, err = executionEntryRecordSnapshotClaims(root, basePath, missionID, e.ID, *e.ExecutionSnapshot, time.Now().UTC())
+	} else {
+		_, err = executionEntryRecordClaims(root, basePath, missionID, e.ID, executionTargetsForEntry(e), time.Now().UTC())
+	}
+	if err != nil {
 		return fmt.Errorf("recover sniper claims: %w", err)
 	}
 	e.ClaimsRecorded, e.Completed = true, true
@@ -148,25 +183,4 @@ func recoverExecutionEntry(root, basePath, missionID string, persisted domain.Mi
 		return fmt.Errorf("recover mission execution: %w", err)
 	}
 	return nil
-}
-
-func executionRecoverySnapshot(entry executionEntry) application.ExecutionRecoverySnapshot {
-	return application.ExecutionRecoverySnapshot{
-		ID: entry.ID, MissionID: entry.MissionID, Targets: append([]string(nil), entry.Targets...),
-		Outcome: entry.Outcome, DesiredStatus: entry.DesiredStatus, StateSaved: entry.StateSaved, Completed: entry.Completed,
-	}
-}
-
-func loadRecoverableExecutionEntry(root, missionID string) (executionEntry, bool, error) {
-	e, err := loadExecutionEntry(executionEntryPath(root, missionID))
-	if errors.Is(err, os.ErrNotExist) || e.Completed {
-		return e, false, nil
-	}
-	if err != nil {
-		return e, false, fmt.Errorf("load execution entry: %w", err)
-	}
-	if e.MissionID != missionID || e.ID == "" {
-		return e, false, fmt.Errorf("execution entry tampered: identity mismatch")
-	}
-	return e, true, nil
 }

@@ -83,7 +83,11 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   `reported_unverified`, never as measured. The command is refused until the mission has an
   artifact, so report earlier invocations after the first artifact exists, with their `--phase`.
   When the host reports no usage, record nothing: an unobserved invocation is shown as unavailable
-  and is never replaced by an estimate. Hand the discovery run's usage to the Archivist for
+  and is never replaced by an estimate. When the operator names the host's session file,
+  `strategist mission observe-usage --host claude|codex --transcript <file> --since <t> --until <t>
+  --phase <phase> --role <role>` records the counters the host itself wrote for that time window
+  as `host_measured`, numbers only; prefer it to typing counts, and never combine it with a
+  `report-usage` for the same calls. Hand the discovery run's usage to the Archivist for
   `--discovery-tokens` when the host reports it. Without a usage record no waste or cost claim
   about a mission can be checked.
 - No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
@@ -99,7 +103,9 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   presenting the gate, run `strategist handoff criteria --mission-id <id>` and render its rows as the
   `🔎 CRITÉRIOS DE QUALIDADE` block: every row is shown filled with a value, `não avaliado` or `não sei`,
   and a provider row ends with `calibrado (…)` or `não calibrado` exactly as the command prints it.
-  Never type those numbers or that status yourself.
+  Show the `tokens estimados:` block the same command prints right after the rows (volume per stage and
+  total; `delivering` is `—` because delivery has not run). Never type, sum or estimate those numbers or
+  that status yourself.
 - When asked to run a DOJO calibration case, read `contracts/machine/dojo-calibration.yaml` first: the agent
   generates skeletons, audits a sample, writes lessons and proposes operators, and never promotes a case,
   changes a label, pins a calibration or sends real content without the author's explicit consent flag.
@@ -260,7 +266,7 @@ entry.
 | 2–4. intake, routing, context enrichment | `intake_done` (after `strategist mission route`) |
 | 5. discovery | `discovery_done` |
 | 6. refinement | `refinement_done`, or `refinement_done_no_tasks` when the package has no tasks |
-| 7. approval gate | `gate_approved` (documentation targets accepted), `gate_approved_analysis_only` (accepted with no `documentation_target`), `gate_revision_requested` (back to refinement, then `refinement_done` again), or `gate_denied` |
+| 7. approval gate | `gate_approved` (documentation targets accepted, including an accepted OA-ADR derived target), `gate_approved_analysis_only` (accepted with no `documentation_target` and no accepted OA-ADR), `gate_revision_requested` (back to refinement, then `refinement_done` again), or `gate_denied` |
 | 8. materialization | `strategist handoff evaluate --mission-id <id>` (records the durable handoff outcome), then `handoff_challenge_satisfied` (execution entry; machine-enforced against the route's evidence and that outcome), then `sniper_done` |
 
 ## Canonical Pipeline Evidence
@@ -271,7 +277,7 @@ Main mission evidence:
 - `tasks.md` exists when execution depends on refinement
 - approval gate was presented and explicitly approved before execution
 - approval gate timeout/decline terminates as analysis-only (`EventGateTimeout`/`EventGateDenied` → `StateDoneAnalysis`)
-- approval gate acceptance of a package with no `documentation_target` terminates as analysis-only (`EventGateApprovedAnalysisOnly` → `StateDoneAnalysis`)
+- approval gate acceptance of a package with no `documentation_target` and no accepted OA-ADR terminates as analysis-only (`EventGateApprovedAnalysisOnly` → `StateDoneAnalysis`)
 - approval gate revision request loops back to refinement, not a new mission (`EventGateRevision` → `StateRefinement`)
 
 **FSM scope (S7):** the internal state machine (`internal/domain/state_machine.go`)

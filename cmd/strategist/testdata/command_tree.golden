@@ -218,7 +218,8 @@ long: |
   Prints the quality criteria the Approval Gate shows, gathered only from records earlier
   stages already wrote: route and claim confidence, the confidence review, the deterministic
   handoff outcomes, the critic and mission-quality results, the refinement handoff metrics and
-  the provider (JEV) readings. Every row is always present and filled: a value, "não avaliado"
+  the provider (JEV) readings, then the token volume per stage (discovery, refining,
+  delivering; volumes and their quality only, never cost). Every row is always present and filled: a value, "não avaliado"
   (the stage did not run or was not enabled) or "não sei" (data exists but cannot support a
   statement). The command never calls the provider and never recomputes a criterion.
 flag: --json (bool) default="false" usage="emit machine-readable JSON"
@@ -645,6 +646,40 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 flag: --runtime-root (string) default="" usage="OpenSpec runtime root (default: <strategist-root>/openspec)"
 flag: --supersedes-mission-id (string) default="" usage="with --amend: prior mission id this lineage supersedes, recorded for audit"
 
+== strategist mission observe-usage
+use: observe-usage
+short: Record the usage a host wrote in its own session file for one time window (opt-in, numbers only)
+long: |
+  strategist mission observe-usage reads a session file that Claude Code or Codex
+  already wrote, for the file(s) you name with --transcript, and records the
+  token counters the host itself logged inside the window [--since, --until).
+  
+  It is opt-in per run and never scans a home directory. The reader keeps only
+  ids, timestamps, model names and numeric counters; conversation content is
+  read past and never stored, printed or logged. Quality is host_measured, never
+  provider_measured. Claude Code responses are deduplicated by message id and
+  sub-agent files next to the transcript are included; Codex uses the delta of
+  its cumulative counter. Input includes cached input; the cache part is kept
+  in its own field.
+  
+  Attribution is by time window only. The same host session and window is
+  counted once even if re-run; a re-run that sees different counts is a
+  conflict, because the host file can lag the live conversation. A window with
+  no host calls records nothing (never zero). The formats are not contracts:
+  an unrecognized shape fails closed.
+flag: --dry-run (bool) default="false" usage="print what would be recorded without writing the ledger"
+flag: --host (string) default="" usage="host that wrote the file (required): claude or codex"
+flag: --include-subagents (bool) default="true" usage="claude: also read <transcript>/subagents/*.jsonl"
+flag: --invocation-id (string) default="" usage="the 'mission invoke' request id the window belongs to, when known"
+flag: --mission-id (string) default="" usage="mission_id to record usage against (required)"
+flag: --phase (string) default="" usage="phase the window belongs to (required)"
+flag: --role (string) default="" usage="role that consumed the tokens (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --session-id (string) default="" usage="host session id when the file does not carry one"
+flag: --since (string) default="" usage="window start, RFC 3339, inclusive (required)"
+flag: --transcript (stringSlice) default="[]" usage="session file to read (required, repeatable)"
+flag: --until (string) default="" usage="window end, RFC 3339, exclusive (required)"
+
 == strategist mission report-usage
 use: report-usage
 short: Record one token usage observation for a mission phase, declared by the invoking agent
@@ -733,10 +768,21 @@ short: Show per-phase lifecycle and token usage for one mission (read-only)
 long: |
   Show start, end, duration, runs and status per phase for one mission, with the quality of every number stated. Unobserved values print as an unavailable marker, never as zero. The legacy provider-reported ledger is shown on its own row, outside any total.
 flag: --details (bool) default="false" usage="list every phase run and the legacy usage records"
+flag: --from-events (string) default="" usage="rebuild the report from an exported event stream (JSONL) instead of the ledgers"
 flag: --json (bool) default="false" usage="emit strategist-mission-usage/v1 JSON"
 flag: --mission-id (string) default="" usage="mission identifier (required)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 flag: --timeline (bool) default="false" usage="add the merged chronology of lifecycle markers and usage observations"
+
+== strategist mission verify-telemetry
+use: verify-telemetry
+short: Check the integrity of a mission's lifecycle and usage evidence (read-only)
+long: |
+  Cross-check the mission lifecycle ledger, the usage ledger and, with --events, an exported JSONL event stream (STRATEGIST_TELEMETRY_JSONL). Findings are errors (the evidence contradicts itself), warnings (a gap or a degradation) or info. The command is advisory and independent of any governance provider.
+flag: --events (string) default="" usage="exported event stream (JSONL) to cross-check against the ledgers"
+flag: --json (bool) default="false" usage="emit strategist-telemetry-verify/v1 JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist mission view
 use: view

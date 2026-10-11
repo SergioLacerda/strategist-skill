@@ -156,7 +156,7 @@ providers:
       certification_digest: sha256:9cc5a46c11978922b2ea916f9da438b580c81cfbba3ea863b24576808e4955b6
       ranked_binding_generation: 1
       ranked_binding_status: active
-      host_api_digest: sha256:76867e853cb08f1214f8580f2ed83898456bd03b444424b3ed8807fb8768dadf
+      host_api_digest: sha256:b9f64a7a8b6b968e03eb0d5a5cf7d4819f5c00a3268263f5665f05c79dd9ae63
       connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
       test_suite_digest: sha256:ab8013534d9373fcc289d338814f1fe1c860f57db9ad02d61f177de621c77557
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
@@ -292,7 +292,7 @@ weapons:
     - id: sniper
       version: 0.0.0
       digest: sha256:4b0036990938dd5fb236967e8acbec321c4d01fb65358c8a0b1a14abf024d601
-      source_digest: sha256:a8aa1480da64fdc802a05d006b16ebb9e584727fa3f371d9e6c1f49baca86fe9
+      source_digest: sha256:86e2fe030afa6ef99ce1c6d399333914d23dd2c9fe0dcca7b363685964e37388
       origin: embedded
       runtime:
         kind: embedded
@@ -326,7 +326,7 @@ roles:
       handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml
     - id: sniper
       slot: execution
-      contract_digest: sha256:dbb7f4fba82242b6352a0204934da0678fe300e9da81f0a5d6f41d0a388f583b
+      contract_digest: sha256:82480eeaabed6e638733d8e8f183416bfd7c78cd9b78bbe2f6e942baa4325140
 compatibility:
     - role: archivist
       slot: refinement
@@ -423,9 +423,9 @@ ranked_bindings:
       weapon_id: sniper
       weapon_version: 0.0.0
       weapon_digest: sha256:4b0036990938dd5fb236967e8acbec321c4d01fb65358c8a0b1a14abf024d601
-      role_digest: sha256:dbb7f4fba82242b6352a0204934da0678fe300e9da81f0a5d6f41d0a388f583b
-      binding_digest: sha256:2b6e722d1428819a01696300e46d033531afceec000ec93095083b4bf3449a6c
-      source_digest: sha256:a8aa1480da64fdc802a05d006b16ebb9e584727fa3f371d9e6c1f49baca86fe9
+      role_digest: sha256:82480eeaabed6e638733d8e8f183416bfd7c78cd9b78bbe2f6e942baa4325140
+      binding_digest: sha256:69b614ecf8b3098d57d33c512055f08ab1e43dd65b45b92768c06165aef3f2c5
+      source_digest: sha256:86e2fe030afa6ef99ce1c6d399333914d23dd2c9fe0dcca7b363685964e37388
       execution_mode: code
       certification_digest: sha256:9cc5a46c11978922b2ea916f9da438b580c81cfbba3ea863b24576808e4955b6
       connector_id: strategist-native-role

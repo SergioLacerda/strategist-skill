@@ -17,6 +17,15 @@ corresponding tag and GitHub Release.
 ## [Unreleased]
 
 ### Added
+- `strategist handoff criteria` ends with a `tokens estimados:` block: the token
+  volume per stage (discovery, refining, delivering) and the total, with the
+  quality of the numbers on the total line. It is a volume report only, with no
+  price or cost, and it is advisory: it never blocks the Approval Gate. An
+  unobserved stage is `—`, never zero; delivery is `—` at the gate because it
+  has not run; a partially observed stage is a lower bound (`≥n`). The same
+  data is a `token_usage.by_stage` row and the `token_stages` JSON field. The
+  aggregation moved to the new `internal/usagesummary` package, shared with
+  `mission usage` and `mission view` (ADR-0069, Wave 5).
 - `strategist mission usage` shows start, end, duration, runs and status per
   phase for one mission (`--mission-id`, `--json`, `--details`). It reads a new
   append-only mission lifecycle ledger (`memory/mission-lifecycle.jsonl`) whose
@@ -45,6 +54,37 @@ corresponding tag and GitHub Release.
   the merged chronology of lifecycle markers and usage observations.
   Cumulative snapshots contribute only the delta inside one session; a reset
   or a new session yields no interval.
+
+- `strategist mission observe-usage` records the usage a coding host already
+  wrote in its own session file (Claude Code transcript, Codex rollout) for one
+  time window, as `host_measured`. It is opt-in per run, keeps only ids,
+  timestamps, models and counters (never conversation content), deduplicates
+  Claude Code responses by message id, takes Codex deltas of its cumulative
+  counter, fails closed on an unrecognized format and never records an empty
+  window as zero. Feasibility evidence and limits are in the Wave 3 spike result.
+
+- Mission lifecycle markers and usage records are exported as events
+  (`strategist.mission.started|phase.started|phase.ended|ended`,
+  `strategist.usage.recorded`) through the configured sink. Setting
+  `STRATEGIST_TELEMETRY_JSONL=<file>` additionally appends them to an
+  append-only JSONL stream with no collector and no governance provider; a
+  failing exporter never blocks a mission unless `STRATEGIST_TELEMETRY_STRICT`
+  is set. See `docs/telemetry-interop-contract.md`.
+- `strategist mission usage --from-events <file>` rebuilds the report from an
+  exported event stream; `strategist mission verify-telemetry` is a read-only
+  integrity check of the lifecycle ledger, the usage ledger and an optional
+  event stream (gaps, duplicates, conflicting counts, invalid timestamps,
+  unreadable lines) that exits non-zero only when the evidence contradicts
+  itself.
+
+### Fixed
+- OpenTelemetry export of events: with `OTEL_EXPORTER_OTLP_ENDPOINT` set, only
+  traces were configured and the slog bridge wrote to a no-op log provider, so
+  no log record or exported mission event ever reached the collector. An
+  OTLP/gRPC log pipeline is now installed next to the trace exporter. Verified
+  against an OpenTelemetry Collector 0.115.1: lifecycle and usage events arrive
+  with their attributes; with the collector down the command still succeeds and
+  the ledger is written. Adds `otlploggrpc` and `sdk/log` (v0.22.0) to go.mod.
 
 ### Changed
 - `mission view` no longer sums the legacy provider-reported records

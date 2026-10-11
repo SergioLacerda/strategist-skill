@@ -25,15 +25,16 @@ Create an ADR (Architectural Decision Record) when the refined work contains dec
 
 - **Archivist** evaluates ADR necessity after writing all four refined artifacts, using the criteria in `machine/opportunity-attack.yaml`
 - If criteria met → Archivist surfaces `[OA-ADR-{mission_id}]` at the approval gate as a side quest
-- If user approves at gate → the shell records it with `strategist mission accept-side-quest`; the accepted record makes the ADR the mission's single gate-derived documentation target (the machine rejects the analysis-only gate events), and **Sniper** creates the ADR as an execution task at the path returned by `strategist mission adr-target`
+- If user approves at gate → the shell records it with `strategist mission accept-side-quest`; the accepted record makes the ADR a gate-derived documentation intent (the machine rejects the analysis-only gate events). When execution starts, the registered ADR resolver reserves the destination and places it in an immutable `execution_snapshot` group; **Sniper** creates only the declared artifact.
 - If user declines at gate → `strategist mission decline-side-quest`; ADR is not created, `adr-target` fails with `adr_side_quest_not_accepted`, and outcome logged
 - Pending/refined card closure remains a **Critical Hit** responsibility and requires the closure evidence defined in `11-critical-hit.md`
 
 ## Canonical Destination Resolution
 
-Before writing, Sniper runs `strategist mission adr-target --mission-id <id> [--slug <title-slug>]`,
-which applies this section at materialization time, reserves the path once in the accepted
-record, returns the same path on every repeat call, and records the Sniper claim for it.
+Before writing, the registered ADR resolver has already prepared and reserved the path in
+the execution snapshot. Sniper consumes that declared artifact and does not select an ADR
+destination or invoke an ADR-specific protocol. Authorization, invocation, claims, and
+completion all consume the same resolver-produced artifact identity.
 The rule it applies reads `active.yaml#adr.canonical_path` (optional string, project-relative path; no default — absence is a fully supported state, not an error):
 
 - **Configured** → the ADR is written **only** to `<adr.canonical_path>/<adr_filename>`. It is not also written to `<base_path>/archived/`. This avoids two sources of truth for the same decision.

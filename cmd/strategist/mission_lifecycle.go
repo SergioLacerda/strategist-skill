@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -23,16 +24,34 @@ func recordMissionLifecycle(root, missionID string, markers []domain.LifecycleMa
 			return lifecycleToApplication(recs), nil
 		},
 		Append: func(_ string, recs []application.LifecycleRecord) (int, error) {
-			n, err := telemetry.AppendMissionLifecycleRecords(path, lifecycleToTelemetry(recs))
+			written, err := telemetry.AppendNewMissionLifecycleRecords(path, lifecycleToTelemetry(recs))
 			if err != nil {
 				return 0, fmt.Errorf("append lifecycle ledger: %w", err)
 			}
-			return n, nil
+			return len(written), exportLifecycleEvents(written)
 		},
 		Now: time.Now,
 	})
 	if err != nil {
 		return fmt.Errorf("record mission lifecycle: %w", err)
+	}
+	return nil
+}
+
+// exportLifecycleEvents emits one event per newly written marker through the
+// configured sink (slog, OTel and, with STRATEGIST_TELEMETRY_JSONL, a JSONL
+// stream). The ledger is already written: a lenient sink swallows an export
+// failure, a strict one returns it so the degradation is reported.
+func exportLifecycleEvents(written []telemetry.MissionLifecycleRecord) error {
+	sink := selectDiscoveryTelemetrySink()
+	for _, rec := range written {
+		event, err := telemetry.NewMissionLifecycleEvent(rec)
+		if err != nil {
+			return fmt.Errorf("lifecycle ledger written, event not built: %w", err)
+		}
+		if err := sink.Emit(context.Background(), event); err != nil {
+			return fmt.Errorf("lifecycle ledger written, telemetry export failed: %w", err)
+		}
 	}
 	return nil
 }

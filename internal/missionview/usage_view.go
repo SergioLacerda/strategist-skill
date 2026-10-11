@@ -33,8 +33,11 @@ type ChronologyEntry struct {
 // UsageView is the `mission usage` projection. Its phase timeline, including
 // the usage totals, is the same value object embedded in the mission view.
 type UsageView struct {
-	Schema        string            `json:"schema"`
-	MissionID     string            `json:"mission_id"`
+	Schema    string `json:"schema"`
+	MissionID string `json:"mission_id"`
+	// Source says where the lifecycle and usage records came from: the
+	// ledgers or a replayed exported event stream.
+	Source        string            `json:"source"`
 	Lifecycle     Lifecycle         `json:"lifecycle"`
 	PhaseTimeline PhaseTimeline     `json:"phase_timeline"`
 	Legacy        LegacyUsage       `json:"legacy"`
@@ -54,12 +57,14 @@ type UsageInput struct {
 	TokenUsageError  error
 	// WithChronology adds the merged marker and observation timeline.
 	WithChronology bool
+	// FromEvents marks the records as rebuilt from an exported event stream.
+	FromEvents bool
 }
 
 // BuildUsage composes the usage projection without persisting anything.
 func BuildUsage(in UsageInput) UsageView {
 	v := UsageView{
-		Schema: UsageSchemaVersion, MissionID: in.Status.MissionID,
+		Schema: UsageSchemaVersion, MissionID: in.Status.MissionID, Source: usageSourceLabel(in.FromEvents),
 		Lifecycle: Lifecycle{Phase: string(in.Status.Phase), State: string(in.Status.State)},
 		PhaseTimeline: BuildPhaseTimeline(in.Status, in.Lifecycle, in.LifecycleError).
 			WithUsage(SummarizeUsage(in.Usage, in.KnownInvocations), in.UsageError),
@@ -70,6 +75,13 @@ func BuildUsage(in UsageInput) UsageView {
 		v.Chronology = BuildChronology(in.Lifecycle, in.Usage)
 	}
 	return v
+}
+
+func usageSourceLabel(fromEvents bool) string {
+	if fromEvents {
+		return "events"
+	}
+	return "ledgers"
 }
 
 func usageDiagnostics(in UsageInput) []Diagnostic {
@@ -107,7 +119,7 @@ func BuildChronology(markers []telemetry.MissionLifecycleRecord, usage []telemet
 	for _, u := range usage {
 		out = append(out, ChronologyEntry{
 			At: u.ObservedAt, Kind: "usage_observation", Phase: u.Phase, RunID: u.PhaseRunID,
-			Detail: fmt.Sprintf("%s in=%s out=%s quality=%s invocation=%s", u.RecordKind, count(u.TokensInput), count(u.TokensOutput), u.MeasurementQuality, orCell(u.InvocationID)),
+			Detail: fmt.Sprintf("%s in=%s out=%s quality=%s invocation=%s calls=%d", u.RecordKind, count(u.TokensInput), count(u.TokensOutput), u.MeasurementQuality, orCell(u.InvocationID), u.Calls),
 		})
 	}
 	sort.SliceStable(out, func(i, j int) bool { return chronologyBefore(out[i].At, out[j].At) })
@@ -123,7 +135,7 @@ func chronologyBefore(a, b string) bool {
 // RenderUsageHuman writes the `mission usage` output. The legacy ledger is a
 // separate row outside every total.
 func RenderUsageHuman(w io.Writer, v UsageView, details bool) error {
-	if err := writef(w, "MISSION %s   phase: %s   state: %s\n", v.MissionID, v.Lifecycle.Phase, v.Lifecycle.State); err != nil {
+	if err := writef(w, "MISSION %s   phase: %s   state: %s   source: %s\n", v.MissionID, v.Lifecycle.Phase, v.Lifecycle.State, v.Source); err != nil {
 		return err
 	}
 	if err := RenderPhaseTimeline(w, v.PhaseTimeline, details); err != nil {

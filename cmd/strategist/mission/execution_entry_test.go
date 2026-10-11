@@ -23,25 +23,42 @@ func TestPrepareExecutionEntryRejectsDifferentRevisionWhileIncomplete(t *testing
 	root := t.TempDir()
 	status := domain.MissionEngineStatus{MissionID: "m1", Phase: domain.PhaseExecution}
 	outcome := handoff.Outcome{MissionID: "m1", Integrity: "outcome-a"}
-	entry, err := prepareExecutionEntry(root, "m1", "package-a", []string{"docs/a.md"}, &outcome, status)
+	entry, err := prepareExecutionEntry(root, "m1", "package-a", []string{"docs/a.md"}, nil, &outcome, status)
 	require.NoError(t, err)
 	require.False(t, entry.Completed)
 	other := outcome
 	other.Integrity = "outcome-b"
-	_, err = prepareExecutionEntry(root, "m1", "package-b", []string{"docs/b.md"}, &other, status)
+	_, err = prepareExecutionEntry(root, "m1", "package-b", []string{"docs/b.md"}, nil, &other, status)
 	require.ErrorContains(t, err, "identity mismatch")
+}
+
+func TestPrepareExecutionEntryPersistsTypedExecutionTargetSnapshot(t *testing.T) {
+	root := t.TempDir()
+	status := domain.MissionEngineStatus{MissionID: "m1", Phase: domain.PhaseExecution}
+	outcome := handoff.Outcome{MissionID: "m1", Integrity: "outcome-a"}
+	target := domain.ExecutionTarget{
+		Path: "docs/adr/m1-adr.md", Kind: domain.ExecutionTargetKindADR,
+		Origin: domain.ExecutionTargetOriginAcceptedSideQuest, SideQuestID: "OA-ADR-m1",
+	}
+	entry, err := prepareExecutionEntry(root, "m1", "package-a", []string{target.Path}, []domain.ExecutionTarget{target}, &outcome, status)
+	require.NoError(t, err)
+	require.Equal(t, []domain.ExecutionTarget{target}, entry.TargetMetadata)
+
+	loaded, err := loadExecutionEntry(executionEntryPath(root, "m1"))
+	require.NoError(t, err)
+	require.Equal(t, []domain.ExecutionTarget{target}, loaded.TargetMetadata)
 }
 
 func TestPrepareExecutionEntryRotatesCompletedRevision(t *testing.T) {
 	root := t.TempDir()
 	status := domain.MissionEngineStatus{MissionID: "m1", Phase: domain.PhaseExecution}
 	a := handoff.Outcome{MissionID: "m1", Integrity: "outcome-a"}
-	entry, err := prepareExecutionEntry(root, "m1", "package-a", nil, &a, status)
+	entry, err := prepareExecutionEntry(root, "m1", "package-a", nil, nil, &a, status)
 	require.NoError(t, err)
 	entry.Completed = true
 	require.NoError(t, saveExecutionEntry(root, entry))
 	b := handoff.Outcome{MissionID: "m1", Integrity: "outcome-b"}
-	next, err := prepareExecutionEntry(root, "m1", "package-b", nil, &b, status)
+	next, err := prepareExecutionEntry(root, "m1", "package-b", nil, nil, &b, status)
 	require.NoError(t, err)
 	require.Equal(t, "package-b", next.PackageDigest)
 	require.False(t, next.Completed)
@@ -99,7 +116,7 @@ func TestRecoverExecutionEntryRetriesAfterClaimProjectionFailure(t *testing.T) {
 	entry := executionEntry{ID: "entry", MissionID: "m1", PackageDigest: "package-a", Outcome: outcome, DesiredStatus: status, StateSaved: true}
 	require.NoError(t, saveNewExecutionEntry(executionEntryPath(root, "m1"), entry))
 	old := executionEntryRecordClaims
-	executionEntryRecordClaims = func(string, string, string, string, []string, time.Time) (int, error) {
+	executionEntryRecordClaims = func(string, string, string, string, []domain.ExecutionTarget, time.Time) (int, error) {
 		return 0, errors.New("claims failed")
 	}
 	require.ErrorContains(t, recoverExecutionEntry(root, filepath.Join(root, "analysis"), "m1", status), "claims failed")

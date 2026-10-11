@@ -31,6 +31,8 @@ type ReportUsageDependencies struct {
 	ResolveBasePath func(string) (string, string, error)
 	MissionKnown    func(string, string) bool
 	Validate        func(*cobra.Command, ReportUsageOptions) error
+	// TelemetrySink exports one event per new usage record. Nil disables export.
+	TelemetrySink func() telemetry.EventSink
 }
 
 // NewReportUsage builds `mission report-usage`.
@@ -101,7 +103,7 @@ func RunReportUsage(cmd *cobra.Command, deps ReportUsageDependencies, opts Repor
 	}
 	result, err := application.RecordMissionUsage(strategistRoot, basePath, usageInput(opts), time.Now(), application.MissionUsagePorts{
 		MissionKnown: deps.MissionKnown,
-		Append:       appendUsage,
+		Append:       usageAppender(deps.TelemetrySink),
 	})
 	if err != nil {
 		return fmt.Errorf("mission report-usage: %w", err)
@@ -136,23 +138,6 @@ func optionalCount(set bool, v int64) *int64 {
 		return nil
 	}
 	return &v
-}
-
-func appendUsage(root string, r application.MissionUsageRecord) (bool, error) {
-	rec := telemetry.MissionUsageRecord{
-		SchemaVersion: telemetry.MissionUsageSchemaVersion, EventID: r.EventID, MissionID: r.MissionID,
-		Phase: r.Phase, PhaseRunID: r.PhaseRunID, Role: r.Role, InvocationID: r.InvocationID,
-		Attempt: r.Attempt, UsageScope: r.UsageScope, SessionID: r.SessionID, RecordKind: r.RecordKind,
-		TokensInput: r.TokensInput, TokensOutput: r.TokensOutput, TokensCache: r.TokensCache, TokensReasoning: r.TokensReasoning,
-		Provider: r.Provider, Model: r.Model, MeasurementSource: r.MeasurementSource, MeasurementQuality: r.MeasurementQuality,
-		DedupUnavailable: r.DedupUnavailable, ObservedAt: r.ObservedAt,
-	}
-	rec.RecordID = telemetry.MissionUsageRecordID(rec)
-	appended, err := telemetry.AppendMissionUsageRecord(telemetry.MissionUsagePath(root), rec)
-	if err != nil {
-		return false, fmt.Errorf("append mission usage: %w", err)
-	}
-	return appended, nil
 }
 
 func writeUsageResult(cmd *cobra.Command, res application.MissionUsageResult) error {

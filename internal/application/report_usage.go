@@ -44,6 +44,7 @@ type MissionUsageRecord struct {
 	Attempt                                                 int
 	TokensInput, TokensOutput, TokensCache, TokensReasoning *int64
 	DedupUnavailable                                        bool
+	Calls                                                   int
 }
 
 // MissionUsagePorts provides mission lookup and usage persistence. Append
@@ -72,6 +73,11 @@ func RecordMissionUsage(root, basePath string, in MissionUsageInput, now time.Ti
 	if err != nil {
 		return MissionUsageResult{}, err
 	}
+	return persistMissionUsage(root, basePath, rec, ports)
+}
+
+// persistMissionUsage applies the artifact requirement and appends the record.
+func persistMissionUsage(root, basePath string, rec MissionUsageRecord, ports MissionUsagePorts) (MissionUsageResult, error) {
 	if !ports.MissionKnown(basePath, rec.MissionID) {
 		return MissionUsageResult{}, fmt.Errorf("unknown mission_id %q (no pending/refined/archived artifact found under %s)", rec.MissionID, basePath)
 	}

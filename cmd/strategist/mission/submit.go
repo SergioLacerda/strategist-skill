@@ -3,8 +3,10 @@ package mission
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/spf13/cobra"
 )
 
@@ -78,18 +80,33 @@ func submitLocked(deps LifecycleDependencies, root, basePath, missionID string, 
 	if err != nil {
 		return domain.MissionEngineStatus{}, err
 	}
+	executionTargets, executionSnapshot, err := resolveSubmitExecution(root, basePath, missionID, evt, pre.ClaimTargets)
+	if err != nil {
+		return domain.MissionEngineStatus{}, err
+	}
 	before := engine.Status()
 	status, err := applySubmit(engine, evt, pre.GateDigest)
 	if err != nil {
 		return domain.MissionEngineStatus{}, err
 	}
-	if err := commitSubmit(deps, root, basePath, missionID, evt, before, status, pre); err != nil {
+	if err := commitSubmit(deps, root, basePath, missionID, evt, before, status, pre, executionTargets, executionSnapshot); err != nil {
 		return domain.MissionEngineStatus{}, err
 	}
 	return status, nil
 }
 
-func commitSubmit(deps LifecycleDependencies, root, basePath, missionID string, evt domain.MissionEngineEvent, before, status domain.MissionEngineStatus, pre submitPreflight) error {
+func resolveSubmitExecution(root, basePath, missionID string, evt domain.MissionEngineEvent, claimTargets []string) ([]domain.ExecutionTarget, domain.ExecutionSnapshot, error) {
+	if evt != domain.MissionEventHandoffSatisfied {
+		return nil, domain.ExecutionSnapshot{}, nil
+	}
+	snapshot, err := livemission.ResolveExecutionSnapshot(root, basePath, missionID, claimTargets, time.Now().UTC())
+	if err != nil {
+		return nil, domain.ExecutionSnapshot{}, fmt.Errorf("mission submit: rejected: %w", err)
+	}
+	return executionTargetsFromSnapshot(snapshot), snapshot, nil
+}
+
+func commitSubmit(deps LifecycleDependencies, root, basePath, missionID string, evt domain.MissionEngineEvent, before, status domain.MissionEngineStatus, pre submitPreflight, executionTargets []domain.ExecutionTarget, executionSnapshot domain.ExecutionSnapshot) error {
 	if err := invalidateRepairEvidence(root, missionID, evt); err != nil {
 		return fmt.Errorf("mission submit: %w", err)
 	}
@@ -101,7 +118,7 @@ func commitSubmit(deps LifecycleDependencies, root, basePath, missionID string, 
 	if err != nil {
 		return fmt.Errorf("mission submit: %w", err)
 	}
-	entry, err := prepareCommitEntry(root, missionID, pre, status)
+	entry, err := prepareCommitEntry(root, missionID, pre, executionTargets, executionSnapshot, status)
 	if err != nil {
 		return err
 	}
@@ -115,8 +132,8 @@ func commitSubmit(deps LifecycleDependencies, root, basePath, missionID string, 
 	return nil
 }
 
-func prepareCommitEntry(root, missionID string, pre submitPreflight, status domain.MissionEngineStatus) (*executionEntry, error) {
-	entry, err := prepareExecutionEntry(root, missionID, pre.PackageDigest, pre.ClaimTargets, pre.Outcome, status)
+func prepareCommitEntry(root, missionID string, pre submitPreflight, executionTargets []domain.ExecutionTarget, executionSnapshot domain.ExecutionSnapshot, status domain.MissionEngineStatus) (*executionEntry, error) {
+	entry, err := prepareExecutionEntryWithSnapshot(root, missionID, pre.PackageDigest, livemission.ExecutionTargetPaths(executionTargets), executionTargets, executionSnapshot, pre.Outcome, status)
 	if err != nil {
 		return nil, fmt.Errorf("mission submit: prepare execution entry: %w", err)
 	}

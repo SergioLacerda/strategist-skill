@@ -1,4 +1,9 @@
-package missionview
+// Package usagesummary aggregates a mission's declared token observations
+// without double counting. It is shared by the read model, the Approval Gate
+// criteria and any other consumer, and it has no dependency on them: a replayed
+// record id is dropped, incremental observations add, and cumulative snapshots
+// contribute only the delta inside one session and counter.
+package usagesummary
 
 import (
 	"sort"
@@ -8,22 +13,33 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
-// QualityMixed labels a bucket whose observations carry different qualities.
-const QualityMixed = "mixed"
+// Quality labels of a bucket that no single observation quality describes.
+const (
+	QualityMixed       = "mixed"
+	QualityUnavailable = "unavailable"
+)
 
-// UsageBucket is the token usage of one phase row, of the unattributed
+// Tokens holds token counts. Every member is null until usage is observed: an
+// unobserved value is never zero.
+type Tokens struct {
+	Input  *int64 `json:"input"`
+	Output *int64 `json:"output"`
+	Total  *int64 `json:"total"`
+}
+
+// Bucket is the token usage of one phase row, of the unattributed
 // consumption or of the whole mission. A member is null when it was not
 // observed; quality says how far the numbers may be trusted.
-type UsageBucket struct {
-	Tokens           PhaseTokens    `json:"tokens"`
+type Bucket struct {
+	Tokens           Tokens         `json:"tokens"`
 	Quality          string         `json:"quality"`
 	QualityBreakdown map[string]int `json:"quality_breakdown,omitempty"`
 	Observations     int            `json:"observations"`
 }
 
-// UsageCoverage states how much of the mission the numbers cover. It never
+// Coverage states how much of the mission the numbers cover. It never
 // converts missing volume into a percentage: that volume is unknown.
-type UsageCoverage struct {
+type Coverage struct {
 	InvocationsKnown    int `json:"invocations_known"`
 	InvocationsObserved int `json:"invocations_observed"`
 	InvocationsMissing  int `json:"invocations_missing"`
@@ -32,20 +48,20 @@ type UsageCoverage struct {
 	ResetIntervals      int `json:"reset_intervals"`
 }
 
-// UsageSummary is the aggregation of a mission's usage ledger.
-type UsageSummary struct {
-	ByPhase      map[string]UsageBucket
-	Unattributed UsageBucket
-	Total        UsageBucket
-	Coverage     UsageCoverage
+// Summary is the aggregation of a mission's usage ledger.
+type Summary struct {
+	ByPhase      map[string]Bucket
+	Unattributed Bucket
+	Total        Bucket
+	Coverage     Coverage
 }
 
-// SummarizeUsage aggregates declared observations without double counting: a
+// Summarize aggregates declared observations without double counting: a
 // repeated record id is dropped, incremental observations add, and cumulative
 // snapshots contribute only the delta between two snapshots of the same
 // session and counter (a reset or a new session yields no interval).
 // knownInvocations feeds the coverage counters.
-func SummarizeUsage(recs []telemetry.MissionUsageRecord, knownInvocations []string) UsageSummary {
+func Summarize(recs []telemetry.MissionUsageRecord, knownInvocations []string) Summary {
 	unique := dedupeUsage(recs)
 	contribs, cov := usageContributions(unique)
 	cov = withInvocationCoverage(cov, unique, knownInvocations)
@@ -64,8 +80,8 @@ func SummarizeUsage(recs []telemetry.MissionUsageRecord, knownInvocations []stri
 		target.add(c)
 		total.add(c)
 	}
-	summary := UsageSummary{
-		ByPhase: map[string]UsageBucket{}, Unattributed: unattributed.bucket(),
+	summary := Summary{
+		ByPhase: map[string]Bucket{}, Unattributed: unattributed.bucket(),
 		Total: total.bucket(), Coverage: cov,
 	}
 	for phase, acc := range byPhase {
@@ -103,9 +119,9 @@ func observedBefore(a, b string) bool {
 	return errA == nil && errB == nil && ta.Before(tb)
 }
 
-func usageContributions(recs []telemetry.MissionUsageRecord) ([]contribution, UsageCoverage) {
+func usageContributions(recs []telemetry.MissionUsageRecord) ([]contribution, Coverage) {
 	var contribs []contribution
-	var cov UsageCoverage
+	var cov Coverage
 	series := map[string]snapshotPoint{}
 	for _, r := range recs {
 		if r.DedupUnavailable {
@@ -123,7 +139,7 @@ func usageContributions(recs []telemetry.MissionUsageRecord) ([]contribution, Us
 // contributes its counts; a snapshot contributes the delta from the previous
 // snapshot of the same session and counter, or nothing when there is none or
 // the counter went backwards.
-func contributionOf(r telemetry.MissionUsageRecord, series map[string]snapshotPoint, cov *UsageCoverage) (contribution, bool) {
+func contributionOf(r telemetry.MissionUsageRecord, series map[string]snapshotPoint, cov *Coverage) (contribution, bool) {
 	if r.RecordKind != string(domain.UsageKindCumulativeSnapshot) {
 		return contribution{phase: r.Phase, in: r.TokensInput, out: r.TokensOutput, quality: r.MeasurementQuality}, true
 	}
@@ -152,7 +168,7 @@ func delta(prev, cur *int64) *int64 {
 	return &d
 }
 
-func withInvocationCoverage(cov UsageCoverage, recs []telemetry.MissionUsageRecord, known []string) UsageCoverage {
+func withInvocationCoverage(cov Coverage, recs []telemetry.MissionUsageRecord, known []string) Coverage {
 	observed := map[string]bool{}
 	for _, r := range recs {
 		observed[r.InvocationID] = true

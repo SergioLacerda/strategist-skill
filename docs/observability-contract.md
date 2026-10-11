@@ -176,9 +176,26 @@ per-phase token usage to be rendered only from two dedicated append-only ledgers
   same counts is a duplicate; with different counts it is a conflict. Totals add incremental
   observations and, for cumulative snapshots, only the delta between two snapshots of one session;
   a reset or a new session yields no interval. Read it with `strategist mission usage`.
+  `strategist mission observe-usage` is the only writer of `host_counter` / `host_measured`
+  records: it reads a session file the operator names (Claude Code or Codex), keeps only ids,
+  timestamps, models and counters, and records one incremental `window` observation keyed by host
+  session and window (a repeated window is counted once; changed counts are a conflict). Input
+  includes cached input, the cache part is stored in `tokens_cache`, attribution is by time
+  window only, and Claude Code helper-model calls are not in its transcripts.
 - **Canonical phases** are the pipeline phases (`BOOTSTRAP`, `INTAKE`, `DISCOVERY`,
   `REFINEMENT`, `APPROVAL_GATE`, `EXECUTION`); Intake, Discovery, Refining, Gate and Delivery are
   display labels only. The Approval Gate row carries duration and never tokens.
+- **Export and verification:** every new lifecycle marker and usage record is also emitted as an
+  event (`strategist.mission.*`, `strategist.usage.recorded`), optionally to a JSONL stream
+  (`STRATEGIST_TELEMETRY_JSONL`) and to OpenTelemetry; `mission usage --from-events` rebuilds the
+  report from a stream and `mission verify-telemetry` checks the evidence. The consumer contract is
+  [telemetry-interop-contract.md](telemetry-interop-contract.md).
+- **Approval Gate volumes:** `strategist handoff criteria` appends a `tokens estimados:` block
+  with the volume per stage (`intake` only when observed, `discovery`, `refining`, `delivering`)
+  and the total, built by the same aggregation as `mission usage`. `delivering` is `—` at the
+  gate because delivery has not run, an unobserved stage is `—`, a partially observed one is a
+  lower bound (`≥n`), and the quality label travels on the `total` line. It carries volumes
+  only: there is no price, cost or threshold, and it never blocks the gate.
 - A value that was not observed is rendered as unavailable, never as zero; an estimate is
   never labeled as measured; the provider-reported ledger
   (`mission-token-usage.jsonl`) and the handoff-local estimates remain separate authorities and

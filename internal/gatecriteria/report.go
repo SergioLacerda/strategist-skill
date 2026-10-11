@@ -30,8 +30,9 @@ type Row struct {
 
 // Report is the full criteria set for a mission.
 type Report struct {
-	MissionID string `json:"mission_id"`
-	Rows      []Row  `json:"rows"`
+	MissionID   string      `json:"mission_id"`
+	Rows        []Row       `json:"rows"`
+	TokenStages StageTokens `json:"token_stages"`
 }
 
 // Input locates the records of one mission.
@@ -50,6 +51,7 @@ func Criteria() []string {
 		"confidence_review", "handoff.ranger_to_archivist", "handoff.archivist_to_sniper",
 		"critic", "mission_quality", "refinement_handoff_metrics",
 		"provider.ranger_to_archivist", "provider.archivist_to_gate", "provider.archivist_to_sniper",
+		stageVolumeCriterion,
 	}
 }
 
@@ -60,6 +62,7 @@ func Build(in Input) Report {
 	for _, agent := range claimAgents() {
 		rows = append(rows, claimRow(records, "claim_confidence."+agent, agent))
 	}
+	stages := TokenStages(in)
 	rows = append(rows,
 		reviewRow(in),
 		handoffRow(in, "handoff.ranger_to_archivist", "ranger_to_archivist", "nenhum outcome registrado"),
@@ -70,8 +73,9 @@ func Build(in Input) Report {
 		providerRow(in, "provider.ranger_to_archivist", "ranger_to_archivist", "nenhuma leitura registrada"),
 		providerRow(in, "provider.archivist_to_gate", "archivist_to_gate", "nenhuma leitura registrada"),
 		providerRow(in, "provider.archivist_to_sniper", "archivist_to_sniper", "só existe depois do gate"),
+		stageTokensRow(stages),
 	)
-	return Report{MissionID: in.MissionID, Rows: rows}
+	return Report{MissionID: in.MissionID, Rows: rows, TokenStages: stages}
 }
 
 // claimAgents are the boundaries whose claims exist before the gate.

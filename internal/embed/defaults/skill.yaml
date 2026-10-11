@@ -268,7 +268,7 @@ slots:
     canonical:
       - requires_review_gate_acceptance  # Strategist enforces — documented here for slot awareness
       - consult_treasure_chests          # if chests scoped to execution present, consult before acting
-    description: Materializes approved documentation_targets. Approval gate acceptance required.
+    description: Materializes the immutable execution_snapshot groups produced at the approval gate. Approval gate acceptance required.
 
 # Treasure chests — scoped knowledge sources passed to slots at invocation time.
 # Declared in active.yaml under treasure_chests:. Each slot receives only the chests
@@ -577,7 +577,7 @@ forbidden_behaviors:
   - id: non_documentation_write
     description: >
       Sniper attempted to write a non-documentation file. Sniper write scope is strictly
-      limited to documentation_targets declared in the approved analysis and base_path docs.
+      limited to the immutable execution_snapshot groups derived from the approved package.
       Code files and Git mutating commands are always forbidden regardless of approval gate state.
     emit: "[Strategist] phase=compliance status=blocked reason=non_documentation_write attempted_path={path}"
     action: block

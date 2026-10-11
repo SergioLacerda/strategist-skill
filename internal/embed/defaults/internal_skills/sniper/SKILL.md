@@ -11,6 +11,29 @@ At invocation, two layers are composed:
 
 Role directives take precedence. If a skill instruction conflicts with a role directive, the role directive wins.
 
+## Execution Snapshot Contract
+
+Strategist supplies `execution_snapshot` in the invocation input as the immutable,
+hierarchical authorization captured when the mission entered execution. Each group has
+a stable id, resolver key, kind, origin, and `completion_policy: all_required`. Each
+artifact has a stable id, role (`primary`, `sidecar`, or `supporting`), kind, path, and
+optional generic metadata.
+
+This snapshot is the only authorization for write targets. Do not reconstruct or expand
+it from `tasks.md`, implementation-plan prose, filenames, or the selected Weapon
+(`writing-plans`, OpenSpec, or any future Weapon). `tasks.md` remains input for the
+forbidden-scope scan and for checkbox completion only when an artifact carries the
+generic `completion_source: refined_tasks` metadata.
+
+The legacy `documentation_targets` vocabulary is represented at execution time by the
+typed snapshot groups and artifacts; Sniper consumes that authorization instead of
+inferring documentation targets from task prose.
+
+Sniper materializes every declared artifact in a group and reports the group complete
+only after all required artifacts are present. Distinct groups may progress
+independently. A legacy `execution_targets` projection may be read only for migration;
+it never expands the authorized set.
+
 ## Claim Protocol
 
 Before any action, you MUST execute the claim protocol:
@@ -61,9 +84,14 @@ mixes `documentation_target` and `implementation_handoff` items, materialize onl
 `documentation_target` items and report the `implementation_handoff` items as out of scope
 in the completion report.
 
+An accepted side quest is executable when its resolver has produced a typed group in the
+snapshot, even when `tasks.md` contains no `documentation_target` checkbox. Resolver
+selection and preparation happen before invocation; Sniper does not identify or invoke
+provider-specific protocols.
+
 ## Documentation Materialization Loop
 
-For each documentation task in `tasks.md`:
+For each artifact in each group of the authorized `execution_snapshot`:
 
 1. **Declare** the active task at the start of the loop
 2. **Materialize** exactly ONE documentation target — never batch
@@ -77,18 +105,19 @@ For each documentation task in `tasks.md`:
 
 Surface any out-of-scope writes or non-documentation targets that emerge during materialization:
 
-- Detect: writes to files outside `documentation_targets`, non-documentation targets
+- Detect: writes to files outside declared snapshot artifacts, non-documentation targets
 - Action: `stop_and_report` — surface immediately and **pause materialization**
 - Do NOT decide strategy — report to user, let Archivist decide
 
 ## Scope Contract
 
-You may only write to `documentation_targets` declared in the approved analysis. Any write outside this list is a `documentation_scope_violation` → stop and report immediately.
+You may only write to paths in the immutable `execution_snapshot` artifacts. Any write outside
+this list is a `documentation_scope_violation` → stop and report immediately.
 
 **Git mutating commands are forbidden.** `git add`, `git commit`, `git push`, `git reset`, `git merge`, and all other state-modifying Git commands must never be executed.
 
 You may only write:
-- `.md` files and other documentation/diagram assets declared in `documentation_targets`
+- `.md` files and other documentation/diagram assets declared in `execution_snapshot`
 - Files within `<base_path>/` declared by Archivist
 - Files outside `<base_path>/` ONLY when explicitly declared by Archivist and accepted at the approval gate
 - `.strategist/memory/sniper-materializations.jsonl` runtime memory entries for successful documentation materializations

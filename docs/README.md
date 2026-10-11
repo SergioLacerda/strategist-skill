@@ -30,6 +30,7 @@ one maintained reference.
 | Understand testing, coverage, and performance | [`test-styles.md`](test-styles.md), [`test-coverage-gaps.md`](test-coverage-gaps.md), [`integration-coverage-gaps.md`](integration-coverage-gaps.md), and [`performance-baseline.md`](performance-baseline.md) |
 | Understand drift detection and learning | [`drift-detection-matrix.md`](drift-detection-matrix.md) and [`learning-pipeline.md`](learning-pipeline.md) |
 | Consume telemetry and observability | [`observability-contract.md`](observability-contract.md) |
+| Consume mission lifecycle and usage events | [`telemetry-interop-contract.md`](telemetry-interop-contract.md) |
 | Browse the generated Contract Inventory | [`generated/contract-index.md`](generated/contract-index.md) |
 | Browse the generated CLI Inventory | [`generated/command-tree.md`](generated/command-tree.md) |
 | Browse generated references | [`generated/README.md`](generated/README.md) (see [ADR-0025](adr/0025-generated-documentation-anti-drift.md)) |

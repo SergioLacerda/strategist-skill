@@ -100,6 +100,21 @@ contract:
       advisory_only: true
       never_preselects_accept: true
     on_any_row: advisory_only   # never blocks, never substitutes the user's decision, never changes review_required
+    stage_tokens:
+      source: internal/gatecriteria#TokenStages   # same aggregation as `strategist mission usage` (internal/usagesummary)
+      row: token_usage.by_stage
+      header: "tokens estimados:"
+      stage_order: [intake, discovery, refining, delivering]
+      intake: only_when_observed
+      delivering_at_gate: "—"   # delivery has not run; never an estimate
+      unobserved_stage: "—"     # never 0
+      partial_stage: "≥n"       # lower bound
+      unattributed_line: "não atribuído (n)"   # stays in the total
+      total_line: "total (n) <quality>"
+      no_usage_text: "nenhum uso reportado"
+      agent_types_numbers: forbidden
+      carries_cost_or_price: false
+      advisory_only: true
 
   responses:
     accept_aliases: [agree, accepted, approve_analysis, sim, concordo, yes, approve, authorize, autorizar]

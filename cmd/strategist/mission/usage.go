@@ -16,6 +16,7 @@ import (
 func NewUsage(deps ViewDependencies) *cobra.Command {
 	var root, missionID string
 	var asJSON, details, timeline bool
+	var fromEvents string
 	cmd := &cobra.Command{
 		Use:   "usage",
 		Short: "Show per-phase lifecycle and token usage for one mission (read-only)",
@@ -29,13 +30,17 @@ func NewUsage(deps ViewDependencies) *cobra.Command {
 	f.BoolVar(&asJSON, "json", false, "emit strategist-mission-usage/v1 JSON")
 	f.BoolVar(&details, "details", false, "list every phase run and the legacy usage records")
 	f.BoolVar(&timeline, "timeline", false, "add the merged chronology of lifecycle markers and usage observations")
+	f.StringVar(&fromEvents, "from-events", "", "rebuild the report from an exported event stream (JSONL) instead of the ledgers")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return RunUsage(cmd, deps, root, missionID, usageFlags{asJSON: asJSON, details: details, timeline: timeline})
+		return RunUsage(cmd, deps, root, missionID, usageFlags{asJSON: asJSON, details: details, timeline: timeline, fromEvents: fromEvents})
 	}
 	return cmd
 }
 
-type usageFlags struct{ asJSON, details, timeline bool }
+type usageFlags struct {
+	asJSON, details, timeline bool
+	fromEvents                string
+}
 
 // RunUsage renders the usage projection as human text or JSON.
 func RunUsage(cmd *cobra.Command, deps ViewDependencies, rootInput, missionID string, flags usageFlags) error {
@@ -54,11 +59,18 @@ func RunUsage(cmd *cobra.Command, deps ViewDependencies, rootInput, missionID st
 		return fmt.Errorf("mission usage: %w", err)
 	}
 	sources := loadUsageSources(root, status.MissionID)
+	if flags.fromEvents != "" {
+		replayed, err := sourcesFromEvents(sources, flags.fromEvents, status.MissionID)
+		if err != nil {
+			return fmt.Errorf("mission usage: %w", err)
+		}
+		sources = replayed
+	}
 	tokens, tokensErr := readMissionTokenUsage(root, status.MissionID)
 	view := missionview.BuildUsage(missionview.UsageInput{
 		Status: status, Lifecycle: sources.lifecycle, LifecycleError: sources.lifecycleErr,
 		Usage: sources.usage, UsageError: sources.usageErr, KnownInvocations: sources.invocationIDs,
-		TokenUsage: tokens, TokenUsageError: tokensErr, WithChronology: flags.timeline,
+		TokenUsage: tokens, TokenUsageError: tokensErr, WithChronology: flags.timeline, FromEvents: flags.fromEvents != "",
 	})
 	return renderUsage(cmd, view, flags.asJSON, flags.details)
 }

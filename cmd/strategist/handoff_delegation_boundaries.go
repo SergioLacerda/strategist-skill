@@ -108,6 +108,8 @@ func delegationDetails(report handoffconsumer.Report) string {
 		fmt.Fprintf(&details, " provider=%s model=%s confidence=%.2f threshold=%.2f", report.Delegation.Provider, report.Delegation.Model, report.Confidence, report.Threshold)
 	case handoffconsumer.StatusSignal:
 		fmt.Fprintf(&details, " confidence=%.2f threshold=%.2f path=main hints=%s", report.Confidence, report.Threshold, hintList(report.Hints))
+	case handoffconsumer.StatusShadow:
+		fmt.Fprintf(&details, " path=main reading=recorded would_approve=%t", report.WouldApprove)
 	default:
 		fmt.Fprintf(&details, " reason=%s path=main", report.Reason)
 	}

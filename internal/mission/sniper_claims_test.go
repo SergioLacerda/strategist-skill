@@ -59,6 +59,23 @@ func TestRecordSniperClaims_NoDocumentationTargetsRecordsNothing(t *testing.T) {
 	require.Equal(t, 0, n)
 }
 
+func TestRecordSniperClaimsForEntryDoesNotDuplicateDerivedADRClaim(t *testing.T) {
+	root := t.TempDir()
+	basePath := filepath.Join(root, ".analysis")
+	targets := []domain.ExecutionTarget{
+		{Path: "docs/guide.md", Kind: domain.ExecutionTargetKindDocumentation, Origin: domain.ExecutionTargetOriginRefinedPackage},
+		{Path: "docs/adr/m1-adr.md", Kind: domain.ExecutionTargetKindADR, Origin: domain.ExecutionTargetOriginAcceptedSideQuest, SideQuestID: "OA-ADR-m1"},
+	}
+
+	n, err := livemission.RecordSniperClaimsForEntry(root, basePath, "m1", "entry-1", targets, time.Now())
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	records, err := telemetry.ReadRecentSniperClaims(telemetry.SniperClaimHistoryPath(root), time.Now(), telemetry.SniperClaimWindow)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	require.Equal(t, "docs/guide.md", records[0].TargetPath)
+}
+
 func TestReadMissionPhase(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "missions"), 0o755))

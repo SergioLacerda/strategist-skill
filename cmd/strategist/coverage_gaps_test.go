@@ -384,7 +384,7 @@ func TestCoverageAdditionalInvocationAndProviderWrappers(t *testing.T) {
 	require.Error(t, providerValidateCmd.RunE(providerValidateCmd, []string{filepath.Join(t.TempDir(), "missing-provider")}))
 	require.Error(t, providerAddCmd.RunE(providerAddCmd, []string{"missing-provider"}))
 
-	_, _, err := newMissionInvocationRequest(context.Background(), missionadapter.InvocationBuildInput{Root: t.TempDir(), MissionID: "missing", Role: "sniper", Slot: string(domain.SlotExecution)}, domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, nil, "")
+	_, _, err := newMissionInvocationRequest(context.Background(), missionadapter.InvocationBuildInput{Root: t.TempDir(), MissionID: "missing", Role: "sniper", Slot: string(domain.SlotExecution)}, domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, nil, "", nil)
 	require.Error(t, err)
 
 	root, basePath := sniperInvocationWorkspace(t)

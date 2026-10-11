@@ -92,6 +92,9 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/integration/probe` | 85% | synthetic availability probe and the only source of the available claim - measured 88.2% |
 | `internal/gatecriteria` | 80% | read-only quality-criteria report: reuses existing records, every row filled - measured 83.3% |
 | `internal/calibration` | 90% | DOJO judge calibration core: mutation catalog, evaluator, exact statistics, fitness gates and the calibration record (ADR-0066) |
+| `internal/hostusage` | 90% | content-free observers of the usage a coding host recorded in its own session files (Claude Code, Codex) - measured 96.0% |
+| `internal/telemetryverify` | 90% | read-only integrity verifier of mission lifecycle and usage evidence and its exported event stream - measured 96.9% |
+| `internal/usagesummary` | 90% | shared aggregation of declared token observations without double counting: used by mission usage, mission view and the Approval Gate stage volumes - measured 97.1% |
 
 ## Reviewed Exemptions
 
@@ -116,5 +119,3 @@ These production packages are present in the inventory but intentionally have no
 | `cmd/strategist/plugins` | quality-maintainers | adapter extraction (cmd-plugins-extraction) pending a dedicated package-local coverage budget; measured 84.9% on 2026-09-22 |
 | `internal/integration/jev/jevtest` | quality-maintainers | test-only simulated JEV provider; exercised by the jev and mechanism suites, never imported by production code |
 | `internal/integration/live` | quality-maintainers | opt-in live provider check: only build-tagged (live) tests, no production code, never part of the default suite |
-| `internal/integration/runbookconsumer` | quality-maintainers | provider-facing Runbook preparation projection; dedicated coverage budget remains pending |
-| `internal/tools/prepare_runbook` | quality-maintainers | reviewable Runbook candidate preparation tool; dedicated coverage budget remains pending |

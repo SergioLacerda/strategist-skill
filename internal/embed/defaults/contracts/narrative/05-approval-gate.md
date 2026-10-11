@@ -255,6 +255,30 @@ Rules, all `agent_only`:
 - The block is advisory only: it never blocks, never substitutes the user's decision and never changes
   `review_required`.
 
+### Token volume per stage
+
+Right after the criteria rows, `strategist handoff criteria` prints a `tokens estimados:` block with the
+token volume of each stage and the total, and the shell shows it verbatim:
+
+```
+tokens estimados:
+discovery   (111) -> refining    (222) -> delivering  (—)
+total       (333)  reported_unverified
+```
+
+- It is a volume report only: no price, cost or threshold exists in it, and it never blocks or changes
+  `review_required`.
+- The figures come from the mission usage ledger through the same aggregation as `strategist mission
+  usage`. The agent never types, sums or estimates them; the quality label on the `total` line
+  (`reported_unverified`, `host_measured`, `mixed`, …) travels with the numbers, and the header keeps the
+  operator's wording even when the numbers are reports, not measurements.
+- `delivering` is `—` at the gate because delivery has not run; it is never filled with an estimate.
+  An unobserved stage is `—`, never `0`; a partially observed stage is a lower bound (`≥n`). `intake`
+  appears only when it was observed, and consumption outside any phase is a separate
+  `não atribuído (n)` line that stays in the total.
+- Without any reported usage the block reads `nenhum uso reportado` and the `token_usage.by_stage` row is
+  `não avaliado`.
+
 ## Critic at the Gate (W8/P5)
 
 When the response-critic evaluated the refined package, its result is shown in the

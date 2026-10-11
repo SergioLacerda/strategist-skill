@@ -2,6 +2,18 @@ subject: roles/sniper.yaml
 version: "2.0"
 
 invariants:
+  - id: immutable_execution_target_snapshot
+    description: Sniper consumes the hierarchical typed snapshot resolved at execution entry
+    rule: execution_snapshot artifacts are the only authorized write set; never infer targets from tasks.md or Weapon identity
+
+  - id: atomic_execution_groups
+    description: Related artifacts complete atomically while distinct groups remain independent
+    rule: completion_policy=all_required requires every artifact in a group, but does not block another group
+
+  - id: resolved_side_quest_without_checkbox
+    description: A resolver-produced side-quest group is executable without a textual documentation_target task
+    rule: accepted_side_quest artifacts are materialized at declared paths without Weapon-specific discovery
+
   - id: scope_violation_detection
     description: Sniper reports out-of-scope writes during materialization — does not invoke opportunity_attack
     rule: out_of_scope_write detected → emit scope_violation=detected, STOP, wait for user
@@ -33,6 +45,20 @@ cases:
       out_of_scope_writes: 0
     expect:
       artifact: "<base_path>/archived/<mission_id>-report.md"
+      mission_status: documentation_applied
+
+  - name: resolved_group_with_sidecar
+    given:
+      execution_snapshot:
+        groups:
+          - id: runbook-1
+            completion_policy: all_required
+            artifacts:
+              - {id: runbook-1-main, role: primary, path: docs/runbooks/one.md, kind: runbook}
+              - {id: runbook-1-sidecar, role: sidecar, path: docs/runbooks/one.meta.json, kind: runbook_metadata}
+      documentation_target_checkboxes: 0
+    expect:
+      action: materialize both declared artifacts and complete the group
       mission_status: documentation_applied
 
   - name: out_of_scope_write_detected

@@ -50,6 +50,52 @@ func TestSniperCurrentHostInvocationCompletesWithMaterializationProof(t *testing
 	require.ErrorContains(t, err, "invocation_replay")
 }
 
+func TestSniperInvocationAndCompletionUseDerivedADRTargetSnapshot(t *testing.T) {
+	root, basePath := sniperInvocationWorkspace(t)
+	target := domain.ExecutionTarget{
+		Path: "docs/adr/0042-record-the-decision.md", Kind: domain.ExecutionTargetKindADR,
+		Origin: domain.ExecutionTargetOriginAcceptedSideQuest, SideQuestID: "OA-ADR-" + flowMissionID,
+	}
+	writeExecutionTargetSnapshot(t, root, target)
+
+	request, err := buildMissionInvocation(t.Context(), missionadapter.InvocationBuildInput{
+		Root: root, BasePath: basePath, MissionID: flowMissionID, Role: "sniper", Slot: "execution",
+	})
+	require.NoError(t, err)
+	targets, ok := request.Input["execution_targets"].([]domain.ExecutionTarget)
+	require.True(t, ok)
+	require.Equal(t, []domain.ExecutionTarget{target}, targets)
+
+	refined := filepath.Join(basePath, "refined", flowMissionID)
+	require.NoError(t, os.WriteFile(filepath.Join(refined, "analysis.md"), []byte("---\nmission_id: "+flowMissionID+"\nmission_status: documentation_applied\nclaimed_by: test-session\n---\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(refined, "tasks.md"), []byte("- [ ] 1.1 [implementation_handoff] Edit `internal/foo.go`.\n"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(filepath.Dir(root), "docs", "adr"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(filepath.Dir(root), target.Path), []byte("# ADR\n"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(basePath, "archived"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(basePath, "archived", flowMissionID+"-report.md"), []byte("report\n"), 0o600))
+	require.NoError(t, telemetry.AppendSniperMaterialization(telemetry.SniperMaterializationHistoryPath(root), telemetry.SniperMaterializationRecord{
+		MissionID: flowMissionID, BasePath: basePath, TargetPath: target.Path, MaterializedAt: time.Now().UTC(),
+	}))
+
+	_, err = completeMissionInvocation(t.Context(), missionadapter.InvocationCompleteInput{
+		Root: root, BasePath: basePath, RequestID: request.RequestID, Adapter: domain.ExecutionAdapterCurrentHost,
+		Completion: domain.MissionInvocationCompletion{RequestID: request.RequestID, Result: "sniper: done | report_path: .analysis/archived/flow-mission-report.md | mission_status: documentation_applied"},
+	})
+	require.NoError(t, err)
+}
+
+func writeExecutionTargetSnapshot(t *testing.T, root string, target domain.ExecutionTarget) {
+	t.Helper()
+	path := filepath.Join(root, "missions", "execution-entry", flowMissionID+".json")
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o750))
+	raw, err := json.Marshal(map[string]any{
+		"id": "entry-" + flowMissionID, "mission_id": flowMissionID,
+		"targets": []string{target.Path}, "target_metadata": []domain.ExecutionTarget{target},
+	})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, raw, 0o600))
+}
+
 func TestCriticalHitCurrentHostInvocationCompletesWithoutRefinedPackage(t *testing.T) {
 	root, basePath := sniperInvocationWorkspace(t)
 	status := domain.MissionEngineStatus{

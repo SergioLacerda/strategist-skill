@@ -20,14 +20,6 @@ const (
 	noLifecycleNote      = "no lifecycle recorded"
 )
 
-// PhaseTokens holds per-phase token counts. Every member is null until usage
-// is observed (Wave 2): an unobserved value is never zero.
-type PhaseTokens struct {
-	Input  *int64 `json:"input"`
-	Output *int64 `json:"output"`
-	Total  *int64 `json:"total"`
-}
-
 // PhaseRun is one run of a canonical phase.
 type PhaseRun struct {
 	Phase     string  `json:"phase"`

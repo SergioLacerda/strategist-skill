@@ -33,7 +33,12 @@ Strategist never executes documentation materialization work directly. Missing o
 
 - refined analysis under `<base_path>/refined/<mission_id>/`
 - approval gate acceptance state
-- `documentation_targets` — declared documentation files to materialize
+- `execution_snapshot` — the immutable, hierarchical group/artifact snapshot
+  authorized at the execution boundary. Each group uses `completion_policy:
+  all_required`; a Runbook may contain a primary artifact and sidecar, and
+  multiple groups may coexist independently. Sniper consumes this snapshot and
+  never derives artifacts from a Weapon name, implementation plan prose, or a
+  missing task checkbox.
 - applicable treasure chests
 
 ## Outputs
@@ -93,14 +98,14 @@ After the claim protocol and before starting the materialization loop, Sniper MU
 - items described as implementation, refactor, hook changes, test creation, or code edits,
   even when not explicitly tagged `task_type`.
 
-When the mission has an accepted `OA-ADR-<mission_id>` record (see `07-adr.md`), the ADR is
-the single derived documentation target: `implementation_handoff` items in the package are
-reported as non-executable out-of-scope work and are not by themselves a scope violation;
-the claim protocol above is unchanged, and Sniper writes only the path returned by
-`strategist mission adr-target`.
+When the mission has an accepted documentation side quest, its registered resolver prepares
+one or more execution groups before invocation. `implementation_handoff` items in the
+package are reported as non-executable out-of-scope work and are not by themselves a
+scope violation. Sniper materializes only the artifacts in the resolver-produced groups;
+provider-specific preparation is not repeated by Sniper.
 
-If any such item is present and is not explicitly a `documentation_target` (or the derived
-OA-ADR target above), Sniper MUST NOT start materialization. It stops immediately with:
+If any such item is present and is not explicitly represented by a resolver-produced
+execution artifact, Sniper MUST NOT start materialization. It stops immediately with:
 
 ```text
 blocked reason=documentation_scope_violation
@@ -121,10 +126,13 @@ mention, and it does not execute them.
   or, when no confidence summary was produced, `strategist metrics record --mission <mission_id> --agent sniper --missing --correlation-key <key> --reason <why>`;
   never finish silently (see `machine/confidence-governance.yaml#producers`)
 - execute claim protocol before any action
+- consume the authorized `execution_snapshot`; do not infer a target from the
+  selected Weapon (`writing-plans`, OpenSpec, or any future Weapon)
 - never start without explicit approval gate acceptance evidence
 - execute the pre-materialization scan before the first task in the loop
 - read numbered documentation tasks from `tasks.md`
-- materialize ONE documentation target per loop — never batch
+- materialize ONE declared artifact per loop — never batch; a group completes only when all
+  its required artifacts are materialized
 - emit task-level running/done updates
 - stop and report immediately when an out-of-scope write or non-documentation target emerges (do not decide strategy)
 - update `mission_status: documentation_applied` on completion
@@ -148,7 +156,8 @@ and → Insufficient Evidence).
 Sniper write scope is limited to workspace documentation files and declared documentation targets only. Code mutation is always forbidden.
 
 - report artifact path: `<base_path>/archived/<mission_id>-report.md`
-- documentation files (`.md` and diagram/documentation assets) declared in `documentation_targets`
+- documentation files (`.md` and diagram/documentation assets) declared in the typed
+  `execution_snapshot` artifacts, including resolver-produced sidecars
 - files inside `<base_path>/` (workspace) declared by Archivist
 - files outside `<base_path>/` only when explicitly declared by Archivist and accepted at the approval gate
 - **code files are forbidden** — no code mutation: no `.go`, `.ts`, `.py`, `.js`, `.sh`, or other source code, **except** `.astro`/`.css`/`.js`/`.ts`/`.tsx` files explicitly declared `task_type: documentation_target` in the gate-accepted `tasks.md` (same exception as the Pre-Materialization Scan above — this section previously omitted it, creating an inconsistency; see ADR-0013)

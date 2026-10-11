@@ -1,4 +1,4 @@
-package missionview
+package usagesummary
 
 type contribution struct {
 	phase   string
@@ -37,8 +37,8 @@ func (a *accumulator) add(c contribution) {
 	}
 }
 
-func (a *accumulator) bucket() UsageBucket {
-	b := UsageBucket{Quality: QualityUnavailable, Observations: a.observations}
+func (a *accumulator) bucket() Bucket {
+	b := Bucket{Quality: QualityUnavailable, Observations: a.observations}
 	if a.haveIn {
 		v := a.in
 		b.Tokens.Input = &v

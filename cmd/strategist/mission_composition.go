@@ -74,7 +74,8 @@ func missionReportUsageDependencies() missionadapter.ReportUsageDependencies {
 				run.SetSilent()
 			}
 		},
-		Validate: validateMissionReportUsageOptions,
+		Validate:      validateMissionReportUsageOptions,
+		TelemetrySink: selectDiscoveryTelemetrySink,
 	}
 }
 

@@ -170,23 +170,6 @@ func TestAcceptSideQuestRequiresTheApprovalGate(t *testing.T) {
 	require.ErrorContains(t, acceptOAADR(t, root, "m-late", ""), "side_quest_wrong_state")
 }
 
-// sideQuestInExecution drives an accepted OA-ADR mission to EXECUTION through
-// the real gate, handoff evaluation and entry commands.
-func sideQuestInExecution(t *testing.T, id, canonical string) string {
-	t.Helper()
-	root := sideQuestGate(t, id)
-	require.NoError(t, acceptOAADR(t, root, id, canonical))
-	_, err := runSideQuestCmd(t, canonical, mission.NewADRTarget, "--root", root, "--mission-id", id)
-	require.ErrorContains(t, err, "adr_target_wrong_state")
-
-	require.NoError(t, submitEvent(t, root, id, domain.MissionEventGateApproved))
-	_, err = evaluateHandoff(t, root, id, passingChallenge())
-	require.NoError(t, err)
-	_, err = submitSatisfied(t, root, id)
-	require.NoError(t, err)
-	return root
-}
-
 // concurrentADRTargets runs n adr-target commands at once and returns the path
 // each reported ("" when a call failed).
 func concurrentADRTargets(t *testing.T, root, id, canonical string, n int) []string {
@@ -217,11 +200,21 @@ func executeADRTarget(cmd *cobra.Command, out *safeBuffer) string {
 }
 
 func TestADRTargetCanonicalNumberingIsReservedOnceAndClaimed(t *testing.T) {
-	const want = "docs/adr/0042-record-the-decision.md"
-	root := sideQuestInExecution(t, "m-adr", "docs/adr")
+	// The execution snapshot reserves the immutable filename during handoff;
+	// a later adr-target --slug cannot mutate that authorization.
+	const want = "docs/adr/0042-m-adr.md"
+	root := sideQuestGate(t, "m-adr")
+	require.NoError(t, acceptOAADR(t, root, "m-adr", "docs/adr"))
 	adrDir := filepath.Join(filepath.Dir(root), "docs", "adr")
 	require.NoError(t, os.MkdirAll(adrDir, 0o750))
 	require.NoError(t, os.WriteFile(filepath.Join(adrDir, "0041-previous.md"), nil, 0o600))
+	_, err := runSideQuestCmd(t, "docs/adr", mission.NewADRTarget, "--root", root, "--mission-id", "m-adr", "--slug", "Record the Decision")
+	require.ErrorContains(t, err, "adr_target_wrong_state")
+	require.NoError(t, submitEvent(t, root, "m-adr", domain.MissionEventGateApproved))
+	_, err = evaluateHandoff(t, root, "m-adr", passingChallenge())
+	require.NoError(t, err)
+	_, err = submitSatisfied(t, root, "m-adr")
+	require.NoError(t, err)
 
 	for _, p := range concurrentADRTargets(t, root, "m-adr", "docs/adr", 4) {
 		assert.Equal(t, want, p, "concurrent calls agree on one reserved path")

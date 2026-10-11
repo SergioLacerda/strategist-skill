@@ -82,6 +82,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `decline-side-quest` — Record the user's decline of the mission's OA-ADR side quest at the Approval Gate
   - `invoke` — Invoke one embedded Weapon through a host bridge
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
+  - `observe-usage` — Record the usage a host wrote in its own session file for one time window (opt-in, numbers only)
   - `report-usage` — Record one token usage observation for a mission phase, declared by the invoking agent
   - `requests` — List embedded invocation requests (read-only; never prints payload or nonce)
   - `route` — Record Scout's route decision for a mission (JSON on stdin)
@@ -89,6 +90,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `status` — Inspect a mission status
   - `submit` — Submit one authoritative mission event
   - `usage` — Show per-phase lifecycle and token usage for one mission (read-only)
+  - `verify-telemetry` — Check the integrity of a mission's lifecycle and usage evidence (read-only)
   - `view` — Render a read-only mission experience view
 - `plugins` — Inspect and evaluate Strategist plugin enforcement
   - `acquire-remote` — Acquire a pinned Git Skill-for-Hire package into quarantine

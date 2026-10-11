@@ -24,7 +24,11 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 	if err != nil {
 		return domain.MissionInvocationRequest{}, err
 	}
-	request, now, err := newMissionInvocationRequest(ctx, input, binding, weapon, payload, sourceDigest)
+	executionTargets, err := loadSniperExecutionTargets(input)
+	if err != nil {
+		return domain.MissionInvocationRequest{}, err
+	}
+	request, now, err := newMissionInvocationRequest(ctx, input, binding, weapon, payload, sourceDigest, executionTargets)
 	if err != nil {
 		return domain.MissionInvocationRequest{}, err
 	}
@@ -41,7 +45,18 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 	return request, nil
 }
 
-func newMissionInvocationRequest(ctx context.Context, input missionadapter.InvocationBuildInput, binding domain.RoleWeaponBinding, weapon domain.CompiledWeapon, payload []byte, sourceDigest string) (domain.MissionInvocationRequest, time.Time, error) {
+func loadSniperExecutionTargets(input missionadapter.InvocationBuildInput) ([]domain.ExecutionTarget, error) {
+	if input.Role != "sniper" || input.Slot != string(domain.SlotExecution) {
+		return nil, nil
+	}
+	targets, err := missionadapter.LoadExecutionTargetSnapshot(input.Root, input.BasePath, input.MissionID)
+	if err != nil {
+		return nil, fmt.Errorf("load Sniper execution targets: %w", err)
+	}
+	return targets, nil
+}
+
+func newMissionInvocationRequest(ctx context.Context, input missionadapter.InvocationBuildInput, binding domain.RoleWeaponBinding, weapon domain.CompiledWeapon, payload []byte, sourceDigest string, executionTargets []domain.ExecutionTarget) (domain.MissionInvocationRequest, time.Time, error) {
 	approvalDigest := ""
 	stageCorrelationID := ""
 	executionContract, outputContract := invocationContracts(input.Role, input.Slot)
@@ -58,8 +73,25 @@ func newMissionInvocationRequest(ctx context.Context, input missionadapter.Invoc
 		RequestContext: input.RequestContext, Binding: binding, Weapon: weapon, Payload: payload,
 		SourceDigest: sourceDigest, ApprovalGatePackageDigest: approvalDigest, StageCorrelationID: stageCorrelationID,
 		ExecutionContract: executionContract, OutputContract: outputContract,
+		ExecutionTargets:  executionTargets,
+		ExecutionSnapshot: missionExecutionSnapshot(input, executionTargets),
 	})
 	return request, issued, wrapMissionError(err)
+}
+
+func missionExecutionSnapshot(input missionadapter.InvocationBuildInput, executionTargets []domain.ExecutionTarget) *domain.ExecutionSnapshot {
+	if input.Role != "sniper" || input.Slot != string(domain.SlotExecution) {
+		return nil
+	}
+	snapshot, err := missionadapter.LoadExecutionSnapshot(input.Root, input.BasePath, input.MissionID)
+	if err == nil && len(snapshot.Groups) > 0 {
+		return &snapshot
+	}
+	legacy, err := domain.SnapshotFromTargets(input.MissionID, executionTargets)
+	if err != nil || len(legacy.Groups) == 0 {
+		return nil
+	}
+	return &legacy
 }
 
 // invocationContracts names the execution and output contract an embedded

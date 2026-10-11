@@ -28,6 +28,21 @@ func TestNewInvocationRequestBuildsContractsAndImmutableIdentity(t *testing.T) {
 	require.NotEmpty(t, request.Nonce)
 }
 
+func TestNewInvocationRequestCarriesTypedExecutionTargetsForSniper(t *testing.T) {
+	target := domain.ExecutionTarget{
+		Path: "docs/adr/m1-adr.md", Kind: domain.ExecutionTargetKindADR,
+		Origin: domain.ExecutionTargetOriginAcceptedSideQuest, SideQuestID: "OA-ADR-m1",
+	}
+	request, _, err := NewInvocationRequest(t.Context(), InvocationRequestInput{
+		BasePath: "analysis", MissionID: "m1", Role: "sniper", Slot: string(domain.SlotExecution),
+		Binding:                   domain.RoleWeaponBinding{BindingDigest: "sha256:binding", ExecutionMode: "prompt", Entrypoint: "run"},
+		Weapon:                    domain.CompiledWeapon{ID: "writing-plans", Version: "1.0.0", Digest: "sha256:weapon"},
+		ApprovalGatePackageDigest: "sha256:package", ExecutionTargets: []domain.ExecutionTarget{target},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []domain.ExecutionTarget{target}, request.Input["execution_targets"])
+}
+
 func TestNewInvocationRequestHonorsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
