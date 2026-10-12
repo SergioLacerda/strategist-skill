@@ -38,6 +38,20 @@ func installedTelemetryWorkspace(t *testing.T) (workspace, strategistDir string)
 	return workspace, strategistDir
 }
 
+func writeRunbookProvider(t *testing.T, workspace, items string) string {
+	t.Helper()
+
+	provider := filepath.Join(workspace, "treasure-chest-tmp")
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = status ]; then\n" +
+		"  printf '%s\\n' '{\"Provider\":\"treasure-chest-tmp\",\"Version\":\"0.1.0\",\"SchemaVersion\":1,\"Healthy\":true}'\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"printf '%s\\n' '{\"Envelope\":{\"Provider\":\"treasure-chest-tmp\",\"Version\":\"0.1.0\",\"SchemaVersion\":1,\"Freshness\":\"fresh\",\"FallbackState\":\"none\"},\"Items\":[" + items + "]}'\n"
+	require.NoError(t, os.WriteFile(provider, []byte(script), 0o755))
+	return provider
+}
+
 // TestE2E_CLI_MetricsHandoff_EmptyMemory covers `metrics handoff` against a
 // freshly installed workspace with no handoff-challenges.jsonl yet — the
 // documented "prints all rates as 0, not an error" path.
@@ -137,42 +151,28 @@ func TestE2E_CLI_MetricsScout_EmptyMemory(t *testing.T) {
 	assert.Contains(t, result.output(), "sample_size: 0")
 }
 
-// TestE2E_CLI_RunbookSelect_NoSidecars covers the deprecated local staging
-// selector against a workspace with no sidecars. Production selection goes
-// through JEWELER and requires an explicit external provider binding.
-func TestE2E_CLI_RunbookSelect_NoSidecars(t *testing.T) {
+// TestE2E_CLI_RunbookSelect_NoProviderItems covers the provider-mediated
+// selector when the admitted Weapon returns no matching items.
+func TestE2E_CLI_RunbookSelect_NoProviderItems(t *testing.T) {
 	t.Parallel()
 
 	workspace, _ := installedTelemetryWorkspace(t)
+	provider := writeRunbookProvider(t, workspace, "")
 
-	result := runStrategistCLI(t, workspace, "runbook", "select", "--allow-local-staging", "--signal", "timeout")
+	result := runStrategistCLI(t, workspace, "runbook", "select", "--provider-executable", provider, "--mission", "e2e-runbook-empty", "--signal", "timeout")
 	require.Equal(t, 0, result.exitCode, result.output())
-	assert.Contains(t, result.output(), "no docs/runbooks/*.runbook.yaml sidecars found")
+	assert.Contains(t, result.output(), "no runbook matched the given signals")
 }
 
-// TestE2E_CLI_RunbookSelect_MatchingSidecar seeds one matching runbook
-// sidecar and exercises the deprecated local staging path end to end. The
-// production path is covered by the JEWELER projection tests.
-func TestE2E_CLI_RunbookSelect_MatchingSidecar(t *testing.T) {
+// TestE2E_CLI_RunbookSelect_MatchingProviderItem exercises the production
+// JEWELER-mediated selection path with one Potion-backed runbook item.
+func TestE2E_CLI_RunbookSelect_MatchingProviderItem(t *testing.T) {
 	t.Parallel()
 
 	workspace, _ := installedTelemetryWorkspace(t)
+	provider := writeRunbookProvider(t, workspace, `{"ID":"fix-timeout","Kind":"potion","Score":1,"Trust":1,"Freshness":"fresh","Applicability":"accepted","Reason":"matched","Source":{"Path":"docs/runbooks/fix-timeout.md"}}`)
 
-	runbooksDir := filepath.Join(workspace, "docs", "runbooks")
-	require.NoError(t, os.MkdirAll(runbooksDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(runbooksDir, "fix-timeout.runbook.yaml"), []byte(`schema_version: "1"
-runbook_id: fix-timeout
-runbook_type: analytical
-source_doc: docs/runbooks/fix-timeout.md
-applies_when:
-  - timeout
-objective: diagnose timeout issues
-checks:
-  - id: check-logs
-    level: mandatory
-`), 0o644))
-
-	result := runStrategistCLI(t, workspace, "runbook", "select", "--allow-local-staging", "--signal", "timeout")
+	result := runStrategistCLI(t, workspace, "runbook", "select", "--provider-executable", provider, "--mission", "e2e-runbook-match", "--signal", "timeout")
 	require.Equal(t, 0, result.exitCode, result.output())
 	assert.Contains(t, result.output(), "fix-timeout")
 }

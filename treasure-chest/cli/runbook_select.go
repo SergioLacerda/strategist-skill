@@ -167,7 +167,6 @@ func selectAndRenderRunbooks(candidates []runbook.Runbook, sourceDocByID map[str
 		fmt.Println("[Strategist] runbook select: no runbook matched the given signals")
 		return nil
 	}
-
 	rows := make([]runbookSelectionRow, 0, len(selections))
 	for _, s := range selections {
 		rows = append(rows, runbookSelectionRow{

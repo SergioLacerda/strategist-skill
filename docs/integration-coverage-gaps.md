@@ -8,12 +8,12 @@ see Metric Note below), `docs/test-styles.md`
 
 ## Implementation Log
 
-C2 and C3 were written as planned below (`tests/integration/e2e_telemetry_commands_test.go`,
-`tests/integration/e2e_treasure_chest_test.go`) and pass, but **on their own
-they moved the `integration` line-coverage number by 0.0 points.** Root
+C2 was written as planned below (`tests/integration/e2e_telemetry_commands_test.go`) and
+the former C3 scenarios initially passed, but **on their own they moved the
+`integration` line-coverage number by 0.0 points.** Root
 cause, found while verifying: every scenario in `tests/integration/**` that
-uses `runStrategistCLI` (including C2/C3, and the pre-existing install/
-compile/check/validate/check-stale scenarios) runs the compiled `strategist`
+uses `runStrategistCLI` (including C2 and the pre-existing
+install/compile/check/validate/check-stale scenarios) runs the compiled `strategist`
 binary as a **subprocess**. `go test -coverpkg=./internal/...` only
 instruments code running inside the `go test` process itself — a subprocess
 is invisible to it, regardless of what the subprocess executes.
@@ -65,7 +65,7 @@ Baseline at time of writing: **25.5%**. After C2/C3 + the GOCOVERDIR fix
 | ID | Status | One-line objective |
 |---|---|---|
 | C2 | done | New `tests/integration/e2e_telemetry_commands_test.go`: `metrics`, `metrics-scout`, `handoff-verify`, `runbook select` happy-path scenarios |
-| C3 | done | New `tests/integration/e2e_treasure_chest_test.go`: scan → doctor → items list/show happy-path scenario |
+| C3 | retired | The former internal `treasure-chest` CLI flow was removed; the integration test now protects that namespace boundary. |
 | C5 | done | Infra fix (not originally scoped): route `runStrategistCLI` subprocess coverage into the `integration` metric via GOCOVERDIR — see Implementation Log |
 | C4 | not recommended | Integration-style duplicates of `internal/domain` FSM/grading logic already covered by `eval` style |
 
@@ -118,34 +118,18 @@ comments rather than mocking a provider — do not introduce a
 
 ---
 
-## C3 — Treasure-chest end-to-end scenario
+## C3 — Treasure-chest CLI isolation
 
-**Why:** `internal/integrity` (`warning.go`) is 14/14 functions at 0.0%
-under the `integration` coverprofile. Its only callers
-(`cmd/strategist/root.go`, `treasure_chest_config_lock.go`) are otherwise
-dark for this metric, and a treasure-chest CLI flow also reaches a slice of
-`internal/domain` not already covered by the `eval` style.
+The former `strategist treasure-chest` command family was intentionally
+removed during the Treasure Chest isolation sprint. Strategist now consumes
+the admitted `TREASURE-CHEST-TMP` Weapon through JEWELER; it must not expose a
+second internal command surface or fall back to the root implementation.
 
-**Where:** new `tests/integration/e2e_treasure_chest_test.go`.
-
-**How (as implemented):**
-1. `treasure-chest scan --dry-run` against a workspace with zero missions.
-2. `treasure-chest doctor` against a workspace whose `active.yaml` declares
-   a chest with no matching `treasure-chests.yaml`/`knowledge.index.yaml`
-   entry — deliberately, to exercise the real divergence-detection path
-   (`LoadActiveChests`/`LoadGoverned`/`LoadIndexed`/`MergeChestRows`) rather
-   than a synthetic always-green fixture.
-3. `treasure-chest items list` / `items show`, seeding `jewels.yaml`
-   directly (same fixture shape as
-   `internal/treasurecli/treasure_chest_items_test.go`'s `oneProposedJewelYAML`).
-
-**Result:** `internal/integrity` went from 14/14 functions at 0.0% to 2/14
-(`IsModified`, `pathMismatchResult` still unreached) — via `root.go`'s
-own use of the package during every subcommand run, once the GOCOVERDIR fix
-made subprocess coverage visible at all, not from a dedicated
-deliberately-invalid-chest scenario (that idea from the original plan
-wasn't needed in the end — worth knowing if `IsModified`/
-`pathMismatchResult` become a target later).
+`tests/integration/e2e_treasure_chest_test.go` therefore protects the negative
+boundary by asserting that the old namespace is unavailable. Treasure Chest's
+own scan, doctor, and item behavior remains covered by its package-level tests,
+while the production Strategist path is covered by the provider-mediated
+runbook scenarios in C2.
 
 ---
 
