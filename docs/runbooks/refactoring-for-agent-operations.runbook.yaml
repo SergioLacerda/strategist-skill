@@ -28,7 +28,7 @@ decision_gates:
   - id: threshold-not-contested
     statement: The requested threshold does not conflict with readability.
   - id: not-a-design-problem
-    statement: The lint finding does not point to a broader design problem that needs a separate demand.
+    statement: The lint finding does not point to a broader design problem that needs a separate demand. A structural reorganisation of a package belongs to refactoring-a-package-into-subpackages.
   - id: validation-feasible
     statement: Validation can be run, or the risk of skipping it is low.
 
@@ -54,4 +54,4 @@ checks:
 
 metadata:
   version: 1
-  reviewed_at: "2026-08-03"
+  reviewed_at: "2026-10-12"

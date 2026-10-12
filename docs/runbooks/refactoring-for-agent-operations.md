@@ -76,6 +76,8 @@ Stop or ask before continuing when:
 - the requested threshold conflicts with readability;
 - the lint finding points to a broader design problem that needs a separate
   demand;
+- the request is to reorganise a package into sub-packages by affinity: use
+  `refactoring-a-package-into-subpackages.md`;
 - validation cannot be run and the risk is not low.
 
 The runbook is worth maintaining only while it stays procedural and recurring.
@@ -84,6 +86,8 @@ style guide or accumulates one-off preferences that future agents cannot reuse.
 
 ## Reference
 
+- `docs/runbooks/refactoring-a-package-into-subpackages.md` — structural refactors
+  (splitting a package into affinity sub-packages).
 - `internal/treasurecli/treasure_chest_doctor.go` — direct handler assignment for a
   pass-through `RunE` wrapper.
 - `internal/telemetry/outcome.go` — external error wrapping and helper

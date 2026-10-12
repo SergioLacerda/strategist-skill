@@ -1,0 +1,58 @@
+schema_version: "1"
+runbook_id: refactoring-a-package-into-subpackages
+runbook_type: operational
+source_doc: docs/runbooks/refactoring-a-package-into-subpackages.md
+
+applies_when:
+  - the user asks to organise a large flat Go package into sub-packages or sub-directories by affinity
+  - the user asks to consolidate constants, paths and variables shared across the files of a package
+  - a package has many files that cluster by prefix and repeats the same string literals across them
+
+objective: Split a Go package into affinity sub-packages without changing behaviour, on an acyclic dependency graph, with every repository gate green.
+
+preconditions:
+  - The request is a structural, behaviour-preserving refactor and not a lint or complexity signal.
+  - A baseline of build, vet, lint, tests, spec tests, coverage manifest and quality budget is recorded.
+
+verification:
+  - Re-run the baseline commands and compare them with the recorded results.
+  - Check that nothing imports the root package and that the package graph has no cycle.
+  - Report files per package, importers, coverage per package and gates that failed for reasons outside the change.
+
+decision_gates:
+  - id: graph-is-acyclic
+    statement: The proposed layout has no package-level cycle and no edge into the root.
+  - id: behaviour-preserved
+    statement: The split needs no behaviour, serialised-output or public-contract change.
+  - id: no-gate-lowered
+    statement: No threshold is lowered and no exemption added without the operator's agreement.
+  - id: public-surface-decided
+    statement: The choice between aliases and re-pointing importers is recorded.
+
+checks:
+  - id: constants-consolidated-before-moving
+    level: mandatory
+  - id: dependency-graph-excludes-blank-identifier
+    level: mandatory
+  - id: one-package-per-wave
+    level: mandatory
+  - id: tests-move-with-code
+    level: mandatory
+  - id: coverage-manifest-row-per-package
+    level: mandatory
+  - id: unexported-fields-renamed-at-declaration
+    level: mandatory
+  - id: fixtures-package-excluded-from-lint
+    level: conditional
+    when: a shared test fixtures package is created
+  - id: depth-sensitive-code-fixed
+    level: conditional
+    when: production code derives a path from its own source location or tests use relative parent literals
+  - id: no-git-mutation-by-the-agent
+    level: mandatory
+  - id: pre-existing-gate-failures-reported-not-fixed
+    level: recommended
+
+metadata:
+  version: 1
+  reviewed_at: "2026-10-12"
