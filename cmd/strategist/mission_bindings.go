@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/bindingdrift"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/bindingdrift"
 )
 
 // recordMissionBindings captures the slot bindings a mission starts with.

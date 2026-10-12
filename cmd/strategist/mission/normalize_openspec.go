@@ -6,7 +6,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/refinement"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

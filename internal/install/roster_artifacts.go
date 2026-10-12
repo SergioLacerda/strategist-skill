@@ -3,9 +3,9 @@ package install
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application/roster"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	domainroster "github.com/SergioLacerda/strategist-skill/internal/domain/roster"
-	"github.com/SergioLacerda/strategist-skill/internal/roster"
 )
 
 func buildRosterArtifacts(preview RoleProviderMigrationPreview) (domainroster.WeaponRosterArtifact, []domainroster.WeaponSelectionArtifact, error) {

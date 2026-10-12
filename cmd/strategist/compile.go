@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"

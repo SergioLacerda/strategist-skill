@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	internalinstall "github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"

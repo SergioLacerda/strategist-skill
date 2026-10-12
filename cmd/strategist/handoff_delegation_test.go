@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/handoffconsumer"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/jev/jevtest"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	levelingtools "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"

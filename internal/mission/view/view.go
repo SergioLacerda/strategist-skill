@@ -5,7 +5,7 @@ package view
 import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/feats/opportunity_attack"
-	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/gatecriteria"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 )

@@ -6,47 +6,20 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/SergioLacerda/strategist-skill/internal/conformance"
 )
 
-// TestTreasureChestImportBoundary verifies that only a known, deliberately
-// reviewed staging exceptions import Treasure Chest directly. The exceptions
-// are inventory evidence, never proof that the Jewelcrafter delegate is live.
-// A new external importer must either be a mediated delegate path or carry a
-// complete, current staging exception under ADR-0049.
+// TestTreasureChestImportBoundary verifies that no production package imports
+// Treasure Chest directly. The external provider is reached through the
+// JEWELER-owned Weapon adapter; a new consumer must use that mediated path.
 func TestTreasureChestImportBoundary(t *testing.T) {
 	t.Parallel()
-
-	now := time.Now().UTC()
-	exceptions := []conformance.ImportException{
-		{
-			Importer: "github.com/SergioLacerda/strategist-skill/cmd/strategist",
-			Owner:    "evaluation tooling", Reason: "eval harvest fixture generation",
-			Scope: "cmd/strategist eval harvest", ReviewBy: time.Date(2026, time.November, 30, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			Importer: "github.com/SergioLacerda/strategist-skill/internal/eval",
-			Owner:    "evaluation tooling", Reason: "deterministic Treasure Chest validation",
-			Scope: "internal/eval scope and policy scenarios", ReviewBy: time.Date(2026, time.November, 30, 0, 0, 0, 0, time.UTC),
-		},
-	}
 
 	for _, pkgOut := range []string{
 		"github.com/SergioLacerda/strategist-skill/treasure-chest",
 		"github.com/SergioLacerda/strategist-skill/treasure-chest/domain",
 	} {
-		assertReviewedImporters(t, pkgOut, reverseDirectImports(t, pkgOut), exceptions, now)
-	}
-}
-
-func assertReviewedImporters(t *testing.T, target string, importers []string, exceptions []conformance.ImportException, now time.Time) {
-	t.Helper()
-	classifications := conformance.ClassifyTreasureChestImporters(importers, exceptions, now)
-	for _, classification := range classifications {
-		if classification.Disposition == conformance.ImportViolation {
-			t.Errorf("%s imports %s — boundary violation: %s; route through Jewelcrafter or add a complete, time-bounded reviewed exception", classification.Importer, target, classification.Reason)
+		for _, importer := range reverseDirectImports(t, pkgOut) {
+			t.Errorf("%s imports %s directly; route access through JEWELER", importer, pkgOut)
 		}
 	}
 }

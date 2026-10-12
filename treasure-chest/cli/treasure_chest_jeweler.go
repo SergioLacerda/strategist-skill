@@ -96,7 +96,7 @@ func init() {
 	attachTreasureChestProviderFlags(treasureChestProviderMaintainCmd, &maintainOpts.treasureChestProviderOptions)
 	treasureChestProviderMaintainCmd.Flags().StringVar(&maintainOpts.Principal, "principal", "", "maintenance principal")
 	treasureChestProviderMaintainCmd.Flags().StringVar(&maintainOpts.Authorization, "authorization", "", "must equal jeweler:maintenance/v1")
-	treasureChestProviderMaintainCmd.Flags().StringVar(&maintainOpts.Operation, "operation", "", "maintenance operation: index, curate, migrate, reconcile, probe, or health")
+	treasureChestProviderMaintainCmd.Flags().StringVar(&maintainOpts.Operation, "operation", "", "maintenance operation: index, probe, or health")
 	treasureChestProviderMaintainCmd.Flags().StringVar(&maintainOpts.Correlation, "correlation", "", "correlation identifier")
 	treasureChestProviderMaintainCmd.Flags().StringVar(&maintainOpts.Idempotency, "idempotency-key", "", "required for migrate and reconcile")
 	treasureChestProviderMaintainCmd.RunE = func(cmd *cobra.Command, _ []string) error {

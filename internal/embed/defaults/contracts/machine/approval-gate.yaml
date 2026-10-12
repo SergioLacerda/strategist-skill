@@ -84,7 +84,7 @@ contract:
   # Quality criteria block (task 2.2 of the gate-quality-criterion package): reuses what earlier
   # stages already computed and fills every row; absence is explicit, never blank or a default pass.
   quality_criteria_display:
-    source: internal/gatecriteria
+    source: internal/mission/gatecriteria
     command: "strategist handoff criteria --mission-id <id> [--json]"
     precheck_command: "strategist handoff precheck --mission-id <id>"   # advisory Archivist to Gate provider reading, only when an integration is enabled
     read_only: true
@@ -101,7 +101,7 @@ contract:
       never_preselects_accept: true
     on_any_row: advisory_only   # never blocks, never substitutes the user's decision, never changes review_required
     stage_tokens:
-      source: internal/gatecriteria#TokenStages   # same aggregation as `strategist mission usage` (internal/usagesummary)
+      source: internal/mission/gatecriteria#TokenStages   # same aggregation as `strategist mission usage` (internal/telemetry/usagesummary)
       row: token_usage.by_stage
       header: "tokens estimados:"
       stage_order: [intake, discovery, refining, delivering]

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
 	internaldojo "github.com/SergioLacerda/strategist-skill/internal/dojo"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 )

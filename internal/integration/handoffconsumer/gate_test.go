@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/jev/jevtest"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/stretchr/testify/require"
 )
 

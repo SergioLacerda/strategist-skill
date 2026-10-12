@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 )
 
 // Audit verdicts.

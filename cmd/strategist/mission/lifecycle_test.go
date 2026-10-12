@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	mission "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"

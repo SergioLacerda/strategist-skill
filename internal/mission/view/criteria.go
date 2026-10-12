@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/gatecriteria"
 )
 
 // CriteriaSection is the quality-criteria report of a mission, built only from

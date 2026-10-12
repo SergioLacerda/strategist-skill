@@ -3,8 +3,8 @@ package handoffconsumer
 import (
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/stretchr/testify/require"
 )
 

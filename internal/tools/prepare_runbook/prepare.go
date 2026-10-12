@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/runbook"
 	"gopkg.in/yaml.v3"
 )

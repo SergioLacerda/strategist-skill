@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +29,7 @@ type handoffVerifyOptions struct {
 var handoffVerifyCmd = &cobra.Command{
 	Use:   "verify",
 	Short: "Verify a Handoff Challenge acknowledgment and record the result",
-	Long: `Runs internal/handoff.Verify deterministically against a challenges file and
+	Long: `Runs internal/mission/handoff.Verify deterministically against a challenges file and
 an acknowledgment file, prints the result, and appends a ChallengeRecord to
 .strategist/memory/handoff-challenges.jsonl.
 

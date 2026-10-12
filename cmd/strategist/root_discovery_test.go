@@ -10,7 +10,7 @@ import (
 )
 
 // findStrategistRoot/resolveStrategistRoot are thin wrappers around
-// internal/cliutil — see cliutil_test.go there for the full behavior matrix.
+// internal/cli/cliutil — see cliutil_test.go there for the full behavior matrix.
 // These smoke tests only confirm the delegation itself is wired correctly.
 
 func TestFindStrategistRoot_DelegatesToCliutil(t *testing.T) {

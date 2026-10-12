@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 
 	internaldojo "github.com/SergioLacerda/strategist-skill/internal/dojo"
 	"github.com/spf13/cobra"

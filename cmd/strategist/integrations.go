@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/setup"
 	"github.com/spf13/cobra"

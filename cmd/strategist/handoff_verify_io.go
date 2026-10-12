@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"

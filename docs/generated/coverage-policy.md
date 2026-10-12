@@ -28,13 +28,13 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `cmd/strategist/runbook` | 90% | provider-mediated runbook selection command boundary |
 | `internal/weapon/treasuretmp` | 90% | temporary TREASURE-CHEST-TMP provider protocol boundary |
 | `treasure-chest/cli` | 90% | treasure-chest/runbook CLI command cluster, extracted from cmd/strategist (20260806-treasure-chest-cmd-consolidation) - measured 95.5%; path updated from internal/treasurecli after in-repo isolation move (ADR 0040) |
-| `internal/cliutil` | 90% | shared CLI helpers extracted from cmd/strategist during the same move - measured 100% |
-| `internal/check` | 90% | check/check-stale CLI command cluster, extracted from cmd/strategist (20260816-cmd-strategist-cli-reorg) - measured 95.6% |
+| `internal/cli/cliutil` | 90% | shared CLI helpers extracted from cmd/strategist during the same move - measured 100% |
+| `internal/cli/check` | 90% | check/check-stale CLI command cluster, extracted from cmd/strategist (20260816-cmd-strategist-cli-reorg) - measured 95.6% |
 | `internal/dojo` | 90% | widened cover-gate scope (T3) - measured 90.6% |
 | `internal/domain` | 90% | widened cover-gate scope (T3) - measured 95.1% |
 | `internal/governance` | 95% | widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 96.0% |
 | `internal/governance/providence` | 95% | provider adapter contract and deterministic source validation |
-| `internal/handoff` | 95% | widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 96.2% |
+| `internal/mission/handoff` | 95% | widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 96.2% |
 | `internal/i18n` | 95% | widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 100.0% |
 | `internal/runbook` | 90% | widened cover-gate scope (T3) - measured 95.4% |
 | `internal/feats/opportunity_attack` | 95% | Opportunity Attack ADR/Runbook boundary and digest-bound manifest contract |
@@ -80,7 +80,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/domain/installplan` | 90% | sealed read-only installation plan domain contract |
 | `internal/runtime/catalog` | 90% | YAML catalog adapter and domain-ranked stamp boundary |
 | `internal/roles/registry` | 90% | workspace role manifest adapter and domain registry boundary |
-| `internal/roster` | 90% | read-only ROSTER artifact planning and selection validation boundary |
+| `internal/application/roster` | 90% | read-only ROSTER artifact planning and selection validation boundary |
 | `internal/integration` | 95% | provider integration contracts, typed errors and approved-adapter registry - measured 98.0% |
 | `internal/integration/config` | 80% | operator integration configuration, atomic persistence and binding parity - measured 85.6% |
 | `internal/integration/credential` | 75% | credential reference resolution, in-memory dotenv parsing and hygiene findings - measured 80.0% |
@@ -92,12 +92,12 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/integration/runbookconsumer` | 95% | Runbook/JEV consumer contract - measured 98.8% |
 | `internal/integration/setup` | 85% | single planner of the operator integration decision shared by wizard, silent install and commands - measured 87.3% |
 | `internal/integration/probe` | 85% | synthetic availability probe and the only source of the available claim - measured 88.2% |
-| `internal/gatecriteria` | 80% | read-only quality-criteria report: reuses existing records, every row filled - measured 83.3% |
-| `internal/calibration` | 90% | DOJO judge calibration core: mutation catalog, evaluator, exact statistics, fitness gates and the calibration record (ADR-0066) |
-| `internal/hostusage` | 90% | content-free observers of the usage a coding host recorded in its own session files (Claude Code, Codex) - measured 96.0% |
+| `internal/mission/gatecriteria` | 80% | read-only quality-criteria report: reuses existing records, every row filled - measured 83.3% |
+| `internal/dojo/calibration` | 90% | DOJO judge calibration core: mutation catalog, evaluator, exact statistics, fitness gates and the calibration record (ADR-0066) |
+| `internal/telemetry/hostusage` | 90% | content-free observers of the usage a coding host recorded in its own session files (Claude Code, Codex) - measured 96.0% |
 | `internal/telemetry/verify` | 90% | read-only integrity verifier of mission lifecycle and usage evidence and its exported event stream - measured 95.0% |
-| `internal/usagesummary` | 90% | shared aggregation of declared token observations without double counting: used by mission usage, mission view and the Approval Gate stage volumes - measured 97.1% |
-| `internal/bindingdrift` | 90% | records the slot bindings a mission started with and reports drift: used by mission start/status and strategist check |
+| `internal/telemetry/usagesummary` | 90% | shared aggregation of declared token observations without double counting: used by mission usage, mission view and the Approval Gate stage volumes - measured 97.1% |
+| `internal/mission/bindingdrift` | 90% | records the slot bindings a mission started with and reports drift: used by mission start/status and strategist check |
 
 ## Reviewed Exemptions
 
@@ -107,11 +107,11 @@ These production packages are present in the inventory but intentionally have no
 |---|---|---|
 | `internal/authorization` | quality-maintainers | baseline coverage policy is pending a dedicated authorization test budget |
 | `internal/conformance` | quality-maintainers | baseline coverage policy is pending a dedicated conformance test budget |
-| `internal/hardening` | quality-maintainers | baseline coverage policy is pending a dedicated hardening test budget |
+| `internal/runtime/hardening` | quality-maintainers | baseline coverage policy is pending a dedicated hardening test budget |
 | `internal/mission` | quality-maintainers | baseline coverage policy is pending a dedicated mission test budget |
 | `internal/plugins/governance` | quality-maintainers | baseline coverage policy is pending a dedicated governance plugin test budget |
 | `internal/provider` | quality-maintainers | local provider onboarding slice has focused contract/transaction tests (84.7%); dedicated error-matrix coverage budget remains outside this implementation slice |
-| `internal/refinement` | quality-maintainers | baseline coverage policy is pending a dedicated refinement test budget |
+| `internal/mission/refinement` | quality-maintainers | baseline coverage policy is pending a dedicated refinement test budget |
 | `internal/roles/jeweler` | quality-maintainers | JEWELER support-role boundary has focused contract tests (78.1%); dedicated error-matrix coverage budget remains pending |
 | `internal/roles/validation` | quality-maintainers | baseline coverage policy is pending a dedicated role validation test budget |
 | `internal/runtime/env` | quality-maintainers | baseline coverage policy is pending a dedicated runtime environment test budget |

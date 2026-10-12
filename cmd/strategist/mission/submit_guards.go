@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/refinement"
 )
 
 // requireAnalysisOnlyPackage rejects an analysis-only terminal event when the

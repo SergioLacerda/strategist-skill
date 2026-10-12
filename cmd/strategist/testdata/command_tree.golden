@@ -275,7 +275,7 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 use: verify
 short: Verify a Handoff Challenge acknowledgment and record the result
 long: |
-  Runs internal/handoff.Verify deterministically against a challenges file and
+  Runs internal/mission/handoff.Verify deterministically against a challenges file and
   an acknowledgment file, prints the result, and appends a ChallengeRecord to
   .strategist/memory/handoff-challenges.jsonl.
   

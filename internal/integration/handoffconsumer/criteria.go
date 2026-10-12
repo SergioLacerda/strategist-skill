@@ -5,9 +5,9 @@
 package handoffconsumer
 
 import (
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 )
 
 // TransitionArchivistToGate names the advisory boundary evaluated on the refined

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/refinement"
 )
 
 // NormalizeOpenSpecRequest is the application-owned input for publishing a

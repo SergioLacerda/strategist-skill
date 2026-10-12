@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 )
 
 // RecordArchivistHandoff is the production composition of the

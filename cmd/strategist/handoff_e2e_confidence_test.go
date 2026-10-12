@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
-	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/jev/jevtest"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/gatecriteria"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/stretchr/testify/require"
 )

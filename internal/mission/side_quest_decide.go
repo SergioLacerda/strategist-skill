@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/refinement"
 )
 
 // SideQuestDecision is one user decision about an Opportunity Attack candidate.

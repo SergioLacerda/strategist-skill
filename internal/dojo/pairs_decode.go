@@ -3,7 +3,7 @@ package dojo
 import (
 	"encoding/json"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 )
 
 func decodePair(raw []byte) (calibration.PairObservation, bool) {

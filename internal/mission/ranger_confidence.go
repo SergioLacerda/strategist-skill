@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 

@@ -1,8 +1,8 @@
 package handoffconsumer
 
 import (
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 )
 
 // Reader reads the projected fields of a boundary artifact through the same

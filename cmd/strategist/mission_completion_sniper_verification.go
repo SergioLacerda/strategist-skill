@@ -9,8 +9,8 @@ import (
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 

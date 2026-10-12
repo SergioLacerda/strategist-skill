@@ -2,10 +2,10 @@ package view
 
 import (
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/SergioLacerda/strategist-skill/internal/usagesummary"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry/usagesummary"
 )
 
-// The aggregation lives in internal/usagesummary so the Approval Gate criteria
+// The aggregation lives in internal/telemetry/usagesummary so the Approval Gate criteria
 // can use it without importing the read model. These aliases keep the read
 // model's vocabulary and JSON shape unchanged.
 type (

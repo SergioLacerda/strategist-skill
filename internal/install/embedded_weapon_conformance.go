@@ -31,9 +31,9 @@ const (
 // conformance test file. A separate file per role keeps the certification
 // digest role-specific rather than pinning duplicated evidence.
 var roleConformanceTestPaths = map[string]string{
-	"ranger":    "internal/handoff/role_provider_conformance_test.go",
-	"archivist": "internal/handoff/role_provider_conformance_archivist_test.go",
-	"sniper":    "internal/handoff/role_provider_conformance_sniper_test.go",
+	"ranger":    "internal/mission/handoff/role_provider_conformance_test.go",
+	"archivist": "internal/mission/handoff/role_provider_conformance_archivist_test.go",
+	"sniper":    "internal/mission/handoff/role_provider_conformance_sniper_test.go",
 }
 
 // repoRoot resolves this Strategist repository's own root directory. Source

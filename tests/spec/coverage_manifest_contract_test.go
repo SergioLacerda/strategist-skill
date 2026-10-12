@@ -96,7 +96,7 @@ func TestCoverageManifestRejectsInvalidPolicyRows(t *testing.T) {
 	cases := []struct {
 		name, manifestRow, exemptionRow, want string
 	}{
-		{"duplicate manifest row", "internal/check\t90\tdup fixture\n", "", "COVERAGE_MANIFEST_INVALID duplicate package: internal/check"},
+		{"duplicate manifest row", "internal/cli/check\t90\tdup fixture\n", "", "COVERAGE_MANIFEST_INVALID duplicate package: internal/cli/check"},
 		{"threshold above 100", "internal/fixture-a\t101\tbad threshold\n", "", "COVERAGE_MANIFEST_INVALID invalid threshold for internal/fixture-a: 101"},
 		{"non numeric threshold", "internal/fixture-b\tabc\tbad threshold\n", "", "COVERAGE_MANIFEST_INVALID invalid threshold for internal/fixture-b: abc"},
 		{"missing reason", "internal/fixture-c\t90\n", "", "COVERAGE_MANIFEST_INVALID row must contain package, numeric threshold, and reason: internal/fixture-c"},
@@ -158,7 +158,7 @@ func TestCoverageManifestReportsOmittedInventoryPackage(t *testing.T) {
 	fixture := t.TempDir()
 	var kept []string
 	for _, line := range strings.Split(readFile(t, filepath.Join(root, "scripts", "coverage-packages.tsv")), "\n") {
-		if strings.HasPrefix(line, "internal/check\t") {
+		if strings.HasPrefix(line, "internal/cli/check\t") {
 			continue
 		}
 		kept = append(kept, line)
@@ -171,7 +171,7 @@ func TestCoverageManifestReportsOmittedInventoryPackage(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected omitted-package failure: %s", output)
 	}
-	if !strings.Contains(output, "COVERAGE_INVENTORY_OMITTED discovered package has no manifest row or reviewed exemption: internal/check") {
+	if !strings.Contains(output, "COVERAGE_INVENTORY_OMITTED discovered package has no manifest row or reviewed exemption: internal/cli/check") {
 		t.Fatalf("missing omitted diagnostic: %s", output)
 	}
 }

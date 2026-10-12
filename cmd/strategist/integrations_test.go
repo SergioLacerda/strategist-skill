@@ -8,10 +8,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/jev/jevtest"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/probe"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"

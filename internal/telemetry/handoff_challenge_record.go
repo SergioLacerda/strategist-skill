@@ -13,13 +13,13 @@ import (
 const HandoffChallengeHistoryRelPath = "memory/handoff-challenges.jsonl"
 
 // ChallengeRecord is the JSONL-persisted record for one Handoff Challenge
-// verification attempt — internal/handoff.Result's fields, plus enough
+// verification attempt — internal/mission/handoff.Result's fields, plus enough
 // context to aggregate across missions/attempts (mission_id, transition,
 // attempt, timestamp), per
 // .analysis/refined/20260803-handoff-challenge-extensions/design.md § Item
-// 3. internal/handoff.Result itself is reused as-is for the in-memory
+// 3. internal/mission/handoff.Result itself is reused as-is for the in-memory
 // verification result and is not modified; the fields here are mirrored,
-// not imported, since internal/telemetry must not depend on internal/handoff,
+// not imported, since internal/telemetry must not depend on internal/mission/handoff,
 // a peer package (see internal/domain/architecture_test.go's
 // TestLateralIsolation).
 type ChallengeRecord struct {

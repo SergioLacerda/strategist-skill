@@ -98,7 +98,7 @@ mechanisms:
   - id: preflight_compatibility
     display_name: Preflight and compatibility check
     family: mechanism
-    owner_package: internal/check
+    owner_package: internal/cli/check
     contract_file: contracts/machine/preflight.yaml
     enforcement_kind: code
     enforcement_tier: machine_enforced
@@ -150,7 +150,7 @@ mechanisms:
   - id: handoff_challenge
     display_name: Handoff Challenge
     family: mechanism
-    owner_package: internal/handoff
+    owner_package: internal/mission/handoff
     contract_file: contracts/machine/handoff-contract.yaml
     enforcement_kind: code
     enforcement_tier: machine_observed
@@ -226,7 +226,7 @@ mechanisms:
   - id: normalize_openspec
     display_name: normalize-openspec
     family: tool
-    owner_package: internal/refinement
+    owner_package: internal/mission/refinement
     contract_file: contracts/narrative/04-refinement.md
     enforcement_kind: code
     enforcement_tier: machine_enforced

@@ -59,9 +59,15 @@ func TestRoleLifecycleRequiresLevelingBeforeInitiative(t *testing.T) {
 func TestRoleLifecycleDoesNotExposeRetiredBoundaryHooks(t *testing.T) {
 	lifecycle, err := NewDefaultRoleLifecycle(t.TempDir(), domain.DefaultRoleRegistry())
 	require.NoError(t, err)
-	advice, err := lifecycle.Enter(InitiativeRoleEntry{MissionID: "ranger", Role: "ranger", RunID: "run", Leveling: testLeveling("level-1", "ranger")})
-	require.NoError(t, err)
-	require.Empty(t, advice.AdviceID)
+	for _, role := range []string{"ranger", "archivist", "sniper"} {
+		t.Run(role, func(t *testing.T) {
+			advice, err := lifecycle.Enter(InitiativeRoleEntry{
+				MissionID: role, Role: role, RunID: "run", Leveling: testLeveling("level-1", role),
+			})
+			require.NoError(t, err)
+			require.Empty(t, advice.AdviceID)
+		})
+	}
 }
 
 func TestInitiativeRuntimeSurfacesEventSinkFailure(t *testing.T) {

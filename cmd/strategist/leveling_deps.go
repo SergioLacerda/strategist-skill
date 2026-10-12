@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	levelingadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/leveling"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"

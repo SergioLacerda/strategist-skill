@@ -3,13 +3,13 @@ package treasurecli
 import (
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
-// Thin wrappers over internal/cliutil, mirroring cmd/strategist's own
-// cli_helpers.go — both packages share the same internal/cliutil source of
+// Thin wrappers over internal/cli/cliutil, mirroring cmd/strategist's own
+// cli_helpers.go — both packages share the same internal/cli/cliutil source of
 // truth for root resolution and flag reading, without either importing the
 // other (cmd/strategist is package main and imports this package; the
 // reverse would be an import cycle).
@@ -28,7 +28,7 @@ func resolveStrategistRoot(explicit, cwd string) (strategistDir, projectRoot str
 	return cliutil.ResolveStrategistRoot(explicit, cwd) //nolint:wrapcheck // pure delegation; cliutil's error text is this function's own contract, preserved verbatim on purpose
 }
 
-// resolveDojoRoots delegates to internal/cliutil, preserving the exact "dojo: "
+// resolveDojoRoots delegates to internal/cli/cliutil, preserving the exact "dojo: "
 // error prefix the pre-move code produced (the underlying logic — read
 // active.yaml, resolve base_path — is generic, not dojo-specific; only the
 // original name and its error prefix stuck, and callers here already wrap

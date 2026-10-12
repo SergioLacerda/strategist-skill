@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/mechanism"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/policy"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 )
 
 // Status is the outcome of one pre-check for the agent.

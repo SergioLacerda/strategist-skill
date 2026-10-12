@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/policy"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 )
 
 // PolicyRow is one check of the integration layer: what the Strategist policy

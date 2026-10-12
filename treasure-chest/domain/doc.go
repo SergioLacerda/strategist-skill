@@ -5,7 +5,6 @@
 // docs/adr/0040-treasure-chest-in-repo-isolation-staging.md). It stays a
 // separate package from internal/domain deliberately: treasure-chest code
 // should depend on this narrow surface, not the whole shared domain
-// package, and internal/domain's Evidence/Confidence vocabulary (used by
-// jewel evidence fields) remains genuinely shared and is imported from
-// there directly where needed.
+// package. Evidence and confidence values used by jewel evidence fields are
+// defined here as part of the provider's host-neutral interchange contract.
 package domain

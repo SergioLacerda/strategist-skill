@@ -7,7 +7,7 @@ import (
 	"os"
 
 	providerapp "github.com/SergioLacerda/strategist-skill/internal/application/provider"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	providerpkg "github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"

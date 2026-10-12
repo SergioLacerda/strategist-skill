@@ -3,7 +3,7 @@ package integrity_test
 import (
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/hardening"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/hardening"
 	"github.com/SergioLacerda/strategist-skill/internal/runtime/integrity"
 )
 

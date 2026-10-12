@@ -30,8 +30,8 @@ whose correctness was never validated, or an architecture trade-off (that is an 
    `strategist mission decline-side-quest ...`. Declining keeps the procedure as backlog.
 5. **Know what acceptance materializes.** At execution entry the runbook resolver prepares a group in the
    configured root `runbooks.canonical_path` of `.strategist/active.yaml` (the wizard default is
-   `<base_path>/runbooks`, here `.analysis/runbooks`; without a configured root the legacy path
-   `docs/runbooks/<mission_id>-runbook.md` is used): the markdown `<mission_id>-runbook.md` and the typed sidecar
+   `docs/runbooks`, which is also the governed Treasure Chest and knowledge-index root; without a configured root
+   the same canonical path is used): the markdown `<mission_id>-runbook.md` and the typed sidecar
    `<mission_id>-runbook.runbook.yaml`, whose `runbook_id` is the markdown stem and whose `source_doc` is the
    markdown path. Sniper completion parses the sidecar with the same parser the selector uses and refuses a
    mission whose sidecar would be skipped.
@@ -62,7 +62,7 @@ implemented.
 | Id | Decision | State |
 |---|---|---|
 | D1 | A runbook is a markdown plus a typed `.runbook.yaml` sidecar; the `.meta.json` placeholder is gone. | implemented: the runbook resolver emits `<stem>.runbook.yaml` (kind `runbook_sidecar`) and completion parses it |
-| D2 | The local selector reads the path configured in the wizard (`runbooks.canonical_path`) first and the legacy `docs/runbooks` as a fallback; the configured root wins a duplicate `runbook_id`. | implemented in the local corpus loader behind `strategist runbook select --allow-local-staging` (the production lookup goes through JEWELER, which owns its own index); an unreadable `active.yaml` degrades to the legacy root with a `runbooks_root_unavailable` warning |
+| D2 | `docs/runbooks` is the canonical root shared by `active.yaml`, the governed Treasure Chest manifest and `knowledge.index.yaml`; the local selector may read an explicitly configured root only when those declarations remain aligned. | implemented by the wizard default and the temporary Weapon's fail-closed source-consistency check; the production lookup goes through JEWELER, which owns its own index; drift is a provider health failure, never a local fallback |
 | D3 | The materialized markdown name, `runbook_id` and `source_doc` agree without a manual rename. | implemented: `runbook_id` is the markdown stem, `source_doc` its path |
 
 Promotion to a short slug (step 6) is now optional polish, not a repair: a materialized runbook already

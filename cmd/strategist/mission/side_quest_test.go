@@ -9,7 +9,7 @@ import (
 	"time"
 
 	mission "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"

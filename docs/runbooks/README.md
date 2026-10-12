@@ -25,9 +25,11 @@ candidate directly to this directory.
 
 The target configuration uses one explicit canonical root for each documentation
 family: `adr.canonical_path` for ADRs and `runbooks.canonical_path` for Runbooks.
-The wizard suggests `<base_path>/adr` and `<base_path>/runbooks`; with the current
-`.analysis` base, those defaults are `.analysis/adr` and `.analysis/runbooks`.
-An explicit project-relative override becomes the workspace standard.
+The wizard suggests `<base_path>/adr` for ADRs and `docs/runbooks` for Runbooks.
+`docs/runbooks` is the canonical source shared by `active.yaml`, the governed
+Treasure Chest manifest, and `knowledge.index.yaml`. An explicit project-relative
+override becomes the workspace standard only when all three declarations are
+updated together; a mismatch is a provider health failure.
 
 Existing `docs/adr/` and `docs/runbooks/` content remains readable during migration,
 but it is a compatibility location unless explicitly configured as the canonical

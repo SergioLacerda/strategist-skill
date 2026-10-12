@@ -14,7 +14,7 @@ import (
 // process, subprocess, or network call — the parent agent session already
 // holds every capability the role needs, and by the time Invoke is called
 // the role definition has already been parsed and structurally validated
-// (see internal/check/check_slots.go's resolveNativeRoleSlot, which runs
+// (see internal/cli/check/check_slots.go's resolveNativeRoleSlot, which runs
 // domain.RoleConfig.Validate() and confirms the role's declared slot before
 // any readiness/invocation check is ever attempted). This is exactly how
 // native roles already work at runtime today — this connector simply lets

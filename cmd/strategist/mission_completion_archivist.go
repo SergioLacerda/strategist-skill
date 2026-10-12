@@ -9,7 +9,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/refinement"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 

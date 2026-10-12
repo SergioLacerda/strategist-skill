@@ -94,7 +94,7 @@ Archivist (`refinement`)
   running `strategist mission normalize-openspec --mission-id <mission_id> --change-id
   <change_id>` against the completed OpenSpec change — never by hand-copying
   `proposal.md`/`design.md`/`tasks.md` and manually editing frontmatter. That command
-  (`internal/refinement.NormalizeOpenSpec`) atomically publishes the four canonical files,
+  (`internal/mission/refinement.NormalizeOpenSpec`) atomically publishes the four canonical files,
   injects `provider`/`provider_change_id`/`provider_runtime` and `mission_status:
   archivist_done` into the analysis frontmatter, records the durable publication in
   `.strategist/memory/refined-package-publications.jsonl`, and removes the private provider

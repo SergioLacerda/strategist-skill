@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/mechanisms"
 	"github.com/spf13/cobra"

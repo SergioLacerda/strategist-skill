@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	preparerunbook "github.com/SergioLacerda/strategist-skill/internal/tools/prepare_runbook"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

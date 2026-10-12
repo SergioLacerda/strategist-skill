@@ -14,7 +14,7 @@ import (
 var forbiddenDials = []string{"net.Dial(", "net.DialTimeout(", "http.Get(", "http.Post(", "http.PostForm(", "http.Head(", "http.DefaultClient", "http.DefaultTransport"}
 
 // scannedDirs are the trees whose tests touch the provider integration.
-var scannedDirs = []string{"internal/integration", "internal/install", "internal/gatecriteria", "cmd/strategist"}
+var scannedDirs = []string{"internal/integration", "internal/install", "internal/mission/gatecriteria", "cmd/strategist"}
 
 // isScannedTest reports whether a path is a test source this guard checks. This
 // file itself and the opt-in live check (build tag "live") are the deliberate

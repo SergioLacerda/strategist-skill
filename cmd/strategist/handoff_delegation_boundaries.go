@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/handoffconsumer"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/spf13/cobra"
 )
 

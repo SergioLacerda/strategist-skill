@@ -90,6 +90,10 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   `report-usage` for the same calls. Hand the discovery run's usage to the Archivist for
   `--discovery-tokens` when the host reports it. Without a usage record no waste or cost claim
   about a mission can be checked.
+  If `--phase-run-id` is omitted, the runtime resolves it only when the lifecycle ledger has
+  exactly one open run for that phase; otherwise the observation remains unkeyed or is rejected.
+  Per-run reports must use the explicit lifecycle run identity. Never infer a run from a phase
+  name, timestamps alone, or regenerated history.
 - No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
   `intake_done`; submit it after `strategist mission route`.
 - When `strategist handoff evaluate` or `evaluate-ranger` prints a `delegation:` line, an enabled provider pre-checked

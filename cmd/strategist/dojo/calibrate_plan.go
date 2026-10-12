@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
 	internaldojo "github.com/SergioLacerda/strategist-skill/internal/dojo"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 )
 
 // Rough size of the typed questions the provider receives besides the state,

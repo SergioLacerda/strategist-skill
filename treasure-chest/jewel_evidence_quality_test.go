@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	chestdomain "github.com/SergioLacerda/strategist-skill/treasure-chest/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,8 +15,8 @@ import (
 func TestValidateJewelEvidenceFields_Valid(t *testing.T) {
 	t.Parallel()
 	j := baseJewel("decision")
-	j.EvidenceClass = domain.EvidenceClassExplicit
-	j.EvidenceConfidence = domain.ConfidenceHigh
+	j.EvidenceClass = chestdomain.EvidenceClassExplicit
+	j.EvidenceConfidence = chestdomain.ConfidenceHigh
 	j.ValidUntil = "2026-12-31T00:00:00Z"
 	assert.NoError(t, ValidateJewelEntry(j, nil))
 }
@@ -55,8 +54,8 @@ func TestValidateJewelEvidenceFields_InvalidValues(t *testing.T) {
 func TestJewel_EvidenceFieldsYAMLRoundTrip(t *testing.T) {
 	t.Parallel()
 	j := baseJewel("decision")
-	j.EvidenceClass = domain.EvidenceClassCorroboratedInference
-	j.EvidenceConfidence = domain.ConfidenceMedium
+	j.EvidenceClass = chestdomain.EvidenceClassCorroboratedInference
+	j.EvidenceConfidence = chestdomain.ConfidenceMedium
 	j.ValidUntil = "2026-12-31T00:00:00Z"
 
 	out, err := yaml.Marshal(j)

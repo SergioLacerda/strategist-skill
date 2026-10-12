@@ -106,10 +106,15 @@ func chainSubmit(t *testing.T, root string, event domain.MissionEngineEvent) err
 
 func chainAcceptADR(t *testing.T, root string) {
 	t.Helper()
+	chainAcceptSideQuest(t, root, "OA-ADR-"+archivistMissionID)
+}
+
+func chainAcceptSideQuest(t *testing.T, root, sideQuestID string) {
+	t.Helper()
 	cmd := missionadapter.NewAcceptSideQuest(missionLifecycleDependencies())
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
-	cmd.SetArgs([]string{"--root", root, "--mission-id", archivistMissionID, "--side-quest", "OA-ADR-" + archivistMissionID})
+	cmd.SetArgs([]string{"--root", root, "--mission-id", archivistMissionID, "--side-quest", sideQuestID})
 	require.NoError(t, cmd.Execute())
 }
 

@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

@@ -59,7 +59,7 @@ jobs:
 
       - name: Windows runtime-path tests
         shell: bash
-        run: go test ./internal/domain ./internal/runtimeenv ./internal/install ./internal/check ./cmd/strategist
+        run: go test ./internal/domain ./internal/runtime/env ./internal/install ./internal/cli/check ./cmd/strategist
 
       # The minimum supported host Node, so the smoke proves the >=20.19.0 floor.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

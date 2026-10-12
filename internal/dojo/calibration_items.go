@@ -3,7 +3,7 @@ package dojo
 import (
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 

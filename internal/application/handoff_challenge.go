@@ -7,7 +7,7 @@ import (
 
 // HandoffChallengeInput contains the application-level facts needed to
 // record one Handoff Challenge verification attempt. It deliberately mirrors
-// the persistence shape without depending on telemetry or internal/handoff.
+// the persistence shape without depending on telemetry or internal/mission/handoff.
 type HandoffChallengeInput struct {
 	MissionID         string
 	Transition        string

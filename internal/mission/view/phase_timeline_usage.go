@@ -2,6 +2,13 @@ package view
 
 import "github.com/SergioLacerda/strategist-skill/internal/domain"
 
+func phaseRunKey(phase, runID string) string {
+	if phase == string(domain.PhaseBootstrap) {
+		phase = string(domain.PhaseIntake)
+	}
+	return phase + "|" + runID
+}
+
 // WithUsage returns the timeline with token usage applied to its rows, the
 // unattributed bucket, the mission total and the coverage counters. The legacy
 // provider-reported ledger is never an input: it has its own row. An unreadable
@@ -19,17 +26,33 @@ func (tl PhaseTimeline) WithUsage(summary UsageSummary, usageErr error) PhaseTim
 	}
 	tl.UsageAvailability = Available
 	tl.Unattributed, tl.Total, tl.Coverage = summary.Unattributed, summary.Total, summary.Coverage
-	rows := make([]PhaseRow, len(tl.Phases))
-	copy(rows, tl.Phases)
-	for i, row := range rows {
-		if row.Phase == string(domain.PhaseApprovalGate) {
+	tl.Phases = projectUsageRows(tl.Phases, summary)
+	return tl
+}
+
+func projectUsageRows(source []PhaseRow, summary UsageSummary) []PhaseRow {
+	rows := append([]PhaseRow(nil), source...)
+	for i := range rows {
+		rows[i].RunDetails = projectRunUsage(rows[i].RunDetails, summary.ByRun)
+		if rows[i].Phase == string(domain.PhaseApprovalGate) {
 			continue
 		}
-		if b, ok := summary.ByPhase[row.Phase]; ok {
+		if b, ok := summary.ByPhase[rows[i].Phase]; ok {
 			rows[i].Tokens, rows[i].Quality = b.Tokens, b.Quality
 			rows[i].Observations, rows[i].QualityBreakdown = b.Observations, b.QualityBreakdown
 		}
 	}
-	tl.Phases = rows
-	return tl
+	return rows
+}
+
+func projectRunUsage(source []PhaseRun, byRun map[string]UsageBucket) []PhaseRun {
+	runs := append([]PhaseRun(nil), source...)
+	for i := range runs {
+		runs[i].Quality = QualityUnavailable
+		if b, ok := byRun[phaseRunKey(runs[i].Phase, runs[i].RunID)]; ok {
+			runs[i].Tokens, runs[i].Quality = b.Tokens, b.Quality
+			runs[i].Observations, runs[i].QualityBreakdown = b.Observations, b.QualityBreakdown
+		}
+	}
+	return runs
 }

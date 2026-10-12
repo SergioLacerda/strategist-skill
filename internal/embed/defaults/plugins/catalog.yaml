@@ -22,7 +22,7 @@ providers:
       ranked_binding_status: active
       host_api_digest: sha256:edc0db21fd16b401d34e9407cc1f31a1e2e2fb6aa3732287dd1a00e6dbebfee5
       connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
-      test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
+      test_suite_digest: sha256:c6bd21f739d92ad4add573d014f0bab8aaad7d0b4993394dceb6a55c159c26f3
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
       conformance_level: C1
       runtime:
@@ -119,7 +119,7 @@ providers:
       ranked_binding_status: active
       host_api_digest: sha256:6c596cd6838c2092cbd52b0cb661f47084a794e048fd9345744e9f802bc328ae
       connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
-      test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
+      test_suite_digest: sha256:fb4c688600ee41728bc118fd2f0df79bcfaa2c53c90bc95a1b5eb2de250c7f57
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
       conformance_level: C1
       runtime:
@@ -211,7 +211,7 @@ providers:
       ranked_binding_status: active
       host_api_digest: sha256:6c596cd6838c2092cbd52b0cb661f47084a794e048fd9345744e9f802bc328ae
       connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
-      test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
+      test_suite_digest: sha256:fb4c688600ee41728bc118fd2f0df79bcfaa2c53c90bc95a1b5eb2de250c7f57
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
       conformance_level: C1
       runtime:

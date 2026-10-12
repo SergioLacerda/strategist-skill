@@ -10,7 +10,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	criticalhit "github.com/SergioLacerda/strategist-skill/internal/feats/critical_hit"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 

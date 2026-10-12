@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/dojo"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 	"gopkg.in/yaml.v3"
 )
 

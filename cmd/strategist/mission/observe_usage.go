@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
-	"github.com/SergioLacerda/strategist-skill/internal/hostusage"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry/hostusage"
 	"github.com/spf13/cobra"
 )
 

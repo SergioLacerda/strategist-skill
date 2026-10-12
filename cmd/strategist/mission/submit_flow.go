@@ -7,9 +7,9 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/refinement"
 )
 
 func invalidateRepairEvidence(root, missionID string, event domain.MissionEngineEvent) error {

@@ -7,7 +7,7 @@ import (
 
 	authorizationapp "github.com/SergioLacerda/strategist-skill/internal/application/authorization"
 	"github.com/SergioLacerda/strategist-skill/internal/authorization"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/spf13/cobra"
 )
 

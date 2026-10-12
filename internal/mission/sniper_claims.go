@@ -8,15 +8,15 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/refinement"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
 // RecordSniperClaims records one telemetry.SniperClaimRecord per
 // documentation_target path declared in the mission's approved
 // <basePath>/refined/<missionID>/tasks.md — the write side of ADR-0008's F3
-// revisit tripwire claim-collision signal, which internal/check's
+// revisit tripwire claim-collision signal, which internal/cli/check's
 // emitF3ClaimCollisionSignals reads back. It is called from
 // cmd/strategist/mission's RunSubmit at handoff_challenge_satisfied, deriving
 // target paths from the approved package rather than adding an agent
@@ -125,7 +125,7 @@ func appendSniperClaims(claimPath, entryID, missionID, basePath string, targets 
 // phase. A missing or unparseable state file reports found=false rather than
 // erroring: the conservative default is to treat an unreadable mission as
 // still live, so a possible collision is surfaced rather than silently
-// dropped (see internal/check's emitF3ClaimCollisionSignals).
+// dropped (see internal/cli/check's emitF3ClaimCollisionSignals).
 func ReadMissionPhase(strategistRoot, missionID string) (phase domain.PipelinePhase, found bool) {
 	data, err := os.ReadFile(filepath.Join(strategistRoot, "missions", missionID+".json")) //nolint:gosec // strategistRoot is the discovered/validated runtime root; missionID is validated by the CLI layer
 	if err != nil {

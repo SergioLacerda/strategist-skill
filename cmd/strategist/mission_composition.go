@@ -7,7 +7,7 @@ import (
 	"time"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/feats/initiative"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"

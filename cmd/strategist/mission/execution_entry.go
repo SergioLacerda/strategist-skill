@@ -11,8 +11,8 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 )
 
 // executionEntry is a durable intent record. Filesystem operations cannot be

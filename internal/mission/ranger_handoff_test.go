@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )

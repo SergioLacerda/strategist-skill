@@ -12,7 +12,7 @@ func TestExecutionSnapshotRoundTripSupportsMultipleGroupsAndSidecar(t *testing.T
 		Version: ExecutionSnapshotVersion, MissionID: "m1",
 		Groups: []ExecutionGroup{
 			{ID: "runbook-1", Resolver: ResolverKey{Kind: "runbook", Origin: ExecutionTargetOriginAcceptedSideQuest}, SideQuestID: "OA-RUNBOOK-m1-1", Kind: "runbook", Origin: ExecutionTargetOriginAcceptedSideQuest, CompletionPolicy: ExecutionCompletionAllRequired,
-				Artifacts: []ExecutionArtifact{{ID: "runbook-1-main", Role: ExecutionArtifactRolePrimary, Path: "docs/runbooks/one.md", Kind: "runbook"}, {ID: "runbook-1-sidecar", Role: ExecutionArtifactRoleSidecar, Path: "docs/runbooks/one.meta.json", Kind: "runbook_metadata"}}},
+				Artifacts: []ExecutionArtifact{{ID: "runbook-1-main", Role: ExecutionArtifactRolePrimary, Path: "docs/runbooks/one.md", Kind: "runbook"}, {ID: "runbook-1-sidecar", Role: ExecutionArtifactRoleSidecar, Path: "docs/runbooks/one.runbook.yaml", Kind: RunbookSidecarKind}}},
 			{ID: "adr-1", Resolver: ResolverKey{Kind: ExecutionTargetKindADR, Origin: ExecutionTargetOriginAcceptedSideQuest}, SideQuestID: "OA-ADR-m1", Kind: ExecutionTargetKindADR, Origin: ExecutionTargetOriginAcceptedSideQuest, CompletionPolicy: ExecutionCompletionAllRequired,
 				Artifacts: []ExecutionArtifact{{ID: "adr-1-main", Role: ExecutionArtifactRolePrimary, Path: "docs/adr/0001.md", Kind: ExecutionTargetKindADR}}},
 		},

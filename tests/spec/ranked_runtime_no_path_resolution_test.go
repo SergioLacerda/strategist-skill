@@ -15,7 +15,7 @@ import (
 // are where that invariant can regress.
 func rankedRuntimePackages() []string {
 	return []string{
-		filepath.Join("internal", "check"),
+		filepath.Join("internal", "cli", "check"),
 		filepath.Join("internal", "install"),
 	}
 }

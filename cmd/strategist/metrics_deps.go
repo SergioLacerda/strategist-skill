@@ -7,7 +7,7 @@ import (
 	"os"
 
 	metricsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/metrics"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/spf13/cobra"
 )
 

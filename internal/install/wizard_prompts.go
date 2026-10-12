@@ -66,6 +66,12 @@ func normalizeDocumentationRoot(value, field, workspaceRoot string) (string, err
 }
 
 func documentationRootDefault(basePath, workspaceRoot, child string) string {
+	if child == "runbooks" {
+		// The Treasure Chest manifest and knowledge index both govern
+		// docs/runbooks. Keep the installer default on that same source rather
+		// than creating a second runtime root under base_path.
+		return "docs/runbooks"
+	}
 	root := filepath.Join(basePath, child)
 	if !filepath.IsAbs(root) {
 		return filepath.ToSlash(root)

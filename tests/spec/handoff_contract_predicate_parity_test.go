@@ -7,14 +7,14 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"gopkg.in/yaml.v3"
 )
 
 // TestHandoffContractPredicateParity guards against handoff-contract.yaml's
 // documented require_when/skip_when lists for the Archivist->Sniper
 // (archivist_to_sniper) transition drifting away from what
-// internal/handoff.DefaultPolicy() actually evaluates. The contract is a
+// internal/mission/handoff.DefaultPolicy() actually evaluates. The contract is a
 // human-maintained document — nothing parses it into the running policy — so
 // a one-sided edit on either side previously went uncaught (see
 // .analysis/archived/20260928-avaliar-pending-items-relevance-adr.md and its

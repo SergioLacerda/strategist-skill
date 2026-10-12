@@ -261,7 +261,7 @@ func TestNoRootLevelProviderLookupInCode(t *testing.T) {
 	// These files contain the resolver logic; provider authority is catalog/custom
 	// data, with native roles in the roles/ directory.
 	files := []string{
-		filepath.Join(repoRoot(t), "internal", "check", "check.go"),
+		filepath.Join(repoRoot(t), "internal", "cli", "check", "check.go"),
 		filepath.Join(repoRoot(t), "internal", "dojo", "checker.go"),
 	}
 

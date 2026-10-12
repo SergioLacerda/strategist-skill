@@ -7,9 +7,9 @@ applies_when:
   - "A mission produced or an operator verified a reusable agent procedure that should become a runbook"
   - "An OA-RUNBOOK side quest or a runbook candidate (RB-<mission_id>) is surfaced at the Approval Gate"
   - "Someone asks how a runbook is produced, promoted, given a typed sidecar and made selectable"
-  - "A materialized runbook (<mission_id>-runbook.md with a .meta.json sidecar) needs review and promotion"
+  - "A materialized runbook (<mission_id>-runbook.md with a typed .runbook.yaml sidecar) needs review"
 
-objective: Turn a verified reusable procedure into a runbook with a typed sidecar that the selector offers, following the system's current lifecycle and recording the open decisions honestly.
+objective: Turn a verified reusable procedure into a runbook with a typed sidecar that the selector offers, following the system's current lifecycle and its implemented sidecar, root, and naming decisions.
 
 preconditions:
   - "The procedure was verified against real command output or current file content in the mission"
@@ -29,8 +29,8 @@ decision_gates:
     statement: "The OA-RUNBOOK side quest was explicitly accepted or declined at the Approval Gate; nothing is materialized without acceptance"
   - id: sidecar-validates-and-is-selectable
     statement: "The typed sidecar parses and the selector offers the runbook for one of its own signals"
-  - id: open-decisions-are-not-presented-as-implemented
-    statement: "D1 (typed sidecar as the format) and D2 (select_runbook uses the configured root) are decided but not implemented; the runbook states the manual promotion step until they are"
+  - id: implementation-boundary-is-honored
+    statement: "D1 (typed sidecar as the format), D2 (configured-root lookup with legacy fallback), and D3 (identity-aligned naming) are implemented; production lookup remains JEWELER-mediated"
 
 checks:
   - id: duplicate-check-run

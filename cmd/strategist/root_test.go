@@ -95,7 +95,7 @@ func TestExecute_ErrorPath(t *testing.T) {
 
 func TestPersistentPreRunE_HumanStatusCommandSuppressesBanner(t *testing.T) {
 	// Any *cobra.Command named "check" exercises the human-status silent
-	// path via isHumanStatusCommand — the real internal/check.CheckCmd is
+	// path via isHumanStatusCommand — the real internal/cli/check.CheckCmd is
 	// not needed (this is root.go's own dispatch behavior under test, not
 	// check's).
 	chdirForTest(t, t.TempDir())

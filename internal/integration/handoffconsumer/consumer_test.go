@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/credential"
@@ -19,6 +18,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/integration/mechanism"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/policy"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/transport"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/stretchr/testify/require"
 )
 

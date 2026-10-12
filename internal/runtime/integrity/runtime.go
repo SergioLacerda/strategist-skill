@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
-	"github.com/SergioLacerda/strategist-skill/internal/hardening"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/hardening"
 )
 
 // RuntimeResult is the unified outcome for compiled runtime integrity.

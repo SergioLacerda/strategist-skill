@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/gatecriteria"
 	missionview "github.com/SergioLacerda/strategist-skill/internal/mission/view"
 	"github.com/stretchr/testify/require"
 )

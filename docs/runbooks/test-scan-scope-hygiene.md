@@ -106,8 +106,8 @@ cause applies:
   so `cmd.CombinedOutput()`/`cmd.Wait()` blocks until it exits on its own.
   The test's own configured timeout may be correctly short (e.g. 300ms);
   the wall-clock cost comes entirely from waiting out the orphan's real
-  runtime. See `internal/check/check_ranked_readiness_test.go:539` and
-  `internal/check/check_ranked_host_node.go:30-40` for a concrete instance.
+  runtime. See `internal/cli/check/check_ranked_readiness_test.go:539` and
+  `internal/cli/check/check_ranked_host_node.go:30-40` for a concrete instance.
 - **Repeated real, full-fidelity I/O or subprocess work by design**: several
   tests in `cmd/strategist` each pay a real ~1.5s cost (full embedded-tree
   extraction, install/upgrade/rollback, or a real `go test` subprocess

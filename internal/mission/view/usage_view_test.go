@@ -130,6 +130,38 @@ func TestBuildUsageAppliesObservedUsageToRowsAndTotal(t *testing.T) {
 	assert.Equal(t, 1, tl.Coverage.InvocationsMissing)
 }
 
+func TestBuildUsageProjectsTokensIntoLifecycleRunDetails(t *testing.T) {
+	first := inc("a", "REFINEMENT", "inv-1", 1, n(100), n(10), "2026-10-10T10:30:00Z")
+	first.PhaseRunID = "r1"
+	second := inc("b", "REFINEMENT", "inv-2", 1, n(200), n(20), "2026-10-10T10:40:00Z")
+	second.PhaseRunID = "r2"
+
+	lifecycle := fullPipeline()
+	lifecycle = append(lifecycle[:9], append([]telemetry.MissionLifecycleRecord{
+		lr("phase_started", "REFINEMENT", "r2", "", "2026-10-10T11:01:00Z"),
+		lr("phase_ended", "REFINEMENT", "r2", "completed", "2026-10-10T11:02:00Z"),
+	}, lifecycle[9:]...)...)
+	v := BuildUsage(UsageInput{Status: doneStatus(), Lifecycle: lifecycle, Usage: []telemetry.MissionUsageRecord{first, second}})
+	runs := rowFor(t, v.PhaseTimeline, "REFINEMENT").RunDetails
+	require.Len(t, runs, 2)
+	assert.Equal(t, int64(100), *runs[0].Tokens.Input)
+	assert.Equal(t, int64(200), *runs[1].Tokens.Input)
+	assert.Equal(t, "reported_unverified", runs[0].Quality)
+	assert.Equal(t, int64(300), *rowFor(t, v.PhaseTimeline, "REFINEMENT").Tokens.Input)
+}
+
+func TestBuildUsageLeavesUnknownRunUsageOutOfLifecycleDetails(t *testing.T) {
+	unknown := inc("unknown", "REFINEMENT", "inv-unknown", 1, n(100), n(10), "2026-10-10T10:30:00Z")
+	unknown.PhaseRunID = "missing-run"
+
+	v := BuildUsage(UsageInput{Status: doneStatus(), Lifecycle: fullPipeline(), Usage: []telemetry.MissionUsageRecord{unknown}})
+	runs := rowFor(t, v.PhaseTimeline, "REFINEMENT").RunDetails
+	require.Len(t, runs, 1)
+	assert.Nil(t, runs[0].Tokens.Input)
+	assert.Equal(t, QualityUnavailable, runs[0].Quality)
+	assert.Equal(t, int64(100), *rowFor(t, v.PhaseTimeline, "REFINEMENT").Tokens.Input)
+}
+
 func TestBuildUsageUsageAppliesEvenWithoutALifecycleLedger(t *testing.T) {
 	usage := []telemetry.MissionUsageRecord{inc("a", "DISCOVERY", "inv_1", 1, n(10), n(1), "2026-10-10T10:10:00Z")}
 	v := BuildUsage(UsageInput{Status: doneStatus(), Usage: usage})

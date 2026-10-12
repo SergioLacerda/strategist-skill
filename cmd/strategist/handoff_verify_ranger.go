@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/spf13/cobra"
 )
 

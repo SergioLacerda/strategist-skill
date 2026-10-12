@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/check"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/check"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/install"

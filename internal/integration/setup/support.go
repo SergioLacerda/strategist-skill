@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/credential"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/handoffconsumer"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 )
 
 // DataCategories lists the contract fields a handoff pre-check may send, the

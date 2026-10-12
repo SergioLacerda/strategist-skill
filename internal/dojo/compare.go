@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 )
 
 // CompareRow is the mean probability of accept of one operator level in two cases.

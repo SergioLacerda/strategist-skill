@@ -18,7 +18,7 @@
 //  3. root + a component read from external/untrusted content (a workspace
 //     config value, a chest entry, CLI/wizard input echoed into a path).
 //     This is the real G304 risk category — these call sites should route
-//     through SafeJoin or SafeJoinExisting (see internal/cliutil.ResolveActiveBasePath
+//     through SafeJoin or SafeJoinExisting (see internal/cli/cliutil.ResolveActiveBasePath
 //     and internal/install's ensureGitignore for worked examples). Any new
 //     call site that builds a path from data the process did not itself
 //     enumerate belongs in this category.

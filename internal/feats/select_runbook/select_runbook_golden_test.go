@@ -128,9 +128,15 @@ func TestSelect_GoldenAgainstRealRunbookFixtures(t *testing.T) {
 			wantMatch:   true,
 		},
 		{
-			name:        "verifying_implemented_demands: implementation evaluation signals match the declared sidecar",
+			name:        "verifying_implemented_demands: evaluation alias matches the declared sidecar signal",
 			sidecarFile: "verifying-implemented-demands.runbook.yaml",
-			signals:     MissionSignals{"implementation_evaluation", "telemetry", "gate-quality-criterion", "sniper", "archivist"},
+			signals:     MissionSignals{"evaluation"},
+			wantMatch:   true,
+		},
+		{
+			name:        "verifying_implemented_demands: implementation evaluation alias matches the declared sidecar signal",
+			sidecarFile: "verifying-implemented-demands.runbook.yaml",
+			signals:     MissionSignals{"implementation_evaluation"},
 			wantMatch:   true,
 		},
 		{

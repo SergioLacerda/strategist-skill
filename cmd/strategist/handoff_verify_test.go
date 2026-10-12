@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ import (
 )
 
 // errorWriter always fails writes, for exercising output-error branches.
-// internal/check carries its own duplicate (Go test helpers aren't
+// internal/cli/check carries its own duplicate (Go test helpers aren't
 // shareable across package boundaries) since the treasure-chest precedent
 // (20260806-treasure-chest-cmd-consolidation) established the pattern.
 type errorWriter struct{}

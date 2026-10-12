@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/refinement"
 )
 
 // EmbeddedRefinementRequest is the application-owned input for publishing one

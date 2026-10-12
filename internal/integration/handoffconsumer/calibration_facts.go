@@ -1,6 +1,6 @@
 package handoffconsumer
 
-import "github.com/SergioLacerda/strategist-skill/internal/calibration"
+import "github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 
 // CalibrationFacts are the content-free facts a display shows about a
 // calibration: which judge it is for, how much it stands on and how the

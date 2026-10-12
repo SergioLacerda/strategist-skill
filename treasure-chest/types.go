@@ -157,7 +157,7 @@ type ChallengeTemplate struct {
 	// single value, since one failure pattern can recur across transitions.
 	AppliesTo []string `yaml:"applies_to" json:"applies_to"`
 	// Type is a challenge type string. Deliberately not validated against
-	// internal/handoff's type constants here — internal packages depend
+	// internal/mission/handoff's type constants here — internal packages depend
 	// only on internal/domain, never on a peer (see
 	// internal/domain/architecture_test.go's TestLateralIsolation) — so
 	// this package owns its own copy of the allowed value set.

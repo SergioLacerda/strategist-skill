@@ -6,7 +6,7 @@ import (
 
 	levelingapp "github.com/SergioLacerda/strategist-skill/internal/application/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	leveling "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/stretchr/testify/require"
 )

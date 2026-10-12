@@ -12,11 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/handoffconsumer"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/jev/jevtest"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"

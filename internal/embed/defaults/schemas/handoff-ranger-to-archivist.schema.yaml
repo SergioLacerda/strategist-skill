@@ -210,7 +210,7 @@ required_fields:
       each was read. Consumed by contracts/machine/handoff-contract.yaml to decide
       whether Archivist may reopen a source or must treat it as already covered.
       The key must be present in the frontmatter; an empty list means discovery opened
-      no source. Enforced by internal/handoff.ValidateRangerArtifact.
+      no source. Enforced by internal/mission/handoff.ValidateRangerArtifact.
   weapon_invocation:
     type: object
     required: false

@@ -188,6 +188,8 @@ func TestEmbeddedDefaults_ArchivistAndProtocolPreserveAutonomousPrivateRuntimeCo
 	assert.Contains(t, string(protocol), "AUTONOMY AND WEAPON AUTHORITY")
 	assert.Contains(t, string(protocol), "deterministic transition")
 	assert.Contains(t, string(protocol), "global skill with the same")
+	assert.Contains(t, string(protocol), "exactly one open run for that phase")
+	assert.Contains(t, string(protocol), "Never infer a run from a phase")
 
 	refinement, err := extractor.ReadFile("contracts/narrative/04-refinement.md")
 	require.NoError(t, err)

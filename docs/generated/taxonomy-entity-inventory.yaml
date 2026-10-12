@@ -252,7 +252,7 @@ entities:
   - .strategist/contracts/machine/mechanisms.yaml
 - family: mechanism
   id: handoff_challenge
-  owner: internal/handoff
+  owner: internal/mission/handoff
   lifecycle: active
   provenance: embedded
   source_paths:
@@ -318,7 +318,7 @@ entities:
   - .strategist/contracts/machine/mechanisms.yaml
 - family: mechanism
   id: preflight_compatibility
-  owner: internal/check
+  owner: internal/cli/check
   lifecycle: active
   provenance: embedded
   source_paths:
@@ -454,7 +454,7 @@ entities:
   - .strategist/contracts/machine/mechanisms.yaml
 - family: tool
   id: normalize_openspec
-  owner: internal/refinement
+  owner: internal/mission/refinement
   lifecycle: active
   provenance: embedded
   source_paths:

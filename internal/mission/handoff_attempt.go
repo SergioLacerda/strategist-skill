@@ -3,7 +3,7 @@ package mission
 import (
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 )
 
 // nextHandoffAttempt numbers a new evaluation after a failed or explicitly

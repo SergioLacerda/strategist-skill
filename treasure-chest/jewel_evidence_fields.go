@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/treasure-chest/domain"
 )
 
 // validateJewelEvidenceFields checks the additive evidence_class/
 // evidence_confidence/valid_until fields: each is independently optional,
-// but when set must be a value domain.Evidence's own vocabulary (or, for
+// but when set must be a value domain's own vocabulary (or, for
 // valid_until, RFC3339) already recognizes.
 func validateJewelEvidenceFields(j Jewel) error {
 	if err := validateJewelEvidenceClass(j); err != nil {

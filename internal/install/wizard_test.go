@@ -184,7 +184,7 @@ func TestRunWizard(t *testing.T) {
 			wantExecMode:    domain.SlotBindingModeCustom,
 			wantChestPath:   "",
 			wantADRRoot:     ".analysis/adr",
-			wantRunbookRoot: ".analysis/runbooks",
+			wantRunbookRoot: "docs/runbooks",
 		},
 		{
 			name:           "en ui, custom languages and slots with chest",
@@ -220,7 +220,7 @@ func TestRunWizard(t *testing.T) {
 			wantExecMode:    domain.SlotBindingModeCustom,
 			wantChestPath:   "",
 			wantADRRoot:     "adr",
-			wantRunbookRoot: "runbooks",
+			wantRunbookRoot: "docs/runbooks",
 		},
 	}
 
@@ -274,7 +274,7 @@ func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
 	assert.Equal(t, "epic", wc.Mode)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
 	assert.Equal(t, ".analysis/adr", wc.AdrCanonicalPath)
-	assert.Equal(t, ".analysis/runbooks", wc.RunbookCanonicalPath)
+	assert.Equal(t, "docs/runbooks", wc.RunbookCanonicalPath)
 }
 
 func TestValidateWizardRoleBindings_ReportsTheFailingEntrysResolutionError(t *testing.T) {

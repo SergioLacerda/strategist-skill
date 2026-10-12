@@ -22,11 +22,15 @@ const (
 
 // PhaseRun is one run of a canonical phase.
 type PhaseRun struct {
-	Phase     string  `json:"phase"`
-	RunID     string  `json:"run_id"`
-	StartedAt string  `json:"started_at"`
-	EndedAt   *string `json:"ended_at"`
-	EndReason string  `json:"end_reason,omitempty"`
+	Phase            string         `json:"phase"`
+	RunID            string         `json:"run_id"`
+	StartedAt        string         `json:"started_at"`
+	EndedAt          *string        `json:"ended_at"`
+	EndReason        string         `json:"end_reason,omitempty"`
+	Tokens           PhaseTokens    `json:"tokens"`
+	Quality          string         `json:"quality"`
+	Observations     int            `json:"observations"`
+	QualityBreakdown map[string]int `json:"quality_breakdown,omitempty"`
 }
 
 // PhaseRow is one display row of the timeline.

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"

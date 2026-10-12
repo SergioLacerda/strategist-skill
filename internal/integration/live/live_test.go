@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/credential"
@@ -23,6 +22,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/integration/probe"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/setup"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/transport"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )

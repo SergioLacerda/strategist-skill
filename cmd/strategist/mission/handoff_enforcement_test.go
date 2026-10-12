@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	mission "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

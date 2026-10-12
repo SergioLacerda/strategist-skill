@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
-	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/gatecriteria"
 	"github.com/spf13/cobra"
 )
 

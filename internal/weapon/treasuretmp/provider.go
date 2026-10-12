@@ -99,6 +99,9 @@ func load(root string) (index, error) {
 	if err != nil {
 		return index{}, fmt.Errorf("load governed chests: %w", err)
 	}
+	if err := validateRunbookSourceConsistency(root, governed); err != nil {
+		return index{}, fmt.Errorf("treasure-chest-tmp: runbook source consistency: %w", err)
+	}
 	jewels, err := treasure.LoadJewels(root, governed)
 	if err != nil {
 		return index{}, fmt.Errorf("load jewels: %w", err)

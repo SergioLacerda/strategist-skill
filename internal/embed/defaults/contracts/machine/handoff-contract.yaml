@@ -136,7 +136,7 @@ handoff_verification_policy:
   signal_derivation:
     description: >
       require_when/skip_when predicates are derived from the validated refined package by
-      one extractor (internal/handoff.ExtractRiskSignals), never from a coarse risk label
+      one extractor (internal/mission/handoff.ExtractRiskSignals), never from a coarse risk label
       or a caller-supplied flag.
     sources:
       implementation_handoff_present: task_type of each tasks.md / implementation_plan item
@@ -196,7 +196,7 @@ sniper_to_validation_policy:
     reconciliação", see .analysis/refined/20260805-quiz-handoff-challenge-evaluation/):
     after Sniper materializes documentation, a validation/reconciliation pass would
     confirm it understood which files were meant to change and which deviations were
-    authorized. internal/handoff already implements this transition in full —
+    authorized. internal/mission/handoff already implements this transition in full —
     TransitionSniperToValidation, its own challenge-type set, SniperToValidationPolicy()
     (Enabled: false by default, matching ranger_to_archivist's own advisory-first
     posture), and `strategist handoff verify --transition sniper_to_validation` invokes

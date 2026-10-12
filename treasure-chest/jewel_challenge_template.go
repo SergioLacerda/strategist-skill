@@ -5,11 +5,11 @@ import "fmt"
 const jewelKindTemplate = "template"
 
 // allowedChallengeTemplateTypes mirrors the union of both Handoff Challenge
-// transitions' type vocabularies (internal/handoff's
+// transitions' type vocabularies (internal/mission/handoff's
 // ChallengeObjective/Boundary/Classification/Gate for archivist_to_sniper,
 // plus Recall/Boundary/Classification/Verdict for ranger_to_archivist) as
 // of design.md § Item 2's schema sketch. Duplicated here rather than
-// imported — internal/treasure must not depend on internal/handoff, a peer
+// imported — internal/treasure must not depend on internal/mission/handoff, a peer
 // package (see internal/domain/architecture_test.go's TestLateralIsolation).
 var allowedChallengeTemplateTypes = stringSet(
 	"objective", "boundary", "classification", "gate",

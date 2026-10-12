@@ -78,7 +78,7 @@ or contradictory facts fail closed; they are never inferred from a coarse risk
 label and never become an automatic skip.
 
 When one or more `require_*` facts are true, the lifecycle-owned
-`ranger_to_archivist` Handoff Challenge (`internal/handoff`,
+`ranger_to_archivist` Handoff Challenge (`internal/mission/handoff`,
 `TransitionRangerToArchivist`) verifies that Archivist correctly restated the
 artifact before refinement proceeds. Its challenge-type vocabulary is fitted
 to this handoff's actual content, not a reuse of the Archivist → Sniper MVP's

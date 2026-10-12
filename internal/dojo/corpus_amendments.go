@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 )
 
 // loadBefores reads the before snapshots of a package's amendments: the tasks

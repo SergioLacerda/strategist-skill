@@ -47,6 +47,10 @@ work.
 - Only `internal/weapon/treasuretmp` imports the root implementation in production
   code. Mission, pipeline, mechanism, and evaluation consumers use their own
   boundaries or JEWELER.
+- The provider root and `treasure-chest/domain` expose the evidence/confidence
+  vocabulary without importing Strategist `internal/` packages; a dependency
+  audit test protects this extraction boundary. The CLI adapter remains a
+  host-owned integration surface by design.
 
 ## Consequences
 

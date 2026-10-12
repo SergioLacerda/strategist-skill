@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/handoffconsumer"
 	"github.com/spf13/cobra"

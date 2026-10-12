@@ -82,3 +82,13 @@ func TestCLIProviderMaintainPreservesPostOperationReadinessEvidence(t *testing.T
 		"status --root /workspace --json",
 	}, calls)
 }
+
+func TestCLIProviderMaintainRejectsDeferredLegacyOperations(t *testing.T) {
+	provider := CLIProvider{Executable: "treasure-chest", Identity: validIdentity()}
+
+	_, err := provider.Maintain(context.Background(), MaintenanceRequest{
+		Operation: "reconcile", Root: "/workspace", Principal: "jeweler",
+		CorrelationID: "c-1", Authorization: MaintenanceGrant, IdempotencyKey: "i-1",
+	})
+	require.ErrorContains(t, err, `external CLI does not expose maintenance operation "reconcile"`)
+}

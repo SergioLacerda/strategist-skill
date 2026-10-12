@@ -9,7 +9,7 @@ import (
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	pluginsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/plugins"
 	runbookadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/runbook"
-	"github.com/SergioLacerda/strategist-skill/internal/check"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/check"
 	"github.com/spf13/cobra"
 )
 

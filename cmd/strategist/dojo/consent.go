@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
 	internaldojo "github.com/SergioLacerda/strategist-skill/internal/dojo"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 )
 
 // termFor builds the consent term of a judge-layer run: what leaves the machine,

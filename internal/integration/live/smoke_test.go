@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/probe"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -95,7 +95,7 @@ func minimalValidateRoot(t *testing.T) string {
 
 // --- runtime_profile ---
 
-// minimalPersonaYAML is also used directly by internal/check's own duplicate
+// minimalPersonaYAML is also used directly by internal/cli/check's own duplicate
 // (check_test_helpers_test.go) — kept here only for runtime_profile_test.go,
 // which is not part of the check cluster.
 const minimalPersonaYAML = `id: epic

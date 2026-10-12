@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/hostusage"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry/hostusage"
 )
 
 func observeClaudeFiles(opts ObserveUsageOptions, w hostusage.Window) (hostusage.Observation, []string, error) {

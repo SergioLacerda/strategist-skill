@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/mission/handoff"
 	preparerunbook "github.com/SergioLacerda/strategist-skill/internal/tools/prepare_runbook"
 	"gopkg.in/yaml.v3"
 )

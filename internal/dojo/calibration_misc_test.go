@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/dojo"
+	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/handoffconsumer"
 	"github.com/stretchr/testify/assert"
