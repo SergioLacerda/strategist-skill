@@ -9,6 +9,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"go.opentelemetry.io/otel/codes"
@@ -81,7 +82,7 @@ func (s Service) applyLevelingAuthority(manifest *domain.InstallManifest) error 
 }
 
 func (s Service) embeddedLevelingPolicy() (leveling.Policy, error) {
-	raw, err := s.Extractor.ReadFile("leveling.yaml")
+	raw, err := s.Extractor.ReadFile(names.LevelingPolicyPath)
 	if err != nil {
 		return leveling.Policy{}, fmt.Errorf("install: read embedded LEVELING policy: %w", err)
 	}

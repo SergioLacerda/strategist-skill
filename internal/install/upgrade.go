@@ -8,6 +8,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/SergioLacerda/strategist-skill/internal/runtime/catalog"
 )
 
@@ -106,7 +107,7 @@ func (s Service) refreshCatalogEntry(strategistDir string, entries []UpgradePlan
 
 func customizedCatalogIndex(entries []UpgradePlanEntry) int {
 	for i, entry := range entries {
-		if entry.Path == pluginCatalogPath && entry.State == domain.UpgradeCustomized {
+		if entry.Path == names.PluginCatalogPath && entry.State == domain.UpgradeCustomized {
 			return i
 		}
 	}
@@ -116,17 +117,17 @@ func customizedCatalogIndex(entries []UpgradePlanEntry) int {
 // catalogRegistryDrifted reports whether the workspace catalog's registry
 // differs from (or cannot be parsed against) the embedded one.
 func (s Service) catalogRegistryDrifted(strategistDir string) (bool, error) {
-	runtimePath, err := filesystem.SafeJoin(strategistDir, filepath.FromSlash(pluginCatalogPath))
+	runtimePath, err := filesystem.SafeJoin(strategistDir, filepath.FromSlash(names.PluginCatalogPath))
 	if err != nil {
-		return false, fmt.Errorf("upgrade: resolve %s: %w", pluginCatalogPath, err)
+		return false, fmt.Errorf("upgrade: resolve %s: %w", names.PluginCatalogPath, err)
 	}
 	workspaceRaw, err := os.ReadFile(runtimePath) //nolint:gosec // G304: SafeJoin-resolved path under the runtime root
 	if err != nil {
-		return false, fmt.Errorf("upgrade: read %s: %w", pluginCatalogPath, err)
+		return false, fmt.Errorf("upgrade: read %s: %w", names.PluginCatalogPath, err)
 	}
-	embeddedRaw, err := s.Extractor.ReadFile(pluginCatalogPath)
+	embeddedRaw, err := s.Extractor.ReadFile(names.PluginCatalogPath)
 	if err != nil {
-		return false, fmt.Errorf("upgrade: read embedded %s: %w", pluginCatalogPath, err)
+		return false, fmt.Errorf("upgrade: read embedded %s: %w", names.PluginCatalogPath, err)
 	}
 	drifted, err := catalog.CompiledRegistryDrift(workspaceRaw, embeddedRaw)
 	return drifted || err != nil, nil // an unparseable workspace catalog cannot be trusted either

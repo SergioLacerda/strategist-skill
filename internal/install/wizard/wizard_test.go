@@ -1,0 +1,322 @@
+package wizard
+
+import (
+	"context"
+	"fmt"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/onboarding"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// skillYAMLExtractor returns a synthetic skill.yaml with the given active_config values.
+type skillYAMLExtractor struct {
+	langValues []string
+	modeValues []string
+}
+
+func (s skillYAMLExtractor) Extract(_ string, _ bool) error { return nil }
+func (s skillYAMLExtractor) ReadFile(relPath string) ([]byte, error) {
+	if relPath != "skill.yaml" {
+		return nil, fmt.Errorf("skillYAMLExtractor: not found: %s", relPath)
+	}
+	langs := strings.Join(s.langValues, ", ")
+	modes := strings.Join(s.modeValues, ", ")
+	yaml := fmt.Sprintf("active_config:\n  language:\n    values: [%s]\n  mode:\n    values: [%s]\n", langs, modes)
+	return []byte(yaml), nil
+}
+
+func TestLoadSkillConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("reads lang and mode values from skill.yaml", func(t *testing.T) {
+		t.Parallel()
+		cfg := LoadSkillConfig(skillYAMLExtractor{
+			langValues: []string{"pt", "en"},
+			modeValues: []string{"pragmatic", "epic"},
+		})
+		assert.Equal(t, []string{"pt", "en"}, cfg.LangOptions)
+		assert.Equal(t, []string{"pragmatic", "epic"}, cfg.ModeOptions)
+	})
+
+	t.Run("falls back to defaults when yaml is a valid but non-mapping scalar", func(t *testing.T) {
+		t.Parallel()
+		// installtest.MinimalExtractor's default case echoes "skill.yaml\n" for this path — a
+		// bare scalar that unmarshals successfully but can't populate the struct.
+		cfg := LoadSkillConfig(installtest.MinimalExtractor{})
+		assert.Equal(t, DefaultLangOptions, cfg.LangOptions)
+		assert.Equal(t, DefaultModeOptions, cfg.ModeOptions)
+	})
+
+	t.Run("falls back to defaults when extractor.ReadFile errors", func(t *testing.T) {
+		t.Parallel()
+		cfg := LoadSkillConfig(installtest.AlwaysErrExtractor{})
+		assert.Equal(t, DefaultLangOptions, cfg.LangOptions)
+		assert.Equal(t, DefaultModeOptions, cfg.ModeOptions)
+	})
+
+	t.Run("falls back to defaults when yaml is malformed", func(t *testing.T) {
+		t.Parallel()
+		cfg := LoadSkillConfig(skillYAMLExtractor{langValues: nil, modeValues: nil})
+		assert.Equal(t, DefaultLangOptions, cfg.LangOptions)
+		assert.Equal(t, DefaultModeOptions, cfg.ModeOptions)
+	})
+}
+
+func TestNormLang(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "pt-BR", NormLang("pt"))
+	assert.Equal(t, "pt-BR", NormLang("pt-BR"))
+	assert.Equal(t, "pt-BR", NormLang("PT-BR"))
+	assert.Equal(t, "en", NormLang("en"))
+	assert.Equal(t, "fr", NormLang("fr"))
+}
+
+func TestPromptDocumentationRootsNormalizesAbsolutePathsWithinWorkspace(t *testing.T) {
+	workspace := t.TempDir()
+	prompter := &installtest.DocumentationRootPrompter{Values: []string{
+		filepath.Join(workspace, ".analysis", "adr"),
+		filepath.Join(workspace, "docs", "runbooks"),
+	}}
+
+	adr, runbooks, err := PromptDocumentationRoots(prompter, i18n.EN, filepath.Join(workspace, ".analysis"), workspace, Defaults{})
+	require.NoError(t, err)
+	assert.Equal(t, ".analysis/adr", adr)
+	assert.Equal(t, "docs/runbooks", runbooks)
+}
+
+func TestPromptDocumentationRootsRejectsAbsolutePathOutsideWorkspace(t *testing.T) {
+	workspace := t.TempDir()
+	prompter := &installtest.DocumentationRootPrompter{Values: []string{filepath.Join(t.TempDir(), "adr")}}
+
+	_, _, err := PromptDocumentationRoots(prompter, i18n.EN, ".analysis", workspace, Defaults{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "adr.canonical_path")
+	assert.ErrorContains(t, err, "selected project workspace")
+}
+
+func TestValidateProvider(t *testing.T) {
+	t.Parallel()
+
+	assert.Empty(t, ValidateProvider(plugincatalog.KnownProviderRisk, "brainstorming", "write_analysis"))
+	assert.Empty(t, ValidateProvider(plugincatalog.KnownProviderRisk, "openspec-explore", "write_analysis"))
+	assert.Contains(t, ValidateProvider(plugincatalog.KnownProviderRisk, "brainstorming", "controlled"), "preflight will block at runtime")
+	assert.Contains(t, ValidateProvider(plugincatalog.KnownProviderRisk, "unknown-provider", "write_analysis"), "slot plugin")
+	assert.Contains(t, ValidateProvider(plugincatalog.KnownProviderRisk, "unknown-provider", "write_analysis"), "known plugin catalog")
+}
+
+func TestInstallableDefaultProviders(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "brainstorming", plugincatalog.InstallableDefaultProviders["brainstorming"])
+	assert.Equal(t, "openspec-explore", plugincatalog.InstallableDefaultProviders["openspec-explore"])
+	assert.Equal(t, "openspec-propose", plugincatalog.InstallableDefaultProviders["openspec-propose"])
+}
+
+func TestRunWizard(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name            string
+		input           string
+		wantUILanguage  string
+		wantDocLang     string
+		wantChatLang    string
+		wantCodeLang    string
+		wantMode        string
+		wantBase        string
+		wantDiscovery   string
+		wantRefinement  string
+		wantExecution   string
+		wantExecMode    string
+		wantChestPath   string
+		wantADRRoot     string
+		wantRunbookRoot string
+	}{
+		{
+			name: "all defaults (empty lines)",
+			// 12 prompts: ui/doc/chat/code/mode/base/adr/runbook/discovery/refinement/execution/chest.
+			// The invalid extra value proves the removed LEVELING prompt does not consume input.
+			input:          "\n\n\n\n\n\n\n\n\n\n\n\nunexpected-leveling-answer\n",
+			wantUILanguage: "en",
+			wantDocLang:    "en",
+			wantChatLang:   "en",
+			wantCodeLang:   "en",
+			wantMode:       "epic",
+			wantBase:       ".analysis",
+			// Defaults select the embedded weapon affiliated with each fixed role.
+			wantDiscovery:   "brainstorming",
+			wantRefinement:  "openspec-propose",
+			wantExecution:   "sniper",
+			wantExecMode:    domain.SlotBindingModeCustom,
+			wantChestPath:   "",
+			wantADRRoot:     ".analysis/adr",
+			wantRunbookRoot: "docs/runbooks",
+		},
+		{
+			name:           "en ui, custom languages and slots with chest",
+			input:          "en\nen\npt-BR\nen\nepic\n/workspace\ndocs/decisions\ndocs/runbooks\nbrainstorming\narchivist\nbatata\ngovernance/source\n",
+			wantUILanguage: "en",
+			wantDocLang:    "en",
+			wantChatLang:   "pt-BR",
+			wantCodeLang:   "en",
+			wantMode:       "epic",
+			wantBase:       "/workspace",
+			wantDiscovery:  "brainstorming",
+			wantRefinement: "archivist",
+			// A non-ranked execution selection is retained as an explicit Custom
+			// binding; it is never silently replaced by the native Sniper role.
+			wantExecution:   "batata",
+			wantExecMode:    domain.SlotBindingModeCustom,
+			wantChestPath:   "governance/source",
+			wantADRRoot:     "docs/decisions",
+			wantRunbookRoot: "docs/runbooks",
+		},
+		{
+			name:            "pt-BR ui language",
+			input:           "pt-BR\nen\npt-BR\nen\npragmatic\n.\n\n\n\n\n\n\n",
+			wantUILanguage:  "pt-BR",
+			wantDocLang:     "en",
+			wantChatLang:    "pt-BR",
+			wantCodeLang:    "en",
+			wantMode:        "pragmatic",
+			wantBase:        ".",
+			wantDiscovery:   "brainstorming",
+			wantRefinement:  "openspec-propose",
+			wantExecution:   "sniper",
+			wantExecMode:    domain.SlotBindingModeCustom,
+			wantChestPath:   "",
+			wantADRRoot:     "adr",
+			wantRunbookRoot: "docs/runbooks",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			wc, err := RunWizard(context.Background(), NewTextPrompter(strings.NewReader(tt.input)), installtest.MinimalExtractor{}, "", false)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantUILanguage, wc.UILanguage)
+			assert.Equal(t, tt.wantDocLang, wc.DocLanguage)
+			assert.Equal(t, tt.wantChatLang, wc.ChatLanguage)
+			assert.Equal(t, tt.wantCodeLang, wc.CodeLanguage)
+			assert.Equal(t, tt.wantMode, wc.Mode)
+			assert.Equal(t, tt.wantBase, wc.BasePath)
+			assert.Equal(t, tt.wantDiscovery, wc.DiscoveryProvider)
+			assert.Equal(t, tt.wantRefinement, wc.RefinementProvider)
+			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)
+			assert.Equal(t, tt.wantExecMode, wc.ExecutionMode)
+			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
+			assert.Equal(t, tt.wantADRRoot, wc.AdrCanonicalPath)
+			assert.Equal(t, tt.wantRunbookRoot, wc.RunbookCanonicalPath)
+			assert.Equal(t, domain.LevelingModeAutomatic, wc.Leveling.EffectiveMode())
+		})
+	}
+}
+
+// TestRunWizardBlocksOnUnreadableCatalog covers docs/adr/0035-embedded-weapon-fallback-policy.md's
+// decision: an unreadable plugins/catalog.yaml must hard-block the wizard
+// before any prompt is shown, never silently degrade to the hardcoded
+// installableDefaultProviders/knownProviderRisk maps.
+func TestRunWizardBlocksOnUnreadableCatalog(t *testing.T) {
+	t.Parallel()
+	ext := installtest.PartialExtractor{FailPath: names.PluginCatalogPath}
+	// Empty input: if the wizard prompted even once before blocking, the
+	// reader would be exhausted and TextPrompter would return an unrelated
+	// EOF-shaped error instead of the plugin-catalog error asserted below.
+	_, err := RunWizard(context.Background(), NewTextPrompter(strings.NewReader("")), ext, "", false)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "plugin catalog")
+	assert.ErrorContains(t, err, "no longer falls back to hardcoded defaults silently")
+}
+
+func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
+	t.Parallel()
+	// Input has no legacy execution_mode / apply_workspace / git_persistence_mode / adr tokens.
+	// 12 prompts: ui/doc/chat/code/mode/base/adr/runbook/discovery/refinement/execution/chest
+	// If the wizard still prompts for execution mode or ADR, the input will be exhausted and the test errors.
+	input := "en\nen\npt-BR\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-explore\nsniper\n\n"
+	wc, err := RunWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), installtest.MinimalExtractor{}, "", false)
+	require.NoError(t, err)
+	assert.Equal(t, "epic", wc.Mode)
+	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
+	assert.Equal(t, ".analysis/adr", wc.AdrCanonicalPath)
+	assert.Equal(t, "docs/runbooks", wc.RunbookCanonicalPath)
+}
+
+func TestValidateWizardRoleBindings_ReportsTheFailingEntrysResolutionError(t *testing.T) {
+	t.Parallel()
+	preview := onboarding.RoleProviderMigrationPreview{Entries: []onboarding.RoleProviderPreviewEntry{
+		{Slot: "discovery", RoleName: "ranger", Resolved: domain.ProviderBinding{Compatibility: domain.CompatibilityResult{Compatible: true}}},
+		{Slot: "refinement", RoleName: "archivist", ResolutionError: "no compatible provider in catalog"},
+	}}
+	err := ValidateWizardRoleBindings(preview)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "slot=refinement")
+	require.ErrorContains(t, err, "role=archivist")
+	require.ErrorContains(t, err, "no compatible provider in catalog")
+}
+
+func TestValidateWizardRoleBindings_EmptyPreviewIsUnresolved(t *testing.T) {
+	t.Parallel()
+	err := ValidateWizardRoleBindings(onboarding.RoleProviderMigrationPreview{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "no complete role/provider binding")
+}
+
+func TestValidateWizardRoleBindings_ResolvedButIncompatibleWeaponFails(t *testing.T) {
+	t.Parallel()
+	preview := onboarding.RoleProviderMigrationPreview{Entries: []onboarding.RoleProviderPreviewEntry{
+		{
+			Slot:     string(domain.SlotDiscovery),
+			RoleName: "ranger",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "brainstorming"},
+				Compatibility: domain.CompatibilityResult{Compatible: false},
+			},
+		},
+		{
+			Slot:     string(domain.SlotRefinement),
+			RoleName: "archivist",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "openspec-propose"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+	}}
+	err := ValidateWizardRoleBindings(preview)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "slot=discovery")
+	require.ErrorContains(t, err, "role=ranger")
+	require.ErrorContains(t, err, "has no compatible weapon")
+}
+
+func TestValidateWizardRoleBindings_FullyResolvedAndCompatiblePasses(t *testing.T) {
+	t.Parallel()
+	preview := onboarding.RoleProviderMigrationPreview{Entries: []onboarding.RoleProviderPreviewEntry{
+		{
+			Slot:     string(domain.SlotDiscovery),
+			RoleName: "ranger",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "brainstorming"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+		{
+			Slot:     string(domain.SlotExecution),
+			RoleName: "sniper",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "sniper"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+	}}
+	require.NoError(t, ValidateWizardRoleBindings(preview))
+}

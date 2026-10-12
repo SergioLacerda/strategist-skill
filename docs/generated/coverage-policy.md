@@ -19,6 +19,16 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/stale` | 90% | staleness contract gate |
 | `internal/compile` | 95% | compiled artifact contract gate - raised to 95% (20260901-coverage-standard-95) - measured 96.1% |
 | `internal/install` | 95% | installer, Wizard workspace roots, and runtime materialization gate |
+| `internal/install/names` | 100% | shared file, path and identity names (20261012-internal-install-refactor-evaluation) |
+| `internal/install/support` | 78% | atomic writes, .gitignore entries and slice helpers split from internal/install - measured 78.8% |
+| `internal/install/plugincatalog` | 75% | plugin catalog model split from internal/install - measured 75.8%; most flows are exercised through the root installer tests |
+| `internal/install/embeddedweapon` | 93% | embedded Weapon ingestion, mirror and lock split from internal/install - measured 93.1% |
+| `internal/install/sidecar` | 90% | sidecar scaffold split from internal/install - measured 90.8% |
+| `internal/install/customprovider` | 85% | Custom provider resolution split from internal/install - measured 85.1% |
+| `internal/install/rankedbinding` | 78% | Ranked binding and private runtime split from internal/install - measured 78.3% |
+| `internal/install/onboarding` | 91% | plugin onboarding and role/provider migration split from internal/install - measured 91.0% |
+| `internal/install/activeyaml` | 73% | active.yaml sections split from internal/install - measured 73.8% |
+| `internal/install/wizard` | 79% | interactive install Wizard split from internal/install - measured 79.9% |
 | `internal/embed` | 95% | embedded defaults availability gate - raised to 95% (20260901-coverage-standard-95) - measured 96.5% |
 | `internal/filesystem/filelock` | 95% | cross-platform exclusive file-lock primitive used by ledger writers |
 | `internal/telemetry` | 90% | governance telemetry gate |
@@ -125,3 +135,4 @@ These production packages are present in the inventory but intentionally have no
 | `cmd/strategist/plugins` | quality-maintainers | adapter extraction (cmd-plugins-extraction) pending a dedicated package-local coverage budget; measured 84.9% on 2026-09-22 |
 | `internal/integration/jev/jevtest` | quality-maintainers | test-only simulated JEV provider; exercised by the jev and mechanism suites, never imported by production code |
 | `internal/integration/live` | quality-maintainers | opt-in live provider check: only build-tagged (live) tests, no production code, never part of the default suite |
+| `internal/install/installtest` | quality-maintainers | test fixtures shared by the install packages tests; imported by tests only |

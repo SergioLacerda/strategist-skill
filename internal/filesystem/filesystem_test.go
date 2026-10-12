@@ -22,6 +22,18 @@ func TestExists(t *testing.T) {
 	assert.True(t, filesystem.Exists(dir))
 }
 
+func TestIsMissingPathDistinguishesMissingAncestorsFromFileAncestors(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	assert.True(t, filesystem.IsMissingPath(filepath.Join(dir, "missing", "file"), os.ErrNotExist))
+
+	blocker := filepath.Join(dir, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+	assert.False(t, filesystem.IsMissingPath(filepath.Join(blocker, "file"), os.ErrNotExist))
+	assert.False(t, filesystem.IsMissingPath(filepath.Join(dir, "file"), os.ErrPermission))
+}
+
 func TestPathResolverCanonicalizesAndComparesDirectories(t *testing.T) {
 	t.Parallel()
 

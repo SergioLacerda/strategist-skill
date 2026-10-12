@@ -8,11 +8,14 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/install/activeyaml"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"go.opentelemetry.io/otel/codes"
 	"golang.org/x/term"
-
-	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // applyConfig writes active.yaml either from the epic template (silent) or
@@ -36,13 +39,13 @@ func (s Service) applyConfig(ctx context.Context, strategistDir string, cfg doma
 		if err := s.applySilentConfig(ctx, strategistDir, cfg); err != nil {
 			return err
 		}
-		return applyIntegrationChoice(strategistDir, cfg.Integration)
+		return wizard.ApplyIntegrationChoice(strategistDir, cfg.Integration) //nolint:wrapcheck // sibling package of the same module; its error already carries the integration context
 	}
 	return s.applyWizardConfig(ctx, strategistDir, cfg.Verbose)
 }
 
 func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg domain.InstallConfig) error {
-	activeYAMLPath := filepath.Join(strategistDir, activeYAMLName)
+	activeYAMLPath := filepath.Join(strategistDir, names.ActiveYAMLName)
 	exists := filesystem.Exists(activeYAMLPath)
 	if exists && !cfg.ResetConfig {
 		return nil // preserve user customizations; --force only repairs the runtime
@@ -62,14 +65,14 @@ func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg 
 	}
 	// Route through writeActiveYAMLBytes so silent installs seal .config.lock the
 	// same way wizard installs do — a silent install must never start unlocked.
-	if err := writeActiveYAMLBytes(strategistDir, data); err != nil {
+	if err := activeyaml.WriteActiveYAMLBytes(strategistDir, data); err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
 	return s.activateSilentBindings(strategistDir, data)
 }
 
 // configurationFiles are the user-owned files a reset rewrites.
-var configurationFiles = []string{activeYAMLName, pluginLockFileName, ".config.lock"}
+var configurationFiles = []string{names.ActiveYAMLName, names.PluginLockFileName, names.ConfigLockName}
 
 // backUpConfiguration copies the configuration files to a new timestamped
 // directory of the upgrade backup area, where `strategist upgrade --rollback`
@@ -82,11 +85,11 @@ func (s Service) backUpConfiguration(strategistDir string) error {
 }
 
 func (s Service) readNormalizedSilentConfig() ([]byte, error) {
-	data, err := s.Extractor.ReadFile(epicStandaloneTemplatePath)
+	data, err := s.Extractor.ReadFile(names.EpicStandaloneTemplatePath)
 	if err != nil {
 		return nil, fmt.Errorf("install: read template: %w", err)
 	}
-	data, err = normalizeStandaloneLanguage(data)
+	data, err = activeyaml.NormalizeStandaloneLanguage(data)
 	if err != nil {
 		return nil, fmt.Errorf("install: normalize language: %w", err)
 	}
@@ -115,18 +118,18 @@ func (s Service) activateSilentBindings(strategistDir string, data []byte) error
 
 func (s Service) applyWizardConfig(ctx context.Context, strategistDir string, verbose bool) error {
 	p := s.resolvePrompter()
-	wc, err := runWizard(ctx, p, s.Extractor, strategistDir, verbose)
+	wc, err := wizard.RunWizard(ctx, p, s.Extractor, strategistDir, verbose)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
 	}
 	// The wizard replaces active.yaml from its answers; what it replaces is
 	// backed up first so `strategist upgrade --rollback` can restore it.
-	if filesystem.Exists(filepath.Join(strategistDir, activeYAMLName)) {
+	if filesystem.Exists(filepath.Join(strategistDir, names.ActiveYAMLName)) {
 		if err := s.backUpConfiguration(strategistDir); err != nil {
 			return err
 		}
 	}
-	if err := writeActiveYAML(strategistDir, wc); err != nil {
+	if err := activeyaml.WriteActiveYAML(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write active.yaml: %w", err)
 	}
 	return s.persistWizardConfig(strategistDir, wc)
@@ -134,25 +137,25 @@ func (s Service) applyWizardConfig(ctx context.Context, strategistDir string, ve
 
 func (s Service) persistWizardConfig(strategistDir string, wc domain.WizardConfig) error {
 	if len(wc.ResolvedPluginLock.Bindings) > 0 {
-		if err := writePluginLockFile(strategistDir, wc.ResolvedPluginLock); err != nil {
+		if err := plugincatalog.WritePluginLockFile(strategistDir, wc.ResolvedPluginLock); err != nil {
 			return fmt.Errorf("install: write plugins.lock: %w", err)
 		}
 	}
-	if err := writeKnowledgeIndexSource(strategistDir, wc); err != nil {
+	if err := activeyaml.WriteKnowledgeIndexSource(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write knowledge.index.yaml: %w", err)
 	}
-	if err := writeTreasureChestManifest(strategistDir, wc); err != nil {
+	if err := activeyaml.WriteTreasureChestManifest(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write treasure-chests.yaml: %w", err)
 	}
 	if err := persistGovernanceState(strategistDir, wc.GovernancePolicy, wc.PermissionGrants); err != nil {
 		return fmt.Errorf("install: write governance state: %w", err)
 	}
-	return applyIntegrationChoice(strategistDir, wc.IntegrationChoice)
+	return wizard.ApplyIntegrationChoice(strategistDir, wc.IntegrationChoice) //nolint:wrapcheck // sibling package of the same module; its error already carries the integration context
 }
 
 // resolvePrompter returns the Prompter to use for wizard mode.
 // Precedence: WizardPrompter (explicit) → TUIPrompter (TTY) → TextPrompter (non-TTY).
-func (s Service) resolvePrompter() Prompter {
+func (s Service) resolvePrompter() wizard.Prompter {
 	if s.WizardPrompter != nil {
 		return s.WizardPrompter
 	}
@@ -163,7 +166,7 @@ func (s Service) resolvePrompter() Prompter {
 	if isTTY() {
 		newTUI := s.tuiPrompterFn
 		if newTUI == nil {
-			newTUI = NewTUIPrompter
+			newTUI = wizard.NewTUIPrompter
 		}
 		return newTUI()
 	}
@@ -171,5 +174,5 @@ func (s Service) resolvePrompter() Prompter {
 	if stdin == nil {
 		stdin = os.Stdin
 	}
-	return NewTextPrompter(stdin)
+	return wizard.NewTextPrompter(stdin)
 }

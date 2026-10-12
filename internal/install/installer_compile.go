@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
 func (s Service) compileAfterInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string) error {
-	kiPath := filepath.Join(strategistDir, knowledgeIndexName)
+	kiPath := filepath.Join(strategistDir, names.KnowledgeIndexName)
 	if compileErr := s.Compiler.CompileAll(strategistDir, kiPath); compileErr != nil {
 		if cfg.StrictCompile {
 			return fmt.Errorf("install: strict compile: %w", compileErr)

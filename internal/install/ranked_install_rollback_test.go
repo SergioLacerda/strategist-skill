@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/rankedbinding"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/SergioLacerda/strategist-skill/internal/runtime/env"
 	"github.com/stretchr/testify/require"
 )
@@ -26,13 +28,13 @@ func withoutHostOpenSpec(t *testing.T) {
 // tests without putting Node or OpenSpec on the developer machine's PATH.
 func registerFakeHostNode(t *testing.T, workspace string) {
 	t.Helper()
-	originalFind, originalVersion, originalRun := findHostNode, hostNodeVersion, runRankedRuntimeCommand
+	originalFind, originalVersion, originalRun := rankedbinding.FindHostNode, rankedbinding.HostNodeVersion, rankedbinding.RunRankedRuntimeCommand
 	t.Cleanup(func() {
-		findHostNode, hostNodeVersion, runRankedRuntimeCommand = originalFind, originalVersion, originalRun
+		rankedbinding.FindHostNode, rankedbinding.HostNodeVersion, rankedbinding.RunRankedRuntimeCommand = originalFind, originalVersion, originalRun
 	})
-	findHostNode = func(string) (string, error) { return filepath.Join(workspace, "fake-node"), nil }
-	hostNodeVersion = func(context.Context, string, string) ([]byte, error) { return []byte("v20.19.0\n"), nil }
-	runRankedRuntimeCommand = fakeRankedRuntimeCommand(workspace)
+	rankedbinding.FindHostNode = func(string) (string, error) { return filepath.Join(workspace, "fake-node"), nil }
+	rankedbinding.HostNodeVersion = func(context.Context, string, string) ([]byte, error) { return []byte("v20.19.0\n"), nil }
+	rankedbinding.RunRankedRuntimeCommand = fakeRankedRuntimeCommand(workspace)
 }
 
 // fakeRankedRuntimeCommand stands in for the OpenSpec CLI: `init` scaffolds the
@@ -64,7 +66,7 @@ func fakeOpenSpecInit(commandDir string) error {
 }
 
 func rankedInstall(dir string) error {
-	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(rankedWizardInput)), ShimHomeDir: filepath.Join(dir, "shim-home")}
+	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(rankedWizardInput)), ShimHomeDir: filepath.Join(dir, "shim-home")}
 	return svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 }
 

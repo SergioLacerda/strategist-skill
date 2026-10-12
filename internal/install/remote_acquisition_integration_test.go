@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/embeddedweapon"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/acquisition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +41,7 @@ func TestRemoteAcquisitionCanBeManuallyPromotedIntoExistingIngestion(t *testing.
 	promotedRoot := t.TempDir()
 	promotedPackage := filepath.Join(promotedRoot, "acquired-skill")
 	copyRemotePackage(t, acquired.QuarantinePath, promotedPackage)
-	result, err := IngestExternalSkills(promotedRoot, pluginCatalog{SchemaVersion: "v1"}, domain.TrustPolicy{})
+	result, err := embeddedweapon.IngestExternalSkills(promotedRoot, plugincatalog.PluginCatalog{SchemaVersion: "v1"}, domain.TrustPolicy{})
 	require.NoError(t, err)
 	require.Len(t, result.Ingested, 1)
 	assert.Equal(t, "acquired-skill", result.Ingested[0].ID)

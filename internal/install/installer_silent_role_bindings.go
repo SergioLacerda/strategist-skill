@@ -5,6 +5,9 @@ import (
 	"os"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/onboarding"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
+	"github.com/SergioLacerda/strategist-skill/internal/install/rankedbinding"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,7 +22,7 @@ func (s Service) refreshInstalledRankedBindings(strategistDir string) error {
 	if !ok {
 		return nil
 	}
-	catalog, err := loadPluginCatalog(s.Extractor)
+	catalog, err := plugincatalog.LoadPluginCatalog(s.Extractor)
 	if err != nil {
 		return fmt.Errorf("load plugin catalog: %w", err)
 	}
@@ -27,14 +30,14 @@ func (s Service) refreshInstalledRankedBindings(strategistDir string) error {
 	if err != nil {
 		return err
 	}
-	if err := writePluginLockFile(strategistDir, refreshed); err != nil {
+	if err := plugincatalog.WritePluginLockFile(strategistDir, refreshed); err != nil {
 		return fmt.Errorf("write plugins.lock: %w", err)
 	}
 	return nil
 }
 
 func readRankedRefreshLock(strategistDir string) (domain.PluginLockFile, bool, error) {
-	lockFile, err := readPluginLockFile(strategistDir)
+	lockFile, err := plugincatalog.ReadPluginLockFile(strategistDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return domain.PluginLockFile{}, false, nil
@@ -44,12 +47,12 @@ func readRankedRefreshLock(strategistDir string) (domain.PluginLockFile, bool, e
 	return lockFile, hasPersistedRankedBinding(lockFile), nil
 }
 
-func refreshRankedLock(catalog pluginCatalog, lockFile domain.PluginLockFile) (domain.PluginLockFile, error) {
-	refreshed, err := refreshPersistedRankedBindings(catalog, lockFile)
+func refreshRankedLock(catalog plugincatalog.PluginCatalog, lockFile domain.PluginLockFile) (domain.PluginLockFile, error) {
+	refreshed, err := rankedbinding.RefreshPersistedRankedBindings(catalog, lockFile)
 	if err != nil {
-		return domain.PluginLockFile{}, err
+		return domain.PluginLockFile{}, err //nolint:wrapcheck // sibling package of the same module; its error already names the binding
 	}
-	return attachWeaponBindingArtifacts(refreshed)
+	return rankedbinding.AttachWeaponBindingArtifacts(refreshed) //nolint:wrapcheck // sibling package of the same module; its error already names the binding
 }
 
 func hasPersistedRankedBinding(lockFile domain.PluginLockFile) bool {
@@ -71,21 +74,21 @@ func (s Service) activateSilentRoleProviderBindings(strategistDir string, active
 	if err != nil {
 		return err
 	}
-	lockFile, err := activateRoleProviderMigration(strategistDir, plan.Lock, plan.RoleMigration)
+	lockFile, err := onboarding.ActivateRoleProviderMigration(strategistDir, plan.Lock, plan.RoleMigration)
 	if err != nil {
 		return fmt.Errorf("activate role/provider migration: %w", err)
 	}
-	lockFile, err = promoteRuntimeProvidersToRanked(catalog, slots, lockFile)
+	lockFile, err = rankedbinding.PromoteRuntimeProvidersToRanked(catalog, slots, lockFile)
 	if err != nil {
 		return fmt.Errorf("promote ranked runtime providers: %w", err)
 	}
-	lockFile, err = enrichLockBindingMetadata(catalog, lockFile)
+	lockFile, err = rankedbinding.EnrichLockBindingMetadata(catalog, lockFile)
 	if err != nil {
 		return fmt.Errorf("enrich Role/Weapon bindings: %w", err)
 	}
-	lockFile, err = attachWeaponBindingArtifacts(lockFile)
+	lockFile, err = rankedbinding.AttachWeaponBindingArtifacts(lockFile)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // sibling package of the same module; its error already names the binding
 	}
 	if err := persistSilentBindings(strategistDir, lockFile); err != nil {
 		return err
@@ -93,26 +96,26 @@ func (s Service) activateSilentRoleProviderBindings(strategistDir string, active
 	return nil
 }
 
-func (s Service) loadSilentBindingPlan(activeYAMLData []byte) (map[string]string, pluginCatalog, pluginOnboardingPlan, error) {
+func (s Service) loadSilentBindingPlan(activeYAMLData []byte) (map[string]string, plugincatalog.PluginCatalog, onboarding.PluginOnboardingPlan, error) {
 	var cfg domain.ActiveConfig
 	if err := yaml.Unmarshal(activeYAMLData, &cfg); err != nil {
-		return nil, pluginCatalog{}, pluginOnboardingPlan{}, fmt.Errorf("parse active.yaml template: %w", err)
+		return nil, plugincatalog.PluginCatalog{}, onboarding.PluginOnboardingPlan{}, fmt.Errorf("parse active.yaml template: %w", err)
 	}
 	slots := map[string]string{
-		"discovery":  cfg.Slots["discovery"],
-		"refinement": cfg.Slots["refinement"],
-		"execution":  cfg.Slots["execution"],
+		string(domain.SlotDiscovery):  cfg.Slots[string(domain.SlotDiscovery)],
+		string(domain.SlotRefinement): cfg.Slots[string(domain.SlotRefinement)],
+		string(domain.SlotExecution):  cfg.Slots[string(domain.SlotExecution)],
 	}
-	catalog, err := loadPluginCatalog(s.Extractor)
+	catalog, err := plugincatalog.LoadPluginCatalog(s.Extractor)
 	if err != nil {
-		return nil, pluginCatalog{}, pluginOnboardingPlan{}, fmt.Errorf("load plugin catalog: %w", err)
+		return nil, plugincatalog.PluginCatalog{}, onboarding.PluginOnboardingPlan{}, fmt.Errorf("load plugin catalog: %w", err)
 	}
-	plan, err := planPluginOnboarding(s.Extractor, catalog, slots)
+	plan, err := onboarding.PlanPluginOnboarding(s.Extractor, catalog, slots)
 	if err != nil {
-		return nil, pluginCatalog{}, pluginOnboardingPlan{}, fmt.Errorf("plugin onboarding plan: %w", err)
+		return nil, plugincatalog.PluginCatalog{}, onboarding.PluginOnboardingPlan{}, fmt.Errorf("plugin onboarding plan: %w", err)
 	}
-	if err := plan.bindInstallContext(cfg.Mode, cfg.BasePath, slots, nil); err != nil {
-		return nil, pluginCatalog{}, pluginOnboardingPlan{}, fmt.Errorf("install plan context: %w", err)
+	if err := plan.BindInstallContext(cfg.Mode, cfg.BasePath, slots, nil); err != nil {
+		return nil, plugincatalog.PluginCatalog{}, onboarding.PluginOnboardingPlan{}, fmt.Errorf("install plan context: %w", err)
 	}
 	return slots, catalog, plan, nil
 }
@@ -121,7 +124,7 @@ func persistSilentBindings(strategistDir string, lockFile domain.PluginLockFile)
 	if len(lockFile.Bindings) == 0 {
 		return nil
 	}
-	if err := writePluginLockFile(strategistDir, lockFile); err != nil {
+	if err := plugincatalog.WritePluginLockFile(strategistDir, lockFile); err != nil {
 		return fmt.Errorf("write plugins.lock: %w", err)
 	}
 	return nil

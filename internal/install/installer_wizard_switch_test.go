@@ -8,6 +8,10 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,11 +46,11 @@ func (e switchWizardExtractor) Extract(targetDir string, withShim bool) error {
 	if err := e.rankedWizardExtractor.Extract(targetDir, withShim); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(targetDir, pluginCatalogPath), []byte(switchWizardCatalog()), 0o644)
+	return os.WriteFile(filepath.Join(targetDir, names.PluginCatalogPath), []byte(switchWizardCatalog()), 0o644)
 }
 
 func (switchWizardExtractor) ReadFile(relPath string) ([]byte, error) {
-	if relPath == pluginCatalogPath {
+	if relPath == names.PluginCatalogPath {
 		return []byte(switchWizardCatalog()), nil
 	}
 	return rankedWizardExtractor{}.ReadFile(relPath)
@@ -60,7 +64,7 @@ func installWithRefinementChoice(t *testing.T, dir, choice string) error {
 	t.Helper()
 	svc := Service{
 		Extractor: switchWizardExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir(),
-		WizardPrompter: NewTextPrompter(strings.NewReader(wizardInputChoosingRefinement(choice))),
+		WizardPrompter: wizard.NewTextPrompter(strings.NewReader(wizardInputChoosingRefinement(choice))),
 	}
 	return svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 }
@@ -70,9 +74,9 @@ func requireRefinement(t *testing.T, dir, provider, runtimeKind string) {
 	active, err := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(active), "refinement: "+provider)
-	lock, err := readPluginLockFile(filepath.Join(dir, ".strategist"))
+	lock, err := plugincatalog.ReadPluginLockFile(filepath.Join(dir, ".strategist"))
 	require.NoError(t, err)
-	binding, ok := findSlotBinding(lock.Bindings, "refinement")
+	binding, ok := installtest.FindSlotBinding(lock.Bindings, "refinement")
 	require.True(t, ok)
 	assert.Equal(t, provider, binding.InstalledInstanceID)
 	assert.Equal(t, domain.SlotBindingModeRanked, binding.Mode, "the Ranked choice survives persistence")

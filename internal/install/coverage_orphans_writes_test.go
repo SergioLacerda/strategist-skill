@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
+	"github.com/SergioLacerda/strategist-skill/internal/install/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +61,7 @@ func TestLockSlotsNeedingMigration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, slots)
 
-	require.NoError(t, writePluginLockFile(dir, domain.PluginLockFile{Bindings: []domain.SlotBinding{
+	require.NoError(t, plugincatalog.WritePluginLockFile(dir, domain.PluginLockFile{Bindings: []domain.SlotBinding{
 		{Slot: "discovery", Mode: domain.SlotBindingModeRanked},
 		{Slot: "refinement", Mode: domain.SlotBindingModeRanked, WeaponVersion: "1.0.0"},
 		{Slot: "execution"},
@@ -68,7 +71,7 @@ func TestLockSlotsNeedingMigration(t *testing.T) {
 	assert.Equal(t, []string{"discovery"}, slots)
 
 	broken := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(broken, pluginLockFileName), []byte("bindings: [unclosed"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(broken, names.PluginLockFileName), []byte("bindings: [unclosed"), 0o644))
 	_, err = lockSlotsNeedingMigration(broken)
 	require.ErrorContains(t, err, "upgrade: read lock")
 }
@@ -78,15 +81,15 @@ func TestAtomicWriteFileFailures(t *testing.T) {
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "file")
 	require.NoError(t, os.WriteFile(blocker, nil, 0o644))
-	require.ErrorContains(t, atomicWriteFile(filepath.Join(blocker, "x.yaml"), []byte("x"), 0o644), "mkdir parent")
+	require.ErrorContains(t, support.AtomicWriteFile(filepath.Join(blocker, "x.yaml"), []byte("x"), 0o644), "mkdir parent")
 
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "target", "child"), 0o755))
-	require.ErrorContains(t, atomicWriteFile(filepath.Join(dir, "target"), []byte("x"), 0o644), "rename into place")
+	require.ErrorContains(t, support.AtomicWriteFile(filepath.Join(dir, "target"), []byte("x"), 0o644), "rename into place")
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	for _, entry := range entries {
 		assert.NotContains(t, entry.Name(), ".tmp-", "the temporary file is cleaned up")
 	}
 
-	require.NoError(t, atomicWriteFile(filepath.Join(dir, "ok.yaml"), []byte("x"), 0o600))
+	require.NoError(t, support.AtomicWriteFile(filepath.Join(dir, "ok.yaml"), []byte("x"), 0o600))
 }

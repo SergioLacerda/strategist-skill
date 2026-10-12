@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/install"
+	"github.com/SergioLacerda/strategist-skill/internal/install/embeddedweapon"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,10 +16,10 @@ import (
 // catalog.yaml was never written, so internal/install fails fast at its first
 // read — deterministic coverage of both error branches without a real
 // external-skills-source/ fixture.
-func missingCatalogOptions(t *testing.T) install.PrepareEmbeddedOptions {
+func missingCatalogOptions(t *testing.T) embeddedweapon.PrepareEmbeddedOptions {
 	t.Helper()
 	dir := t.TempDir()
-	return install.PrepareEmbeddedOptions{
+	return embeddedweapon.PrepareEmbeddedOptions{
 		Source:       filepath.Join(dir, "external-skills-source"),
 		DefaultsRoot: filepath.Join(dir, "defaults"),
 		LockPath:     filepath.Join(dir, "lock.yaml"),
@@ -42,9 +43,9 @@ func TestRunPrepareEmbedded_WriteModeMissingCatalogErrors(t *testing.T) {
 func TestPrintPrepareEmbeddedReport_PrintsRejectedAndIngested(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	require.NoError(t, printPrepareEmbeddedReport(&out, install.PrepareEmbeddedReport{
-		Rejected: []install.IngestionRejection{{ID: "bad-skill", Reason: "missing strategist.yaml"}},
-		Ingested: []install.IngestedSkill{{ID: "good-skill", Package: domain.PluginPackage{Digest: "sha256:deadbeef"}}},
+	require.NoError(t, printPrepareEmbeddedReport(&out, embeddedweapon.PrepareEmbeddedReport{
+		Rejected: []plugincatalog.IngestionRejection{{ID: "bad-skill", Reason: "missing strategist.yaml"}},
+		Ingested: []plugincatalog.IngestedSkill{{ID: "good-skill", Package: domain.PluginPackage{Digest: "sha256:deadbeef"}}},
 	}))
 	assert.Contains(t, out.String(), "rejected bad-skill: missing strategist.yaml")
 	assert.Contains(t, out.String(), "ingested good-skill (digest=sha256:deadbeef)")
@@ -53,7 +54,7 @@ func TestPrintPrepareEmbeddedReport_PrintsRejectedAndIngested(t *testing.T) {
 func TestPrintPrepareEmbeddedReport_EmptyReportPrintsNothing(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	require.NoError(t, printPrepareEmbeddedReport(&out, install.PrepareEmbeddedReport{}))
+	require.NoError(t, printPrepareEmbeddedReport(&out, embeddedweapon.PrepareEmbeddedReport{}))
 	assert.Empty(t, out.String())
 }
 

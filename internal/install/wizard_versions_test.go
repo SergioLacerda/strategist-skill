@@ -4,14 +4,19 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/onboarding"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
+	"github.com/SergioLacerda/strategist-skill/internal/install/rankedbinding"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func versionedRangerCatalog() pluginCatalog {
-	weapon := func(version string, certified, isDefault bool) pluginCatalogProvider {
-		provider := pluginCatalogProvider{
+func versionedRangerCatalog() plugincatalog.PluginCatalog {
+	weapon := func(version string, certified, isDefault bool) plugincatalog.Provider {
+		provider := plugincatalog.Provider{
 			ID: "brainstorming", Version: version, RiskScore: "write_analysis", CanonicalRole: "ranger",
 			CompatibilitySource: "embedded", Default: isDefault,
 		}
@@ -20,7 +25,7 @@ func versionedRangerCatalog() pluginCatalog {
 		}
 		return provider
 	}
-	return pluginCatalog{Providers: []pluginCatalogProvider{
+	return plugincatalog.PluginCatalog{Providers: []plugincatalog.Provider{
 		weapon("2.0.0", true, false),
 		weapon("1.4.0", true, true),
 		weapon("2.1.0-rc1", false, false),
@@ -31,20 +36,20 @@ func versionedRangerCatalog() pluginCatalog {
 func TestCompatibleSlotOptionsListsIDAtVersionOnlyWhereSeveralVersionsExist(t *testing.T) {
 	t.Parallel()
 
-	options := compatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
+	options := plugincatalog.CompatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
 
-	assert.Equal(t, []string{"brainstorming@1.4.0", "brainstorming@2.0.0", "brainstorming@2.1.0-rc1", "solo"}, options.ids,
+	assert.Equal(t, []string{"brainstorming@1.4.0", "brainstorming@2.0.0", "brainstorming@2.1.0-rc1", "solo"}, options.IDs,
 		"a version is spelled out exactly where a plain id would be ambiguous")
-	assert.Equal(t, "brainstorming@1.4.0", options.defaultID, "the catalog's default flag pre-selects, no version is guessed")
+	assert.Equal(t, "brainstorming@1.4.0", options.DefaultID, "the catalog's default flag pre-selects, no version is guessed")
 }
 
 func TestCompatibleSlotOptionsOffersOnlyCertifiedVersionsAsRanked(t *testing.T) {
 	t.Parallel()
 
-	options := compatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
+	options := plugincatalog.CompatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
 
-	assert.Equal(t, []string{"brainstorming@1.4.0", "brainstorming@2.0.0"}, options.rankedRefs, "the uncertified 2.1.0-rc1 is Custom only")
-	assert.Equal(t, "brainstorming@1.4.0", options.rankedDefault)
+	assert.Equal(t, []string{"brainstorming@1.4.0", "brainstorming@2.0.0"}, options.RankedRefs, "the uncertified 2.1.0-rc1 is Custom only")
+	assert.Equal(t, "brainstorming@1.4.0", options.RankedDefault)
 }
 
 func TestCompatibleSlotOptionsPreselectsTheHighestCertifiedVersionWhenNoneIsDefault(t *testing.T) {
@@ -54,16 +59,16 @@ func TestCompatibleSlotOptionsPreselectsTheHighestCertifiedVersionWhenNoneIsDefa
 		catalog.Providers[i].Default = false
 	}
 
-	options := compatibleSlotOptions(catalog, "ranger", "")
+	options := plugincatalog.CompatibleSlotOptions(catalog, "ranger", "")
 
-	assert.Equal(t, "brainstorming@2.0.0", options.rankedDefault, "only a UI pre-selection: the operator still confirms it")
+	assert.Equal(t, "brainstorming@2.0.0", options.RankedDefault, "only a UI pre-selection: the operator still confirms it")
 }
 
 func TestWithRankedOptionsOffersOneRankedEntryPerCertifiedVersion(t *testing.T) {
 	t.Parallel()
-	options := compatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
+	options := plugincatalog.CompatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
 
-	menu, uiDefault := withRankedOptions(options)
+	menu, uiDefault := wizard.WithRankedOptions(options)
 
 	assert.Equal(t, []string{
 		"brainstorming@1.4.0::ranked", "brainstorming@2.0.0::ranked",
@@ -74,11 +79,11 @@ func TestWithRankedOptionsOffersOneRankedEntryPerCertifiedVersion(t *testing.T) 
 
 func TestWithRankedLabeledOptionsDistinguishesRankedAndCustomVersions(t *testing.T) {
 	t.Parallel()
-	options := compatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
+	options := plugincatalog.CompatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
 
-	menu, uiDefault := withRankedLabeledOptions(options)
+	menu, uiDefault := wizard.WithRankedLabeledOptions(options)
 
-	assert.Equal(t, []promptOption{
+	assert.Equal(t, []wizard.PromptOption{
 		{Label: "brainstorming@1.4.0 (Ranked)", Value: "brainstorming@1.4.0::ranked"},
 		{Label: "brainstorming@2.0.0 (Ranked)", Value: "brainstorming@2.0.0::ranked"},
 		{Label: "brainstorming@1.4.0 (Custom)", Value: "brainstorming@1.4.0"},
@@ -93,25 +98,25 @@ func TestSplitRankedChoiceAmongResolvesOnlyOfferedCertifiedRefs(t *testing.T) {
 	t.Parallel()
 	refs := []string{"brainstorming@1.4.0", "brainstorming@2.0.0"}
 
-	provider, mode := splitRankedChoiceAmong("brainstorming@2.0.0::ranked", refs)
+	provider, mode := wizard.SplitRankedChoiceAmong("brainstorming@2.0.0::ranked", refs)
 	assert.Equal(t, "brainstorming@2.0.0", provider)
 	assert.Equal(t, domain.SlotBindingModeRanked, mode)
 
-	provider, mode = splitRankedChoiceAmong("brainstorming@2.1.0-rc1", refs)
+	provider, mode = wizard.SplitRankedChoiceAmong("brainstorming@2.1.0-rc1", refs)
 	assert.Equal(t, "brainstorming@2.1.0-rc1", provider)
 	assert.Equal(t, domain.SlotBindingModeCustom, mode, "an uncertified version is Custom")
 
-	provider, mode = splitRankedChoiceAmong("brainstorming@9.9.9::ranked", refs)
+	provider, mode = wizard.SplitRankedChoiceAmong("brainstorming@9.9.9::ranked", refs)
 	assert.Equal(t, "brainstorming@9.9.9::ranked", provider, "a Ranked suffix on a ref that was not offered is not honored")
 	assert.Equal(t, domain.SlotBindingModeCustom, mode)
 }
 
 func TestWizardPromptWritesTheChosenVersionedRef(t *testing.T) {
 	t.Parallel()
-	options := compatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
+	options := plugincatalog.CompatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
 	prompter := &scriptedSelector{answer: "brainstorming@2.0.0::ranked"}
 
-	provider, mode, err := promptSlotOptions(prompter, "discovery?", options, "custom", map[string]string{}, "write_analysis", "discovery")
+	provider, mode, err := wizard.PromptSlotOptions(prompter, "discovery?", options, "custom", map[string]string{}, "write_analysis", "discovery")
 
 	require.NoError(t, err)
 	assert.Equal(t, "brainstorming@2.0.0", provider)
@@ -143,24 +148,24 @@ func TestOnboardingPinsTheChosenVersionInsteadOfTheHighestOne(t *testing.T) {
 	t.Parallel()
 	catalog := versionedRangerCatalog()
 
-	requirements, err := onboardingRequirements(catalog, map[string]string{"discovery": "brainstorming@1.4.0"})
+	requirements, err := onboarding.Requirements(catalog, map[string]string{"discovery": "brainstorming@1.4.0"})
 	require.NoError(t, err)
 	require.Len(t, requirements, 1)
 	assert.Equal(t, "1.4.0", requirements[0].Constraint, "an older chosen version is pinned exactly: no 'latest' selection")
 
-	lock, err := resolver.Resolve(requirements, catalogResolverCandidates(catalog))
+	lock, err := resolver.Resolve(requirements, plugincatalog.CatalogResolverCandidates(catalog))
 	require.NoError(t, err)
-	bindings, err := bindingsFromSlots(map[string]string{"discovery": "brainstorming@1.4.0"}, lock)
+	bindings, err := onboarding.BindingsFromSlots(map[string]string{"discovery": "brainstorming@1.4.0"}, lock)
 	require.NoError(t, err)
 	require.Len(t, bindings, 1)
 	assert.Equal(t, "brainstorming", lock.Nodes[0].ID)
-	assert.Equal(t, catalogProviderDigest(catalog.Providers[1]), lock.Nodes[0].Digest, "the lock node is the 1.4.0 payload, not 2.0.0")
+	assert.Equal(t, plugincatalog.CatalogProviderDigest(catalog.Providers[1]), lock.Nodes[0].Digest, "the lock node is the 1.4.0 payload, not 2.0.0")
 }
 
 func TestOnboardingRefusesAPlainIDThatHasSeveralVersions(t *testing.T) {
 	t.Parallel()
 
-	_, err := onboardingRequirements(versionedRangerCatalog(), map[string]string{"discovery": "brainstorming"})
+	_, err := onboarding.Requirements(versionedRangerCatalog(), map[string]string{"discovery": "brainstorming"})
 
 	require.ErrorContains(t, err, "unresolved_active_slot")
 	require.ErrorContains(t, err, "brainstorming@1.4.0")
@@ -169,10 +174,10 @@ func TestOnboardingRefusesAPlainIDThatHasSeveralVersions(t *testing.T) {
 
 func TestApplyRankedBindingChoicesPersistsTheChosenCertifiedVersion(t *testing.T) {
 	t.Parallel()
-	catalog := rankedVersionsCatalog("1.4.0", "2.0.0")
+	catalog := installtest.RankedVersionsCatalog("1.4.0", "2.0.0")
 	wc := domain.WizardConfig{DiscoveryProvider: "demo@1.4.0", DiscoveryMode: domain.SlotBindingModeRanked}
 
-	lock, err := applyRankedBindingChoices(catalog, wc, domain.PluginLockFile{})
+	lock, err := rankedbinding.ApplyRankedBindingChoices(catalog, wc, domain.PluginLockFile{})
 
 	require.NoError(t, err)
 	require.Len(t, lock.Bindings, 1)
@@ -183,6 +188,6 @@ func TestApplyRankedBindingChoicesPersistsTheChosenCertifiedVersion(t *testing.T
 	assert.True(t, domain.WeaponRefMatchesBinding(wc.DiscoveryProvider, binding), "the lock agrees with the active.yaml reference")
 
 	wc.DiscoveryProvider = "demo"
-	_, err = applyRankedBindingChoices(catalog, wc, domain.PluginLockFile{})
+	_, err = rankedbinding.ApplyRankedBindingChoices(catalog, wc, domain.PluginLockFile{})
 	require.ErrorContains(t, err, "several certified versions")
 }

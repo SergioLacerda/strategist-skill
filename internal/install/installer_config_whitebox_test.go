@@ -9,6 +9,11 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/activeyaml"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/support"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +21,7 @@ import (
 func TestApplyConfig_PreservesExistingActiveYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
+	svc := Service{Extractor: installtest.MinimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true}))
 
 	customContent := "mode: epic\nbase_path: .custom\n"
@@ -32,7 +37,7 @@ func TestApplyConfig_PreservesExistingActiveYAML(t *testing.T) {
 func TestApplyConfig_ResetConfigOverwritesActiveYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
+	svc := Service{Extractor: installtest.MinimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true}))
 
 	activeYAMLPath := filepath.Join(dir, ".strategist", "active.yaml")
@@ -55,14 +60,14 @@ func TestApplyConfig_ReadFileFails(t *testing.T) {
 }
 
 type templateReadErrorExtractor struct {
-	minimalExtractor
+	installtest.MinimalExtractor
 }
 
 func (e templateReadErrorExtractor) ReadFile(relPath string) ([]byte, error) {
 	if relPath == "templates/epic-standalone.yaml" {
 		return nil, fmt.Errorf("templateReadErrorExtractor: read error for %s", relPath)
 	}
-	return e.minimalExtractor.ReadFile(relPath)
+	return e.MinimalExtractor.ReadFile(relPath)
 }
 
 func TestEnsureGitignore_NoTrailingNewline(t *testing.T) {
@@ -70,7 +75,7 @@ func TestEnsureGitignore_NoTrailingNewline(t *testing.T) {
 	dir := t.TempDir()
 	gi := filepath.Join(dir, ".gitignore")
 	require.NoError(t, os.WriteFile(gi, []byte("*.log"), 0o644))
-	require.NoError(t, ensureGitignore(dir))
+	require.NoError(t, support.EnsureGitignore(dir))
 	data, err := os.ReadFile(gi)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), ".strategist/.compiled/")
@@ -81,7 +86,7 @@ func TestEnsureGitignore_AlreadyPresent(t *testing.T) {
 	dir := t.TempDir()
 	gi := filepath.Join(dir, ".gitignore")
 	require.NoError(t, os.WriteFile(gi, []byte(".strategist/.compiled/\n"), 0o644))
-	require.NoError(t, ensureGitignore(dir))
+	require.NoError(t, support.EnsureGitignore(dir))
 	data, err := os.ReadFile(gi)
 	require.NoError(t, err)
 	assert.Equal(t, 1, strings.Count(string(data), ".strategist/.compiled/"))
@@ -89,33 +94,33 @@ func TestEnsureGitignore_AlreadyPresent(t *testing.T) {
 
 func TestEnsureGitignore_OpenError(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	err := ensureGitignore(dir)
+	err := support.EnsureGitignore(dir)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "open .gitignore")
 }
 
 func TestEnsureGitignore_ReadError(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	gi := filepath.Join(dir, ".gitignore")
 	require.NoError(t, os.WriteFile(gi, []byte(""), 0o000))
 	t.Cleanup(func() { _ = os.Chmod(gi, 0o644) })
-	err := ensureGitignore(dir)
+	err := support.EnsureGitignore(dir)
 	require.Error(t, err)
 }
 
 func TestApplySilentConfig_WriteActiveYAMLBytesFails(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	s := Service{Extractor: minimalExtractor{}}
+	s := Service{Extractor: installtest.MinimalExtractor{}}
 	err := s.applySilentConfig(context.Background(), dir, domain.InstallConfig{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "install:")
@@ -123,14 +128,14 @@ func TestApplySilentConfig_WriteActiveYAMLBytesFails(t *testing.T) {
 
 func TestApplyWizardConfig_WriteActiveYAMLFails(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	writeWizardLevelingFixture(t, dir)
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 	s := Service{
-		Extractor:      minimalExtractor{},
-		WizardPrompter: NewTextPrompter(strings.NewReader("en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-explore\nfixture-provider\n\n")),
+		Extractor:      installtest.MinimalExtractor{},
+		WizardPrompter: wizard.NewTextPrompter(strings.NewReader("en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-explore\nfixture-provider\n\n")),
 	}
 	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
@@ -143,7 +148,7 @@ func TestApplyWizardConfig_WriteKnowledgeIndexFails(t *testing.T) {
 	writeWizardLevelingFixture(t, dir)
 	// Extract() is never called here, so knowledge.index.yaml never lands on disk.
 	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-explore\nfixture-provider\ngovernance/source\n"
-	s := Service{Extractor: minimalExtractor{}, WizardPrompter: NewTextPrompter(strings.NewReader(input))}
+	s := Service{Extractor: installtest.MinimalExtractor{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(input))}
 	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write knowledge.index.yaml")
@@ -155,7 +160,7 @@ func TestApplyWizardConfig_WriteTreasureChestManifestFails(t *testing.T) {
 	writeWizardLevelingFixture(t, dir)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
 	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-explore\nfixture-provider\ngovernance/source\n"
-	s := Service{Extractor: minimalExtractor{}, WizardPrompter: NewTextPrompter(strings.NewReader(input))}
+	s := Service{Extractor: installtest.MinimalExtractor{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(input))}
 	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write treasure-chests.yaml")
@@ -165,14 +170,14 @@ func writeWizardLevelingFixture(t *testing.T, dir string) {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "embed", "defaults", "leveling.yaml"))
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, levelingPolicyPath), raw, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, names.LevelingPolicyPath), raw, 0o600))
 }
 
 func TestResolvePrompter_DefaultsToTUIWhenNoOverrides(t *testing.T) {
 	t.Parallel()
 	s := Service{terminalDetector: func() bool { return true }}
 	p := s.resolvePrompter()
-	_, ok := p.(*TUIPrompter)
+	_, ok := p.(*wizard.TUIPrompter)
 	assert.True(t, ok, "expected default TUIPrompter, got %T", p)
 }
 
@@ -180,16 +185,16 @@ func TestResolvePrompter_DefaultsToOSStdinWhenNonTTY(t *testing.T) {
 	t.Parallel()
 	s := Service{terminalDetector: func() bool { return false }}
 	p := s.resolvePrompter()
-	_, ok := p.(*TextPrompter)
+	_, ok := p.(*wizard.TextPrompter)
 	assert.True(t, ok, "expected default TextPrompter over os.Stdin, got %T", p)
 }
 
 func TestNewTUIPrompter(t *testing.T) {
 	t.Parallel()
-	p := NewTUIPrompter()
-	tp, ok := p.(*TUIPrompter)
+	p := wizard.NewTUIPrompter()
+	tp, ok := p.(*wizard.TUIPrompter)
 	require.True(t, ok)
-	assert.NotNil(t, tp.runFn)
+	assert.NotNil(t, tp.RunFn)
 }
 
 func TestCloseGitignore_AlreadyClosedFile(t *testing.T) {
@@ -200,39 +205,39 @@ func TestCloseGitignore_AlreadyClosedFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
-	err = closeGitignore(f)
+	err = support.CloseGitignore(f)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "close .gitignore")
 }
 
 func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	err := writeActiveYAML(dir, domain.WizardConfig{
+	err := activeyaml.WriteActiveYAML(dir, domain.WizardConfig{
 		Mode: "pragmatic", BasePath: ".", UILanguage: "pt", DocLanguage: "pt", ChatLanguage: "pt", CodeLanguage: "pt",
 		DiscoveryProvider: "brainstorming", RefinementProvider: "openspec-explore", ExecutionProvider: "sniper",
 	})
 	require.Error(t, err)
 }
 
-// slottedTemplateExtractor extends minimalExtractor with an epic-standalone
+// slottedTemplateExtractor extends installtest.MinimalExtractor with an epic-standalone
 // template that declares real default discovery/refinement/execution slots
-// (minimalExtractor's own template omits slots entirely), so a silent
+// (installtest.MinimalExtractor's own template omits slots entirely), so a silent
 // install can exercise activateSilentRoleProviderBindings' full success path
 // instead of only its early "no slots configured" / "catalog unreadable"
 // failure branches, which every other silent-install test above already covers.
 type slottedTemplateExtractor struct {
-	minimalExtractor
+	installtest.MinimalExtractor
 }
 
 func (e slottedTemplateExtractor) ReadFile(relPath string) ([]byte, error) {
 	if relPath == "templates/epic-standalone.yaml" {
 		return []byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-propose\n  execution: sniper\n"), nil
 	}
-	return e.minimalExtractor.ReadFile(relPath)
+	return e.MinimalExtractor.ReadFile(relPath)
 }
 
 func TestApplySilentConfig_ActivatesRoleProviderBindings(t *testing.T) {

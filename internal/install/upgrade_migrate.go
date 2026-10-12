@@ -8,6 +8,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 )
 
 // migrationStateFiles lists the workspace state a migrating upgrade rewrites
@@ -17,7 +18,7 @@ import (
 func migrationStateFiles(strategistDir string, plan UpgradePlan, removesFiles bool) []string {
 	var files []string
 	if len(plan.LockMigration) > 0 {
-		files = append(files, pluginLockFileName, domain.RankedRuntimeStatePath)
+		files = append(files, names.PluginLockFileName, domain.RankedRuntimeStatePath)
 	}
 	if removesFiles || len(plan.LockMigration) > 0 {
 		files = append(files, domain.InstallManifestRelPath)

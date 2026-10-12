@@ -2,7 +2,7 @@ package install
 
 import (
 	"context"
-	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +10,12 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/charmbracelet/huh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
@@ -64,15 +70,15 @@ func TestInstall_WizardPath_PersistsPluginLock(t *testing.T) {
 	assert.Contains(t, s, "schema_version: strategist-plugin-lock-file/v1")
 	assert.Contains(t, s, "slot: discovery")
 	assert.Contains(t, s, "slot: refinement")
-	lockFile, err := readPluginLockFile(filepath.Join(dir, ".strategist"))
+	lockFile, err := plugincatalog.ReadPluginLockFile(filepath.Join(dir, ".strategist"))
 	require.NoError(t, err)
 	assert.NotEmpty(t, lockFile.Lock.GraphDigest)
 	assert.Len(t, lockFile.Lock.Nodes, 6)
-	_, ok := findSlotBinding(lockFile.Bindings, "discovery")
+	_, ok := installtest.FindSlotBinding(lockFile.Bindings, "discovery")
 	assert.True(t, ok)
-	_, ok = findSlotBinding(lockFile.Bindings, "refinement")
+	_, ok = installtest.FindSlotBinding(lockFile.Bindings, "refinement")
 	assert.True(t, ok)
-	_, ok = findSlotBinding(lockFile.Bindings, "execution")
+	_, ok = installtest.FindSlotBinding(lockFile.Bindings, "execution")
 	assert.False(t, ok)
 }
 
@@ -163,7 +169,7 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 	require.NoError(t, os.WriteFile(openspecBin, []byte(fakeScript), 0o755))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
-	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
+	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
 
 	active, err := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
@@ -172,10 +178,10 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 	assert.Contains(t, string(active), "refinement: openspec-propose")
 	assert.Contains(t, string(active), "execution: sniper")
 
-	lock, err := readPluginLockFile(filepath.Join(dir, ".strategist"))
+	lock, err := plugincatalog.ReadPluginLockFile(filepath.Join(dir, ".strategist"))
 	require.NoError(t, err)
 	for _, slot := range []string{"discovery", "refinement", "execution"} {
-		binding, ok := findSlotBinding(lock.Bindings, slot)
+		binding, ok := installtest.FindSlotBinding(lock.Bindings, slot)
 		require.True(t, ok, "wizard must persist a binding for %s", slot)
 		assert.Equal(t, domain.SlotBindingModeRanked, binding.Mode, "wizard Ranked choice must survive persistence for %s", slot)
 	}
@@ -187,7 +193,7 @@ func TestInstall_WizardRankedPathBootstrapsContainedOpenSpecRuntime(t *testing.T
 	t.Setenv("OPEN_SPEC_CONFIG", filepath.Join(t.TempDir(), "foreign-config.yaml"))
 
 	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
-	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
+	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
 
 	strategist := filepath.Join(dir, ".strategist")
@@ -209,10 +215,10 @@ func TestInstall_WizardRankedPathBootstrapsContainedOpenSpecRuntime(t *testing.T
 type rankedWizardExtractor struct{}
 
 func (rankedWizardExtractor) Extract(targetDir string, withShim bool) error {
-	if err := (minimalExtractor{}).Extract(targetDir, withShim); err != nil {
+	if err := (installtest.MinimalExtractor{}).Extract(targetDir, withShim); err != nil {
 		return err
 	}
-	if err := copyOpenSpecRuntimeFixture(targetDir); err != nil {
+	if err := installtest.CopyOpenSpecRuntimeFixture(targetDir); err != nil {
 		return err
 	}
 	roleFiles := map[string]string{
@@ -229,17 +235,17 @@ func (rankedWizardExtractor) Extract(targetDir string, withShim bool) error {
 	if err := os.MkdirAll(filepath.Join(targetDir, "plugins"), 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(targetDir, pluginCatalogPath), []byte(rankedWizardCatalogYAML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(targetDir, names.PluginCatalogPath), []byte(rankedWizardCatalogYAML), 0o644); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (rankedWizardExtractor) ReadFile(relPath string) ([]byte, error) {
-	if relPath == pluginCatalogPath {
+	if relPath == names.PluginCatalogPath {
 		return []byte(rankedWizardCatalogYAML), nil
 	}
-	return minimalExtractor{}.ReadFile(relPath)
+	return installtest.MinimalExtractor{}.ReadFile(relPath)
 }
 
 const rankedWizardCatalogYAML = `schema_version: strategist-plugin-catalog/v2
@@ -305,7 +311,7 @@ func TestRunWizard_EOFPrompts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := runWizard(context.Background(), p(tt.input), minimalExtractor{}, "", false)
+			_, err := wizard.RunWizard(context.Background(), p(tt.input), installtest.MinimalExtractor{}, "", false)
 			require.Error(t, err)
 			assert.ErrorContains(t, err, tt.wantError)
 		})
@@ -316,7 +322,7 @@ func TestApplyConfig_NilPrompter_NonTTY_FailsOnEmptyStdin(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	svc := Service{
-		Extractor:        minimalExtractor{},
+		Extractor:        installtest.MinimalExtractor{},
 		Compiler:         nopCompiler{},
 		ShimHomeDir:      t.TempDir(),
 		terminalDetector: func() bool { return false },
@@ -331,11 +337,13 @@ func TestApplyConfig_NilPrompter_TTY_FailsOnNoTerminal(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	svc := Service{
-		Extractor:        minimalExtractor{},
+		Extractor:        installtest.MinimalExtractor{},
 		Compiler:         nopCompiler{},
 		ShimHomeDir:      t.TempDir(),
 		terminalDetector: func() bool { return true },
-		tuiPrompterFn:    func() Prompter { return &TUIPrompter{runFn: errRun} },
+		tuiPrompterFn: func() wizard.Prompter {
+			return &wizard.TUIPrompter{RunFn: func(huh.Field) error { return errors.New("terminal unavailable") }}
+		},
 	}
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.Error(t, err)
@@ -349,7 +357,7 @@ func TestApplyConfig_NilPrompter_NilDetector_UsesRealTTYCheck(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	svc := Service{
-		Extractor:   minimalExtractor{},
+		Extractor:   installtest.MinimalExtractor{},
 		Compiler:    nopCompiler{},
 		ShimHomeDir: t.TempDir(),
 		stdinReader: strings.NewReader(""),
@@ -387,9 +395,9 @@ func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
 	t.Parallel()
 	b := i18n.BundleFor("en")
 	input := "custom-ranger\nopenspec-explore\nfixture-provider\n\n"
-	catalog, err := parseCatalogBytes([]byte(minimalCatalogYAML))
+	catalog, err := plugincatalog.ParseCatalogBytes([]byte(installtest.MinimalCatalogYAML))
 	require.NoError(t, err)
-	discovery, refinement, execution, _, _, _, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk, false, wizardDefaults{})
+	discovery, refinement, execution, _, _, _, err := wizard.PromptSlots(wizard.NewTextPrompter(strings.NewReader(input)), b, catalog, plugincatalog.KnownProviderRisk, false, wizard.Defaults{})
 	require.NoError(t, err)
 	assert.Equal(t, "custom-ranger", discovery)
 	assert.Equal(t, "openspec-explore", refinement)
@@ -408,7 +416,7 @@ func TestRunWizardBlocksOnUnresolvedCustomSkill(t *testing.T) {
 	t.Setenv("HOME", homeDir) // no skill installed under homeDir — deliberately unresolvable
 
 	input := "en\nen\nen\nen\nepic\n.analysis\n\n\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nfixture-provider\n\n"
-	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
+	_, err := wizard.RunWizard(context.Background(), wizard.NewTextPrompter(strings.NewReader(input)), installtest.MinimalExtractor{}, "", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")
 }
@@ -418,7 +426,7 @@ func TestRunWizardBlocksOnUnresolvedCustomExecutionProvider(t *testing.T) {
 	t.Setenv("HOME", homeDir)
 
 	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-propose\ncustom-execution\n\n"
-	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
+	_, err := wizard.RunWizard(context.Background(), wizard.NewTextPrompter(strings.NewReader(input)), installtest.MinimalExtractor{}, "", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")
 }

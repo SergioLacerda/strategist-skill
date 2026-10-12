@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/dojo/calibration"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // ReadObservations reads a case's raw observation ledger. A missing ledger is no
@@ -123,7 +124,7 @@ func LoadCalibration(basePath, id string) (calibration.Record, error) {
 // ListCalibrations returns the ids of the published records, newest first by name.
 func ListCalibrations(basePath string) ([]string, error) {
 	entries, err := os.ReadDir(filepath.Join(basePath, "dojo", DirCalibrations))
-	if os.IsNotExist(err) {
+	if filesystem.IsMissingPath(filepath.Join(basePath, "dojo", DirCalibrations), err) {
 		return nil, nil
 	}
 	if err != nil {

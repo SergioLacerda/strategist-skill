@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +19,7 @@ const customizedConfiguration = "mode: epic\nbase_path: .custom\nslots:\n  disco
 func customizedLock(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	require.NoError(t, writePluginLockFile(dir, domain.PluginLockFile{}))
+	require.NoError(t, plugincatalog.WritePluginLockFile(dir, domain.PluginLockFile{}))
 	raw, err := os.ReadFile(filepath.Join(dir, "plugins.lock"))
 	require.NoError(t, err)
 	return string(raw)
@@ -28,11 +30,11 @@ func customizedLock(t *testing.T) string {
 func customizedWorkspace(t *testing.T) (string, string, Service) {
 	t.Helper()
 	dir := t.TempDir()
-	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
+	svc := Service{Extractor: installtest.MinimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true}))
 	strategistDir := filepath.Join(dir, ".strategist")
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "active.yaml"), []byte(customizedConfiguration), 0o644))
-	require.NoError(t, writePluginLockFile(strategistDir, domain.PluginLockFile{}))
+	require.NoError(t, plugincatalog.WritePluginLockFile(strategistDir, domain.PluginLockFile{}))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, ".config.lock"), []byte("custom-lock\n"), 0o644))
 	return dir, strategistDir, svc
 }
@@ -102,7 +104,7 @@ func TestUpgradeRollbackRestoresTheConfigurationBackup(t *testing.T) {
 func TestForcedInstallWithoutAnExistingConfigurationStillWritesTheTemplate(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
+	svc := Service{Extractor: installtest.MinimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true, Force: true}))
 	_, err := os.Stat(filepath.Join(dir, ".strategist", "active.yaml"))
 	require.NoError(t, err)

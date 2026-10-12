@@ -8,6 +8,8 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
 )
 
 // orphanEntries reports every manifest-tracked path that is no longer part
@@ -65,7 +67,7 @@ func versionedSkillIDs(embeddedHashes map[string]string) map[string]bool {
 	ids := make(map[string]bool)
 	for path := range embeddedHashes {
 		parts := strings.SplitN(path, "/", 3)
-		if len(parts) < 3 || parts[0] != "skills" {
+		if len(parts) < 3 || parts[0] != names.SkillsDirName {
 			continue
 		}
 		if id, _, found := strings.Cut(parts[1], "@"); found {
@@ -81,15 +83,15 @@ func versionedSkillIDs(embeddedHashes map[string]string) map[string]bool {
 // is never part of the migration.
 func isLegacyLayoutPath(path string, versioned map[string]bool) bool {
 	parts := strings.SplitN(path, "/", 3)
-	if len(parts) < 3 || parts[0] != "skills" || strings.Contains(parts[1], "@") || !versioned[parts[1]] {
+	if len(parts) < 3 || parts[0] != names.SkillsDirName || strings.Contains(parts[1], "@") || !versioned[parts[1]] {
 		return false
 	}
-	return parts[2] != "skill.yaml"
+	return parts[2] != names.SkillYAMLName
 }
 
 func isCompatViewPath(path string, versioned map[string]bool) bool {
 	parts := strings.SplitN(path, "/", 3)
-	return len(parts) == 3 && parts[0] == "skills" && !strings.Contains(parts[1], "@") && versioned[parts[1]] && parts[2] == "skill.yaml"
+	return len(parts) == 3 && parts[0] == names.SkillsDirName && !strings.Contains(parts[1], "@") && versioned[parts[1]] && parts[2] == names.SkillYAMLName
 }
 
 func isRetiredCompatViewPath(path string, versioned map[string]bool, generation int) bool {
@@ -99,7 +101,7 @@ func isRetiredCompatViewPath(path string, versioned map[string]bool, generation 
 // lockSlotsNeedingMigration lists the slots whose persisted Ranked binding has
 // no weapon_version. A missing lock needs none.
 func lockSlotsNeedingMigration(strategistDir string) ([]string, error) {
-	lockFile, err := readPluginLockFile(strategistDir)
+	lockFile, err := plugincatalog.ReadPluginLockFile(strategistDir)
 	if err != nil {
 		return nil, fmt.Errorf("upgrade: read lock: %w", err)
 	}

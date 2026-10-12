@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"gopkg.in/yaml.v3"
 )
@@ -107,7 +108,7 @@ type File struct {
 // not an error, so an upgrade of a workspace that never answered stays silent.
 func Load(path string) (File, bool, error) {
 	data, err := os.ReadFile(path) //nolint:gosec // G304: operator configuration path
-	if errors.Is(err, os.ErrNotExist) {
+	if filesystem.IsMissingPath(path, err) {
 		return File{}, false, nil
 	}
 	if err != nil {

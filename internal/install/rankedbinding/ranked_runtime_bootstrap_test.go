@@ -1,0 +1,203 @@
+package rankedbinding
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/env"
+	"github.com/stretchr/testify/require"
+)
+
+func TestPrepareRankedProviderRuntimes_RangerNoneDoesNotCreateRuntime(t *testing.T) {
+	dir := t.TempDir()
+	installtest.WriteRankedRuntimeFixture(t, dir, "brainstorming", "discovery", domain.WeaponRuntime{Kind: domain.RankedRuntimeNone})
+
+	require.NoError(t, PrepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist")))
+	_, err := os.Stat(filepath.Join(dir, ".strategist", domain.RankedRuntimeStatePath))
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestPrepareRankedProviderRuntimes_ArchivistBootstrapsOpenSpecRoot(t *testing.T) {
+	dir := t.TempDir()
+	installtest.WriteRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
+	})
+	original := RunRankedRuntimeCommand
+	t.Cleanup(func() { RunRankedRuntimeCommand = original })
+	RunRankedRuntimeCommand = func(_ context.Context, commandDir string, name string, args ...string) ([]byte, error) {
+		args = rankedRuntimeTestArgs(args)
+		if isHostNodeVersionProbe(args) {
+			return []byte("v20.19.0\n"), nil
+		}
+		require.NotEqual(t, "openspec", name)
+		if args[0] == "init" {
+			require.Equal(t, []string{"init", "--profile", "core", "--tools", "codex"}, args)
+			require.Equal(t, filepath.Join(dir, ".strategist"), commandDir)
+			require.NoError(t, os.WriteFile(filepath.Join(commandDir, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+		} else {
+			require.Equal(t, filepath.Join(dir, ".strategist", "openspec"), commandDir)
+			require.Equal(t, []string{"context", "--json"}, args)
+		}
+		return []byte(`{"root":{"path":"` + filepath.ToSlash(filepath.Join(dir, ".strategist")) + `"},"status":[]}`), nil
+	}
+
+	require.NoError(t, PrepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist")))
+	require.FileExists(t, filepath.Join(dir, ".strategist", "openspec", "config.yaml"))
+	require.FileExists(t, filepath.Join(dir, ".strategist", domain.RankedRuntimeStatePath))
+	state, err := os.ReadFile(filepath.Join(dir, ".strategist", domain.RankedRuntimeStatePath))
+	require.NoError(t, err)
+	require.Contains(t, string(state), "openspec-propose")
+}
+
+func TestPrepareRankedProviderRuntimes_RemovesEmptyLegacyNestedRoot(t *testing.T) {
+	dir := t.TempDir()
+	installtest.WriteRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
+	})
+	root := filepath.Join(dir, ".strategist", "openspec")
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "openspec", "specs"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "openspec", "specs", ".gitkeep"), nil, 0o644))
+	original := RunRankedRuntimeCommand
+	t.Cleanup(func() { RunRankedRuntimeCommand = original })
+	RunRankedRuntimeCommand = func(_ context.Context, commandDir string, _ string, args ...string) ([]byte, error) {
+		args = rankedRuntimeTestArgs(args)
+		if isHostNodeVersionProbe(args) {
+			return []byte("v20.19.0\n"), nil
+		}
+		if args[0] == "init" {
+			require.NoError(t, os.WriteFile(filepath.Join(commandDir, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+		}
+		return []byte(`{"root":{"path":"` + filepath.ToSlash(filepath.Join(dir, ".strategist")) + `"},"status":[]}`), nil
+	}
+
+	require.NoError(t, PrepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist")))
+	_, err := os.Stat(filepath.Join(root, "openspec"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestPrepareRankedProviderRuntimes_RejectsOpenSpecSemanticRootMismatch(t *testing.T) {
+	dir := t.TempDir()
+	installtest.WriteRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
+	})
+	original := RunRankedRuntimeCommand
+	t.Cleanup(func() { RunRankedRuntimeCommand = original })
+	RunRankedRuntimeCommand = func(_ context.Context, _ string, _ string, args ...string) ([]byte, error) {
+		args = rankedRuntimeTestArgs(args)
+		if isHostNodeVersionProbe(args) {
+			return []byte("v20.19.0\n"), nil
+		}
+		if args[0] == "init" {
+			require.NoError(t, os.WriteFile(filepath.Join(dir, ".strategist", "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+		}
+		return []byte(`{"root":{"path":"` + filepath.ToSlash(filepath.Join(dir, ".strategist", "openspec")) + `"}}`), nil
+	}
+
+	err := PrepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist"))
+	require.Error(t, err)
+	require.ErrorContains(t, err, "semantic root mismatch")
+}
+
+func TestPrepareRankedProviderRuntimes_RejectsMalformedHealthcheck(t *testing.T) {
+	dir := t.TempDir()
+	installtest.WriteRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
+	})
+	original := RunRankedRuntimeCommand
+	t.Cleanup(func() { RunRankedRuntimeCommand = original })
+	setRankedRuntimeCommandForTest(t, func(_ context.Context, commandDir, _ string, args []string) ([]byte, error) {
+		if args[0] == "init" {
+			require.NoError(t, os.WriteFile(filepath.Join(commandDir, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+		}
+		return []byte("not-json"), nil
+	})
+
+	err := PrepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist"))
+	require.ErrorContains(t, err, "parse OpenSpec context")
+}
+
+func TestPrepareRankedProviderRuntimes_RejectsFailedHealthcheck(t *testing.T) {
+	dir := t.TempDir()
+	installtest.WriteRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
+	})
+	original := RunRankedRuntimeCommand
+	t.Cleanup(func() { RunRankedRuntimeCommand = original })
+	setRankedRuntimeCommandForTest(t, func(_ context.Context, commandDir, _ string, args []string) ([]byte, error) {
+		if args[0] == "init" {
+			require.NoError(t, os.WriteFile(filepath.Join(commandDir, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+			return nil, nil
+		}
+		return nil, errors.New("provider unavailable")
+	})
+
+	err := PrepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist"))
+	require.ErrorContains(t, err, "healthcheck failed")
+}
+
+func TestPrepareRankedProviderRuntimes_RejectsUnexpectedLegacyContent(t *testing.T) {
+	dir := t.TempDir()
+	installtest.WriteRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
+	})
+	root := filepath.Join(dir, ".strategist", "openspec")
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "openspec"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "openspec", "user-note.md"), []byte("keep me\n"), 0o644))
+	original := RunRankedRuntimeCommand
+	t.Cleanup(func() { RunRankedRuntimeCommand = original })
+	setRankedRuntimeCommandForTest(t, func(_ context.Context, commandDir, _ string, args []string) ([]byte, error) {
+		if args[0] == "init" {
+			require.NoError(t, os.WriteFile(filepath.Join(commandDir, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+		}
+		return []byte(`{"root":{"path":"` + filepath.ToSlash(filepath.Join(dir, ".strategist")) + `"}}`), nil
+	})
+
+	err := PrepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist"))
+	require.ErrorContains(t, err, "contains user content")
+}
+
+func setRankedRuntimeCommandForTest(t *testing.T, fn func(context.Context, string, string, []string) ([]byte, error)) {
+	t.Helper()
+	RunRankedRuntimeCommand = func(ctx context.Context, commandDir, name string, args ...string) ([]byte, error) {
+		if isHostNodeVersionProbe(args) {
+			return []byte("v20.19.0\n"), nil
+		}
+		return fn(ctx, commandDir, name, rankedRuntimeTestArgs(args))
+	}
+}
+
+func rankedRuntimeTestArgs(args []string) []string {
+	if len(args) > 0 && strings.HasSuffix(args[0], ".mjs") {
+		return args[1:]
+	}
+	return args
+}
+
+func isHostNodeVersionProbe(args []string) bool {
+	return len(args) == 1 && args[0] == "--version"
+}
+
+func TestPrepareRankedProviderRuntimes_MissingExecutableIsActionable(t *testing.T) {
+	dir := t.TempDir()
+	installtest.WriteRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
+	})
+	t.Setenv("PATH", t.TempDir())
+
+	err := PrepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist"))
+	require.Error(t, err)
+	require.ErrorContains(t, err, domain.ReasonRankedRuntimeExecutableMissing)
+	require.ErrorContains(t, err, `"openspec-propose"`)
+	require.ErrorContains(t, err, "standalone-runtime-hermeticity.md")
+
+	var missing *env.ExecutableNotFoundError
+	require.ErrorAs(t, err, &missing)
+}

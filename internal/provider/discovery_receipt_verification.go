@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/install"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 )
 
@@ -71,12 +71,12 @@ func verifyReceiptPin(request DiscoveryWeaponRequest, receipt connectors.Invocat
 		verification.pinStatus = "pin_unavailable"
 		return verification, nil
 	}
-	comparison, err := install.CompareResolvedDigest(request.CatalogPath, request.ProviderID, receipt.ResolvedDigest)
+	comparison, err := plugincatalog.CompareResolvedDigest(request.CatalogPath, request.ProviderID, receipt.ResolvedDigest)
 	if err != nil {
 		return failedReceiptVerification(), fmt.Errorf("compare invocation receipt digest: %w", err)
 	}
 	verification.pinStatus = string(comparison.Status)
-	if comparison.Status == install.ResolvedDigestMismatch || comparison.Status == install.ResolvedDigestNotReported {
+	if comparison.Status == plugincatalog.ResolvedDigestMismatch || comparison.Status == plugincatalog.ResolvedDigestNotReported {
 		return verification, fmt.Errorf("invocation receipt digest does not match declared pin")
 	}
 	return verification, nil

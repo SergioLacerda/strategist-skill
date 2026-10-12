@@ -415,7 +415,7 @@ inherit a sandbox without network access; it uses the current-host adapter above
 > Corrected 2026-09-15 (mission `20260915-ranked-binding-vs-provider-class-naming-residual`).
 > This section previously described a `provider_class: rankeado` field as
 > current/live. That field was removed by ADR-0034 — no code branches on it,
-> and its absence is enforced by `internal/install/plugin_catalog_test.go` and
+> and its absence is enforced by `internal/install/plugincatalog/plugin_catalog_test.go` and
 > `internal/embed/embed_test.go`. "Ranked" is redefined below; the name is kept
 > deliberately, not coincidentally reused.
 

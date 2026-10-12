@@ -6,12 +6,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInstallTransaction_RollbackRemoveAllFailureIsLogged(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	parent := t.TempDir()
 	strategistDir := filepath.Join(parent, "workspace", ".strategist")
 

@@ -81,7 +81,7 @@ still reported as drift until the next mission starts.
 
 ## Reference
 
-- `internal/install/installer_config.go` (`applySilentConfig`, `resolvePrompter`), `internal/install/wizard.go`
+- `internal/install/installer_config.go` (`applySilentConfig`, `resolvePrompter`), `internal/install/wizard/wizard.go`
 - `internal/domain/runtime_defaults.go` (`FormatRuntimeStaleDiagnostic`)
 - `strategist upgrade --help`, `strategist install --help`
 - `.analysis/refined/20261011-binding-reset-investigation/` (the diagnostic and the specification)

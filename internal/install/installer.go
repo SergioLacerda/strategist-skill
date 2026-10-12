@@ -1,3 +1,4 @@
+// Package install orchestrates the Strategist skill installation into a target repository.
 package install
 
 import (
@@ -9,6 +10,10 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/rankedbinding"
+	"github.com/SergioLacerda/strategist-skill/internal/install/support"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -30,7 +35,7 @@ type Service struct {
 	// WizardPrompter overrides the auto-detected Prompter for wizard prompts.
 	// Nil means auto-detect: TUIPrompter when stdin is a TTY, TextPrompter otherwise.
 	// Set this in tests to provide scripted input without blocking on stdin.
-	WizardPrompter Prompter
+	WizardPrompter wizard.Prompter
 	// ShimHomeDir overrides os.UserHomeDir() for shim installation. Nil means use real home.
 	// Set this in tests to install the shim in a temporary directory.
 	ShimHomeDir    string
@@ -42,7 +47,7 @@ type Service struct {
 	stdinReader io.Reader
 	// tuiPrompterFn overrides NewTUIPrompter for tests. Nil means use NewTUIPrompter.
 	// Set this in tests to avoid huh.Run blocking on a real or open-pipe stdin.
-	tuiPrompterFn func() Prompter
+	tuiPrompterFn func() wizard.Prompter
 }
 
 // Report is defined in merge_extract.go, alongside prepareRuntime — the
@@ -72,7 +77,7 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 // InstallWithReport is Install, plus a Report describing
 // facts about the run — today, just whether a backup was taken and where.
 func (s Service) InstallWithReport(ctx context.Context, cfg domain.InstallConfig) (Report, error) {
-	strategistDir := filepath.Join(cfg.Target, strategistDirName)
+	strategistDir := filepath.Join(cfg.Target, names.StrategistDirName)
 	tx := newInstallTransaction(strategistDir)
 
 	slog.InfoContext(ctx, "[Strategist] install starting",
@@ -121,7 +126,7 @@ func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg 
 	if err := s.refreshInstalledRankedBindings(strategistDir); err != nil {
 		return Report{}, fmt.Errorf("install: refresh ranked bindings: %w", err)
 	}
-	if err := prepareRankedProviderRuntimes(ctx, strategistDir); err != nil {
+	if err := rankedbinding.PrepareRankedProviderRuntimes(ctx, strategistDir); err != nil {
 		return Report{}, fmt.Errorf("install: prepare ranked runtimes: %w", err)
 	}
 	tx.record(filepath.Join(strategistDir, domain.RankedRuntimeStatePath))
@@ -153,16 +158,16 @@ func (s Service) applyWorkspaceConfig(ctx context.Context, strategistDir string,
 	if err := s.applyConfig(ctx, strategistDir, cfg); err != nil {
 		return nil, err
 	}
-	return []string{filepath.Join(strategistDir, activeYAMLName)}, nil
+	return []string{filepath.Join(strategistDir, names.ActiveYAMLName)}, nil
 }
 
 func ensureProjectGitignore(cfg domain.InstallConfig) ([]string, error) {
 	if cfg.Global {
 		return nil, nil
 	}
-	gitignorePath := filepath.Join(cfg.Target, ".gitignore")
+	gitignorePath := filepath.Join(cfg.Target, names.GitignoreFileName)
 	gitignoreExisted := filesystem.Exists(gitignorePath)
-	if err := ensureGitignore(cfg.Target); err != nil {
+	if err := support.EnsureGitignore(cfg.Target); err != nil {
 		return nil, fmt.Errorf("install: gitignore: %w", err)
 	}
 	if gitignoreExisted {

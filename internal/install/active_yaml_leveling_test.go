@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/activeyaml"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -16,8 +18,8 @@ func writtenActiveConfig(t *testing.T, wc domain.WizardConfig) (string, domain.A
 	dir := t.TempDir()
 	wc.Mode, wc.BasePath = "epic", ".analysis"
 	wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider = "brainstorming", "openspec-propose", "sniper"
-	require.NoError(t, writeActiveYAML(dir, wc))
-	raw, err := os.ReadFile(filepath.Join(dir, activeYAMLName))
+	require.NoError(t, activeyaml.WriteActiveYAML(dir, wc))
+	raw, err := os.ReadFile(filepath.Join(dir, names.ActiveYAMLName))
 	require.NoError(t, err)
 	var cfg domain.ActiveConfig
 	require.NoError(t, yaml.Unmarshal(raw, &cfg))
@@ -47,14 +49,14 @@ func TestWriteActiveYAMLRecordsManualModeOnly(t *testing.T) {
 }
 
 func TestLevelingActiveYAMLRejectsUnknownMode(t *testing.T) {
-	_, err := levelingActiveYAML(domain.LevelingConfig{Mode: "smart"})
+	_, err := activeyaml.LevelingActiveYAML(domain.LevelingConfig{Mode: "smart"})
 	require.ErrorContains(t, err, "leveling_mapping_invalid")
 }
 
 func TestApplyUpgradePreservesCustomLevelingBlock(t *testing.T) {
 	dir := t.TempDir()
 	original := "mode: epic\nbase_path: .analysis\nleveling:\n  mode: manual\n"
-	activePath := filepath.Join(dir, activeYAMLName)
+	activePath := filepath.Join(dir, names.ActiveYAMLName)
 	require.NoError(t, os.WriteFile(activePath, []byte(original), 0o600))
 
 	svc := upgradeTestService(map[string][]byte{"a.yaml": []byte("embedded-v1")})

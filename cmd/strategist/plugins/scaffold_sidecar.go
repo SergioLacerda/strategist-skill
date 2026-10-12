@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/SergioLacerda/strategist-skill/internal/install"
+	"github.com/SergioLacerda/strategist-skill/internal/install/sidecar"
 	"github.com/spf13/cobra"
 )
 
 // NewScaffoldSidecar creates `plugins scaffold-sidecar`.
 func NewScaffoldSidecar() *cobra.Command {
-	opts := install.SidecarScaffoldOptions{}
+	opts := sidecar.ScaffoldOptions{}
 	cmd := &cobra.Command{
 		Use:   "scaffold-sidecar <package-dir>",
 		Short: "Generate a package's strategist.yaml sidecar deterministically",
@@ -43,8 +43,8 @@ regenerated one. The command touches only <package-dir>/strategist.yaml.`,
 }
 
 // RunScaffoldSidecar generates (or, with Check, verifies) one package sidecar.
-func RunScaffoldSidecar(out io.Writer, opts install.SidecarScaffoldOptions) error {
-	result, err := install.ScaffoldSidecar(opts)
+func RunScaffoldSidecar(out io.Writer, opts sidecar.ScaffoldOptions) error {
+	result, err := sidecar.ScaffoldSidecar(opts)
 	if err != nil {
 		return fmt.Errorf("scaffold-sidecar: %w", err)
 	}

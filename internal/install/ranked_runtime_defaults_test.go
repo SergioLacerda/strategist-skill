@@ -5,18 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtime/payload"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
 )
 
-func init() {
-	// Production startup registers the embedded FS from cmd/strategist. Package
-	// tests cannot import internal/embed because its white-box tests exercise
-	// install; use the checked-in defaults tree as the equivalent source.
-	payload.RegisterOpenSpec(os.DirFS(filepath.Join("..", "embed", "defaults")))
-}
-
 func TestRankedRuntimeTestDefaultsExist(t *testing.T) {
-	if _, err := os.Stat(filepath.Join("..", "embed", "defaults", "skills", openSpecProposePayloadDir, "runtime", "runtime.build.yaml")); err != nil {
+	if _, err := os.Stat(filepath.Join("..", "embed", "defaults", "skills", installtest.OpenSpecProposePayloadDir, "runtime", "runtime.build.yaml")); err != nil {
 		t.Fatal(err)
 	}
 }

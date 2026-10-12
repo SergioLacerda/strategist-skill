@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +31,7 @@ func TestApplyUpgrade_RepairsStaleRankedRuntimeState(t *testing.T) {
 	dir := t.TempDir()
 	registerFakeHostNode(t, dir)
 	t.Setenv("PATH", t.TempDir())
-	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(rankedWizardInput)), ShimHomeDir: filepath.Join(dir, "shim-home")}
+	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(rankedWizardInput)), ShimHomeDir: filepath.Join(dir, "shim-home")}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
 	strategist := filepath.Join(dir, ".strategist")
 	fresh := readRankedState(t, strategist)
@@ -62,7 +64,7 @@ func TestApplyUpgrade_RewritesLegacyRankedRuntimeState(t *testing.T) {
 	dir := t.TempDir()
 	registerFakeHostNode(t, dir)
 	t.Setenv("PATH", t.TempDir())
-	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(rankedWizardInput)), ShimHomeDir: filepath.Join(dir, "shim-home")}
+	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(rankedWizardInput)), ShimHomeDir: filepath.Join(dir, "shim-home")}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
 	strategist := filepath.Join(dir, ".strategist")
 	require.Equal(t, domain.RankedRuntimeStateSchemaVersion, readRankedState(t, strategist).SchemaVersion)
@@ -89,7 +91,7 @@ func TestApplyUpgrade_RewritesLegacyRankedRuntimeState(t *testing.T) {
 func TestApplyUpgrade_WithoutRankedBindingsWritesNoRuntimeState(t *testing.T) {
 	dir := t.TempDir()
 	registerFakeHostNode(t, dir)
-	svc := Service{Extractor: silentRankedExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: filepath.Join(dir, "shim-home"), Lister: alwaysAllPathsLister{[]string{"SKILL.md", "roles/default.yaml", pluginCatalogPath}}}
+	svc := Service{Extractor: silentRankedExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: filepath.Join(dir, "shim-home"), Lister: alwaysAllPathsLister{[]string{"SKILL.md", "roles/default.yaml", names.PluginCatalogPath}}}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true, NoShim: true}))
 	strategist := filepath.Join(dir, ".strategist")
 	// Remove the active lock to model a workspace with no Ranked binding before

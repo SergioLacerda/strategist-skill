@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/support"
 )
 
 func saveInstallManifest(strategistDir string, manifest domain.InstallManifest) error {
@@ -18,7 +18,7 @@ func saveInstallManifest(strategistDir string, manifest domain.InstallManifest) 
 	}
 	data = append(data, '\n')
 	path := filepath.Join(strategistDir, domain.InstallManifestRelPath)
-	if err := atomicWriteFile(path, data, 0o644); err != nil {
+	if err := support.AtomicWriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("install: write manifest: %w", err)
 	}
 	return nil
@@ -38,12 +38,4 @@ func loadInstallManifest(strategistDir string) (domain.InstallManifest, bool, er
 		return domain.InstallManifest{}, false, fmt.Errorf("install: parse manifest: %w", err)
 	}
 	return manifest, true, nil
-}
-
-func packageID(version string) string {
-	version = strings.TrimSpace(version)
-	if version == "" {
-		return "dev"
-	}
-	return version
 }

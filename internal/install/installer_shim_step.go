@@ -10,6 +10,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -97,7 +98,7 @@ func (s Service) installShimStep(ctx context.Context, target, shimPathOverride s
 // readLocalSKILLMD reads SKILL.md from the embedded FS.
 // .strategist/ is write-only — we never read back from it.
 func (s Service) readLocalSKILLMD(ctx context.Context, _ string) (string, error) {
-	data, err := s.Extractor.ReadFile(skillMDName)
+	data, err := s.Extractor.ReadFile(names.SkillMDName)
 	if err != nil {
 		return "", fmt.Errorf("read embedded SKILL.md: %w", err)
 	}
@@ -118,7 +119,7 @@ func (s Service) installShimFor(ctx context.Context, target, skillContent, shimP
 		if err != nil {
 			return fmt.Errorf("resolve target: %w", err)
 		}
-		skillRoot = filepath.Join(absTarget, strategistDirName)
+		skillRoot = filepath.Join(absTarget, names.StrategistDirName)
 	}
 	if shimPathOverride != "" {
 		return installShimToPath(ctx, shimPathOverride, skillContent, skillRoot)
@@ -143,7 +144,7 @@ func (s Service) resolveShimPath(shimPathOverride string) (string, error) {
 			return "", fmt.Errorf("home dir: %w", err)
 		}
 	}
-	return defaultShimPath(homeDir), nil
+	return names.DefaultShimPath(homeDir), nil
 }
 
 // rollbackManifest removes created paths in reverse order (best-effort).

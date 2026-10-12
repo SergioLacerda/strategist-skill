@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -18,7 +19,7 @@ import (
 type silentRankedExtractor struct{ rankedWizardExtractor }
 
 func (silentRankedExtractor) ReadFile(relPath string) ([]byte, error) {
-	if relPath == epicStandaloneTemplatePath {
+	if relPath == names.EpicStandaloneTemplatePath {
 		return []byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-propose\n  execution: sniper\n"), nil
 	}
 	return rankedWizardExtractor{}.ReadFile(relPath)

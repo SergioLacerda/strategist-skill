@@ -1,0 +1,91 @@
+package onboarding
+
+import (
+	"fmt"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/support"
+	"github.com/SergioLacerda/strategist-skill/internal/plugins/lifecycle"
+)
+
+func inventoryFromLock(lock domain.PluginLock) []domain.InstalledInstance {
+	instances := make([]domain.InstalledInstance, 0, len(lock.Nodes))
+	for _, node := range lock.Nodes {
+		instances = append(instances, domain.InstalledInstance{
+			ID:          installedInstanceID(node),
+			ConnectorID: names.ConnectorCurrentRuntime,
+			LockDigest:  lock.GraphDigest,
+			State:       lifecycle.StateResolved,
+		})
+		if node.Kind == "adapter_contract" {
+			instances[len(instances)-1].AdapterDigest = node.Digest
+		}
+		if node.Kind == "package" {
+			instances[len(instances)-1].PackageDigest = node.Digest
+		}
+	}
+	return instances
+}
+
+// BindingsFromSlots builds one slot binding per chosen slot, in canonical slot order.
+func BindingsFromSlots(slots map[string]string, lock domain.PluginLock) ([]domain.SlotBinding, error) {
+	nodesByID := map[string]domain.PluginLockNode{}
+	for _, node := range lock.Nodes {
+		nodesByID[node.ID] = node
+	}
+	bindings := make([]domain.SlotBinding, 0, len(slots))
+	for _, slot := range support.SortedSlotNames(slots) {
+		node, ok := lockNodeForRef(nodesByID, slots[slot])
+		if !ok {
+			return nil, fmt.Errorf("unresolved_binding: %s provider %s", slot, slots[slot])
+		}
+		bindings = append(bindings, domain.SlotBinding{
+			SchemaVersion:       names.PluginBindingSchemaVersion,
+			TaxonomyVersion:     domain.CanonicalTaxonomyVersion,
+			Slot:                slot,
+			InstalledInstanceID: installedInstanceID(node),
+			Generation:          0,
+			Status:              "enabled",
+			Mode:                domain.SlotBindingModeCustom,
+		})
+	}
+	return bindings, nil
+}
+
+func mergeInventory(store *lifecycle.Store, instances []domain.InstalledInstance) {
+	seen := map[string]bool{}
+	for _, instance := range store.Inventory.Instances {
+		seen[instance.ID] = true
+	}
+	for _, instance := range instances {
+		if !seen[instance.ID] {
+			store.Inventory.Instances = append(store.Inventory.Instances, instance)
+		}
+	}
+}
+
+func changesFromBindings(bindings []domain.SlotBinding) []string {
+	changes := make([]string, 0, len(bindings))
+	for _, binding := range bindings {
+		changes = append(changes, fmt.Sprintf("slot %s -> %s", binding.Slot, binding.InstalledInstanceID))
+	}
+	return changes
+}
+
+// lockNodeForRef finds the lock node an active.yaml slot value names: the whole
+// string as a node id first (a Custom package id), then the id part of an
+// "id@version" reference. The requirement already pinned the version, so the
+// node for that id is the referenced one.
+func lockNodeForRef(nodesByID map[string]domain.PluginLockNode, ref string) (domain.PluginLockNode, bool) {
+	if node, ok := nodesByID[ref]; ok {
+		return node, true
+	}
+	id, _ := domain.ParseWeaponRef(ref)
+	node, ok := nodesByID[id]
+	return node, ok
+}
+
+func installedInstanceID(node domain.PluginLockNode) string {
+	return node.ID + "@" + node.Digest
+}

@@ -57,10 +57,31 @@ These are not moved by this plan. Each one is named by a rule, a manifest or a l
 | `internal/domain` | 698 importing files; named by depguard, `TestDomainIsolation`, `TestDomainDoesNotDependOnRuntimeBoundaries`; tests locate the repository root with `../..` |
 | `internal/embed` | `internal/embed/defaults` is hard-coded in `go:embed`, CLI flag defaults, scripts and many spec tests |
 | `internal/telemetry` (parent) | 185 importing files; `make/go.mk` file lists and `scripts/generate-event-catalog.sh` name its files |
-| `internal/install`, `internal/compile`, `internal/stale` | depguard globs, `TestLateralIsolation`, `runtime.Caller` and path constants in production code |
+| `internal/install`, `internal/compile`, `internal/stale` | depguard globs, `TestLateralIsolation`, `runtime.Caller` and path constants in production code (`internal/install` keeps its path; its contents are split, see "Inside `internal/install`") |
 | `internal/filesystem` | neutral leaf primitive with 26 importing files |
 | `internal/testutil` | shared fixtures with 63 importing files |
 | `internal/mission` (parent) | lifecycle and orchestration boundary; children are added, the parent is not moved |
+
+## Inside `internal/install`
+
+Mission `20261012-internal-install-refactor-evaluation` split the flat package into sub-packages by affinity. The root keeps the `Service`/`Installer` orchestration; every sub-package is a leaf of it, and the package graph is acyclic (nothing imports the root).
+
+| Package | Owns |
+|---|---|
+| `names` | file, path, connector-identity and vocabulary names shared by the packages; imports nothing from `internal/install` |
+| `support` | atomic writes, `.gitignore` entries, mission ids, small slice helpers |
+| `plugincatalog` | plugin catalog model, lock file, option sets, weapon pin comparison, role/provider catalog mapping |
+| `embeddedweapon` | embedded Weapon ingestion, certification, mirrors, lock and drift |
+| `sidecar` | `strategist.yaml` sidecar scaffold |
+| `customprovider` | Custom provider resolution, declaration, materialization |
+| `rankedbinding` | Ranked binding activation and private runtime preparation |
+| `onboarding` | plugin onboarding plan and role/provider migration |
+| `activeyaml` | `active.yaml` and its knowledge and treasure-chest sections |
+| `wizard` | interactive install Wizard, prompters and defaults |
+| `installtest` | test fixtures shared by these packages; imported by tests only |
+| root `install` | `Service`, `NewInstaller`, installer steps, upgrade, runtime defaults, shim, audit, manifest |
+
+Dependency order: `names`, `support` -> `plugincatalog` -> `embeddedweapon`, `sidecar`, `customprovider` -> `rankedbinding`, `onboarding` -> `wizard` -> root; `activeyaml` depends only on `names` and `support`. Rules that govern the subtree: the `install-lateral` depguard rule (glob `**/internal/install/**`), `TestLateralIsolation`, and one `scripts/coverage-packages.tsv` row per package. Code that locates the repository from its own source path must account for the extra directory level (`embeddedweapon.RepoRoot`).
 
 ## Deferred
 

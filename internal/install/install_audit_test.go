@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,6 +73,6 @@ func TestAuditRecordCarriesNoFileContentOrPaths(t *testing.T) {
 func TestReadSlotBindingsReturnsNilForMalformedActiveYAML(t *testing.T) {
 	t.Parallel()
 	strategistDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, activeYAMLName), []byte("slots: [broken"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, names.ActiveYAMLName), []byte("slots: [broken"), 0o600))
 	assert.Nil(t, readSlotBindings(strategistDir))
 }

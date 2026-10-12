@@ -3,6 +3,7 @@ package install
 import (
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,7 +15,7 @@ func TestWizardLevelingAuthorityParity(t *testing.T) {
 		t.Run(fixture.Name, func(t *testing.T) {
 			root := testutil.PortableStrategistRoot(t)
 			fixture.Setup(t, root)
-			_, _, err := loadWizardLevelingPolicy(root, newRuntimeDefaultsExtractor(nil))
+			_, _, err := wizard.LoadWizardLevelingPolicy(root, newRuntimeDefaultsExtractor(nil))
 			assert.Equal(t, fixture.WantCode, testutil.LevelingReasonCode(err), "error: %v", err)
 		})
 	}

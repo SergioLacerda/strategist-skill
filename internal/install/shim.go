@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/support"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -66,7 +68,7 @@ func installShim(ctx context.Context, target string) (retErr error) {
 		if absErr != nil {
 			return fmt.Errorf("resolve target: %w", absErr)
 		}
-		skillRoot = filepath.Join(absTarget, strategistDirName)
+		skillRoot = filepath.Join(absTarget, names.StrategistDirName)
 	}
 	return installShimTo(ctx, home, "", skillRoot)
 }
@@ -76,7 +78,7 @@ func installShim(ctx context.Context, target string) (retErr error) {
 // skillContent is the raw content of SKILL.md. An empty string produces a
 // shim with frontmatter only (used in error-path tests).
 func installShimTo(ctx context.Context, homeDir, skillContent, skillRoot string) error {
-	shimPath := defaultShimPath(homeDir)
+	shimPath := names.DefaultShimPath(homeDir)
 	if err := writeShimFile(shimPath, skillContent, skillRoot); err != nil {
 		return err
 	}
@@ -98,7 +100,7 @@ func writeShimFile(shimPath, skillContent, skillRoot string) error {
 		return fmt.Errorf("mkdir shim dir: %w", err)
 	}
 	content := []byte(generateShimContent(skillContent, skillRoot))
-	if err := atomicWriteFile(shimPath, content, 0o644); err != nil {
+	if err := support.AtomicWriteFile(shimPath, content, 0o644); err != nil {
 		return fmt.Errorf("write shim: %w", err)
 	}
 	return nil
@@ -130,7 +132,7 @@ func installCodexShim(codexRoot, skillContent, skillRoot string) {
 	if !dirExists(codexRoot) {
 		return
 	}
-	p := filepath.Join(codexRoot, shimRelPath)
+	p := filepath.Join(codexRoot, names.ShimRelPath)
 	if err := writeShimFile(p, skillContent, skillRoot); err != nil {
 		logOptionalShimFailure(p, err)
 	}
@@ -153,7 +155,7 @@ func dirExists(path string) bool {
 
 func geminiShimPaths(geminiRoot string) []string {
 	return []string{
-		filepath.Join(geminiRoot, shimRelPath),
-		filepath.Join(geminiRoot, "antigravity", shimRelPath),
+		filepath.Join(geminiRoot, names.ShimRelPath),
+		filepath.Join(geminiRoot, "antigravity", names.ShimRelPath),
 	}
 }

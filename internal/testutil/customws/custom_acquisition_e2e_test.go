@@ -14,8 +14,10 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
+	"github.com/SergioLacerda/strategist-skill/internal/install/sidecar"
+	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
 	"github.com/SergioLacerda/strategist-skill/internal/provider"
-	"github.com/SergioLacerda/strategist-skill/internal/roles/validation"
+	rolevalidation "github.com/SergioLacerda/strategist-skill/internal/roles/validation"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +39,7 @@ func hostSkill(t *testing.T, workspace string, withSidecar bool) string {
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nname: "+hostWeaponID+"\nmetadata:\n  version: \"2.0.0\"\n---\nbody\n"), 0o644))
 	if withSidecar {
-		_, err := install.ScaffoldSidecar(install.SidecarScaffoldOptions{PackageDir: dir, Roles: []string{"ranger"}, Slots: []string{"discovery"}})
+		_, err := sidecar.ScaffoldSidecar(sidecar.ScaffoldOptions{PackageDir: dir, Roles: []string{"ranger"}, Slots: []string{"discovery"}})
 		require.NoError(t, err)
 	}
 	return dir
@@ -46,7 +48,7 @@ func hostSkill(t *testing.T, workspace string, withSidecar bool) string {
 func wizardInstall(t *testing.T, workspace string) error {
 	t.Helper()
 	input := "en\nen\nen\nen\nepic\n.analysis\n\n\n" + hostWeaponID + "\nopenspec-propose\nsniper\n\n"
-	svc := install.Service{Extractor: embed.Extractor{}, Compiler: noCompile{}, WizardPrompter: install.NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
+	svc := install.Service{Extractor: embed.Extractor{}, Compiler: noCompile{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
 	return svc.Install(context.Background(), domain.InstallConfig{Target: workspace, Wizard: true})
 }
 
@@ -148,7 +150,7 @@ func TestWizardTypedCustomWeaponDeclaringAnotherRoleIsRejected(t *testing.T) {
 	testutil.SetHome(t, t.TempDir())
 	t.Chdir(workspace)
 	dir := hostSkill(t, workspace, false)
-	_, err := install.ScaffoldSidecar(install.SidecarScaffoldOptions{PackageDir: dir, Roles: []string{"archivist"}, Slots: []string{"refinement"}})
+	_, err := sidecar.ScaffoldSidecar(sidecar.ScaffoldOptions{PackageDir: dir, Roles: []string{"archivist"}, Slots: []string{"refinement"}})
 	require.NoError(t, err)
 
 	err = wizardInstall(t, workspace)

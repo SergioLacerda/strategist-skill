@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -62,8 +63,12 @@ func installedTempDir(t *testing.T) string {
 	require.NoError(t, integrity.WriteLock(activePath, lockPath))
 	lock, err := os.ReadFile(lockPath)
 	require.NoError(t, err)
-	assert.Contains(t, string(lock), dir, "the copied config lock must point at the copy")
-	assert.NotContains(t, string(lock), upgradeTemplateRoot, "the copied config lock must not retain the template path")
+	var recorded struct {
+		Path string `json:"path"`
+	}
+	require.NoError(t, json.Unmarshal(lock, &recorded))
+	assert.Equal(t, activePath, recorded.Path, "the copied config lock must point at the copy")
+	assert.NotEqual(t, filepath.Join(upgradeTemplateRoot, ".strategist", "active.yaml"), recorded.Path, "the copied config lock must not retain the template path")
 	return dir
 }
 

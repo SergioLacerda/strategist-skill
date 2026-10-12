@@ -9,6 +9,8 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/install/rankedbinding"
+	"github.com/SergioLacerda/strategist-skill/internal/install/support"
 )
 
 // ApplyUpgrade writes every Missing/AutoUpgrade file (and, when force is
@@ -66,7 +68,7 @@ func (s Service) finalizeUpgrade(strategistDir string, plan UpgradePlan, toWrite
 }
 
 func (s Service) saveUpgradeManifest(strategistDir string, plan UpgradePlan) error {
-	fullManifest := withInstallHistory(strategistDir, domain.NewFullInstallManifest(packageID(s.Version), plan.embeddedHashes))
+	fullManifest := withInstallHistory(strategistDir, domain.NewFullInstallManifest(support.PackageID(s.Version), plan.embeddedHashes))
 	if err := s.applyLevelingAuthority(&fullManifest); err != nil {
 		return fmt.Errorf("upgrade: LEVELING authority: %w", err)
 	}
@@ -88,7 +90,7 @@ func (s Service) reconcileUpgradedState(strategistDir string, plan UpgradePlan) 
 			return fmt.Errorf("upgrade: migrate plugins.lock: %w", err)
 		}
 	}
-	if err := prepareRankedProviderRuntimes(context.Background(), strategistDir); err != nil {
+	if err := rankedbinding.PrepareRankedProviderRuntimes(context.Background(), strategistDir); err != nil {
 		return fmt.Errorf("upgrade: reconcile ranked runtimes: %w", err)
 	}
 	return nil
@@ -149,7 +151,7 @@ func (s Service) snapshotBeforeUpgrade(strategistDir string, paths []string) (st
 		}
 	}
 
-	if err := ensureGitignoreEntry(filepath.Dir(strategistDir), upgradeBackupGitignoreEntry); err != nil {
+	if err := support.EnsureGitignoreEntry(filepath.Dir(strategistDir), support.UpgradeBackupGitignoreEntry); err != nil {
 		return "", fmt.Errorf("gitignore backup dir: %w", err)
 	}
 	return backupDir, nil

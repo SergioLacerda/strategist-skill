@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/governance"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +18,7 @@ func TestReadPluginLockFile_MissingFileReturnsZeroValue(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 
-	f, err := readPluginLockFile(dir)
+	f, err := plugincatalog.ReadPluginLockFile(dir)
 	require.NoError(t, err)
 	assert.Equal(t, domain.PluginLockFileSchemaVersion, f.SchemaVersion)
 	assert.Empty(t, f.Inventory.Instances)
@@ -25,11 +28,11 @@ func TestReadPluginLockFile_MissingFileReturnsZeroValue(t *testing.T) {
 func TestReadPluginLockFile_CorruptYAMLErrors(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, pluginLockFileName), []byte("not: [valid yaml"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, names.PluginLockFileName), []byte("not: [valid yaml"), 0o644))
 
-	_, err := readPluginLockFile(dir)
+	_, err := plugincatalog.ReadPluginLockFile(dir)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, pluginLockFileName)
+	assert.ErrorContains(t, err, names.PluginLockFileName)
 }
 
 func TestWritePluginLockFile_RoundTrip(t *testing.T) {
@@ -50,9 +53,9 @@ func TestWritePluginLockFile_RoundTrip(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, writePluginLockFile(dir, want))
+	require.NoError(t, plugincatalog.WritePluginLockFile(dir, want))
 
-	got, err := readPluginLockFile(dir)
+	got, err := plugincatalog.ReadPluginLockFile(dir)
 	require.NoError(t, err)
 	assert.Equal(t, domain.PluginLockFileSchemaVersion, got.SchemaVersion)
 	assert.Equal(t, want.Lock, got.Lock)
@@ -83,8 +86,8 @@ func TestWritePluginLockFile_RoundTripsBindingArtifacts(t *testing.T) {
 	require.NoError(t, err)
 	want := domain.PluginLockFile{Bindings: []domain.SlotBinding{binding}, BindingArtifacts: []domain.WeaponBindingArtifact{artifact}}
 
-	require.NoError(t, writePluginLockFile(dir, want))
-	got, err := readPluginLockFile(dir)
+	require.NoError(t, plugincatalog.WritePluginLockFile(dir, want))
+	got, err := plugincatalog.ReadPluginLockFile(dir)
 	require.NoError(t, err)
 	assert.Equal(t, want.Bindings, got.Bindings)
 	assert.Equal(t, want.BindingArtifacts, got.BindingArtifacts)
@@ -94,23 +97,23 @@ func TestWritePluginLockFile_StampsSchemaVersionRegardlessOfInput(t *testing.T) 
 	t.Parallel()
 	dir := t.TempDir()
 
-	require.NoError(t, writePluginLockFile(dir, domain.PluginLockFile{SchemaVersion: "bogus"}))
+	require.NoError(t, plugincatalog.WritePluginLockFile(dir, domain.PluginLockFile{SchemaVersion: "bogus"}))
 
-	got, err := readPluginLockFile(dir)
+	got, err := plugincatalog.ReadPluginLockFile(dir)
 	require.NoError(t, err)
 	assert.Equal(t, domain.PluginLockFileSchemaVersion, got.SchemaVersion)
 }
 
 func TestWritePluginLockFile_WriteErrorPropagates(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	err := writePluginLockFile(dir, domain.PluginLockFile{})
+	err := plugincatalog.WritePluginLockFile(dir, domain.PluginLockFile{})
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "write "+pluginLockFileName)
+	assert.ErrorContains(t, err, "write "+names.PluginLockFileName)
 }
 
 func TestPersistGovernanceStateRoundTripsOperatorResources(t *testing.T) {

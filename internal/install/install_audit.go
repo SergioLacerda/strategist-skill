@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"gopkg.in/yaml.v3"
 )
@@ -39,7 +40,7 @@ type AuditRecord struct {
 // readSlotBindings returns the slots block of active.yaml, or nil when the file
 // is absent or unreadable (an audit never fails an install).
 func readSlotBindings(strategistDir string) map[string]string {
-	raw, err := os.ReadFile(filepath.Join(strategistDir, activeYAMLName)) //nolint:gosec // fixed file under the runtime dir
+	raw, err := os.ReadFile(filepath.Join(strategistDir, names.ActiveYAMLName)) //nolint:gosec // fixed file under the runtime dir
 	if err != nil {
 		return nil
 	}

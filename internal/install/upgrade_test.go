@@ -1,7 +1,6 @@
 package install
 
 import (
-	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -9,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +62,7 @@ func TestPlanUpgrade_FreshRoot_EverythingMissing(t *testing.T) {
 func TestPlanUpgrade_HashEmbeddedPathsErrorPropagates(t *testing.T) {
 	t.Parallel()
 
-	svc := Service{Extractor: alwaysErrExtractor{}, Lister: alwaysAllPathsLister{[]string{"a.yaml"}}}
+	svc := Service{Extractor: installtest.AlwaysErrExtractor{}, Lister: alwaysAllPathsLister{[]string{"a.yaml"}}}
 
 	_, err := svc.PlanUpgrade(t.TempDir())
 	require.Error(t, err)
@@ -90,7 +91,7 @@ func TestPlanUpgrade_ResolvePathErrorPropagates(t *testing.T) {
 }
 
 func TestPlanUpgrade_ReadCurrentHashErrorPropagates(t *testing.T) {
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -328,7 +329,7 @@ func TestRollbackUpgrade_ResolveErrorPropagates(t *testing.T) {
 }
 
 func TestRollbackUpgrade_ReadFileErrorPropagates(t *testing.T) {
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -459,7 +460,7 @@ func TestSnapshotBeforeUpgrade(t *testing.T) {
 	})
 
 	t.Run("unreadable file propagates a read error", func(t *testing.T) {
-		skipIfPermissionTestUnsupported(t)
+		installtest.SkipIfPermissionTestUnsupported(t)
 		t.Parallel()
 		dir := t.TempDir()
 		target := filepath.Join(dir, "locked.yaml")

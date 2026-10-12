@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	home := t.TempDir()
 	require.NoError(t, os.Chmod(home, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(home, 0o755) })
@@ -25,7 +26,7 @@ func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
 
 func TestInstallShimTo_WriteError(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	home := t.TempDir()
 	shimDir := filepath.Join(home, ".claude", "skills", "strategist")
 	require.NoError(t, os.MkdirAll(shimDir, 0o755))
@@ -55,7 +56,7 @@ func (e *errReadExtractor) ReadFile(relPath string) ([]byte, error) {
 
 func TestInstall_ShimError(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	shimHome := t.TempDir()
 
@@ -63,7 +64,7 @@ func TestInstall_ShimError(t *testing.T) {
 	require.NoError(t, os.Chmod(filepath.Join(shimHome, ".claude"), 0o444))
 	t.Cleanup(func() { _ = os.Chmod(filepath.Join(shimHome, ".claude"), 0o755) })
 
-	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: shimHome}
+	svc := Service{Extractor: installtest.MinimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: shimHome}
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "shim")
@@ -122,13 +123,13 @@ func TestInstallOptionalShims_SkipsWhenDirAbsent(t *testing.T) {
 
 func TestInstall_GitignoreError(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	gi := filepath.Join(dir, ".gitignore")
 	require.NoError(t, os.WriteFile(gi, []byte(""), 0o000))
 	t.Cleanup(func() { _ = os.Chmod(gi, 0o644) })
 
-	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
+	svc := Service{Extractor: installtest.MinimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "gitignore")
@@ -187,7 +188,7 @@ func TestInstallShimStep_ReadSKILLMDFails(t *testing.T) {
 func TestInstallShimStep_ResolveShimPathFails(t *testing.T) {
 	clearHomeEnv(t)
 	dir := t.TempDir()
-	s := Service{Extractor: minimalExtractor{}}
+	s := Service{Extractor: installtest.MinimalExtractor{}}
 	_, err := s.installShimStep(context.Background(), dir, "")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "resolve shim path")
@@ -195,14 +196,14 @@ func TestInstallShimStep_ResolveShimPathFails(t *testing.T) {
 
 func TestInstallShimStep_InstallShimForFails(t *testing.T) {
 	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
+	installtest.SkipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	shimHome := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(shimHome, ".claude"), 0o755))
 	require.NoError(t, os.Chmod(filepath.Join(shimHome, ".claude"), 0o444))
 	t.Cleanup(func() { _ = os.Chmod(filepath.Join(shimHome, ".claude"), 0o755) })
 
-	s := Service{Extractor: minimalExtractor{}, ShimHomeDir: shimHome}
+	s := Service{Extractor: installtest.MinimalExtractor{}, ShimHomeDir: shimHome}
 	_, err := s.installShimStep(context.Background(), dir, "")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "install: shim")

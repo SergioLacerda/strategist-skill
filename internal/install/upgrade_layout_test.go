@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -117,8 +120,8 @@ func TestApplyUpgradeMigratesTheLegacyLayoutAndRollbackRestoresIt(t *testing.T) 
 // upgradeCatalogFile is a minimal catalog with one certified Ranked binding.
 func upgradeCatalogFile(t *testing.T) []byte {
 	t.Helper()
-	catalog := rankedVersionsCatalog("1.0.0")
-	catalog.Providers = []pluginCatalogProvider{{
+	catalog := installtest.RankedVersionsCatalog("1.0.0")
+	catalog.Providers = []plugincatalog.Provider{{
 		ID: "demo", Version: "1.0.0", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"},
 		CompatibilitySource: "embedded", Ranked: true, CertificationDigest: "sha256:c-1.0.0",
 	}}
@@ -129,7 +132,7 @@ func upgradeCatalogFile(t *testing.T) []byte {
 
 func legacyRankedLock(t *testing.T, dir string) {
 	t.Helper()
-	require.NoError(t, writePluginLockFile(dir, domain.PluginLockFile{Bindings: []domain.SlotBinding{{
+	require.NoError(t, plugincatalog.WritePluginLockFile(dir, domain.PluginLockFile{Bindings: []domain.SlotBinding{{
 		Slot: "discovery", Role: "ranger", InstalledInstanceID: "demo", Mode: domain.SlotBindingModeRanked, Status: "enabled",
 	}}}))
 }
@@ -142,7 +145,7 @@ func TestApplyUpgradeMigratesAVersionlessRankedLockAndRollbackRestoresIt(t *test
 	legacyRankedLock(t, dir)
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), upgradeCatalogFile(t), 0o644))
-	before, err := os.ReadFile(filepath.Join(dir, pluginLockFileName))
+	before, err := os.ReadFile(filepath.Join(dir, names.PluginLockFileName))
 	require.NoError(t, err)
 	defaults := map[string][]byte{"plugins/catalog.yaml": upgradeCatalogFile(t), "README.md": []byte("x")}
 	svc := upgradeTestService(defaults)
@@ -153,7 +156,7 @@ func TestApplyUpgradeMigratesAVersionlessRankedLockAndRollbackRestoresIt(t *test
 	backup, err := svc.ApplyUpgrade(dir, plan, false)
 	require.NoError(t, err)
 
-	migrated, err := readPluginLockFile(dir)
+	migrated, err := plugincatalog.ReadPluginLockFile(dir)
 	require.NoError(t, err)
 	require.Len(t, migrated.Bindings, 1)
 	assert.Equal(t, "1.0.0", migrated.Bindings[0].WeaponVersion, "the single certified version fills the missing one")
@@ -162,7 +165,7 @@ func TestApplyUpgradeMigratesAVersionlessRankedLockAndRollbackRestoresIt(t *test
 	require.NotEmpty(t, backup, "the lock is snapshotted before it changes")
 	_, err = RollbackUpgrade(dir, filepath.Base(backup))
 	require.NoError(t, err)
-	after, err := os.ReadFile(filepath.Join(dir, pluginLockFileName))
+	after, err := os.ReadFile(filepath.Join(dir, names.PluginLockFileName))
 	require.NoError(t, err)
 	assert.Equal(t, string(before), string(after), "rollback restores the lock byte for byte")
 }
@@ -170,7 +173,7 @@ func TestApplyUpgradeMigratesAVersionlessRankedLockAndRollbackRestoresIt(t *test
 func TestPlanUpgradeReportsNoLockMigrationForAnAlreadyVersionedLock(t *testing.T) {
 	t.Parallel()
 	dir := legacyInstall(t, map[string]string{"README.md": "x"})
-	require.NoError(t, writePluginLockFile(dir, domain.PluginLockFile{Bindings: []domain.SlotBinding{{
+	require.NoError(t, plugincatalog.WritePluginLockFile(dir, domain.PluginLockFile{Bindings: []domain.SlotBinding{{
 		Slot: "discovery", InstalledInstanceID: "demo", WeaponVersion: "1.0.0", Mode: domain.SlotBindingModeRanked,
 	}}}))
 

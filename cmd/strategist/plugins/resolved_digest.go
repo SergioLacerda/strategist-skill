@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application/digest"
-	"github.com/SergioLacerda/strategist-skill/internal/install"
+	"github.com/SergioLacerda/strategist-skill/internal/install/plugincatalog"
 	"github.com/spf13/cobra"
 )
 
@@ -59,12 +59,12 @@ trusted".`,
 // hashing --file), compares it against the catalog pin, prints the result,
 // and returns a non-nil error on mismatch so CI/scripts can gate on it.
 func RunResolvedDigest(out io.Writer, opts ResolvedDigestOptions) error {
-	resolvedDigest, err := digest.ResolveDigestInput(opts.Digest, opts.File, install.HashFileSHA256)
+	resolvedDigest, err := digest.ResolveDigestInput(opts.Digest, opts.File, plugincatalog.HashFileSHA256)
 	if err != nil {
 		return fmt.Errorf("resolved-digest: %w", err)
 	}
 	result, err := digest.CompareResolvedDigest(opts.Provider, resolvedDigest, func(provider, resolved string) (digest.ResolvedDigestComparison, error) {
-		comparison, compareErr := install.CompareResolvedDigest(opts.Catalog, provider, resolved)
+		comparison, compareErr := plugincatalog.CompareResolvedDigest(opts.Catalog, provider, resolved)
 		if compareErr != nil {
 			return digest.ResolvedDigestComparison{}, fmt.Errorf("compare resolved digest: %w", compareErr)
 		}

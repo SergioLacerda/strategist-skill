@@ -7,16 +7,18 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/install/installtest"
+	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestReadNormalizedSilentConfigFailures(t *testing.T) {
 	t.Parallel()
-	_, err := Service{Extractor: fixedFileExtractor{}}.readNormalizedSilentConfig()
+	_, err := Service{Extractor: installtest.FixedFileExtractor{}}.readNormalizedSilentConfig()
 	require.ErrorContains(t, err, "install: read template")
 
-	bad := fixedFileExtractor{epicStandaloneTemplatePath: {data: []byte("language: [unclosed")}}
+	bad := installtest.FixedFileExtractor{names.EpicStandaloneTemplatePath: {Data: []byte("language: [unclosed")}}
 	_, err = Service{Extractor: bad}.readNormalizedSilentConfig()
 	require.ErrorContains(t, err, "install: normalize language")
 }
@@ -26,7 +28,7 @@ func TestPersistWizardConfigFailures(t *testing.T) {
 	blocker := filepath.Join(t.TempDir(), "blocker")
 	require.NoError(t, os.WriteFile(blocker, nil, 0o644))
 	wc := domain.WizardConfig{ResolvedPluginLock: domain.PluginLockFile{Bindings: []domain.SlotBinding{{Slot: "discovery", InstalledInstanceID: "x"}}}}
-	err := Service{Extractor: defaultsExtractor{}}.persistWizardConfig(blocker, wc)
+	err := Service{Extractor: installtest.DefaultsExtractor{}}.persistWizardConfig(blocker, wc)
 	require.ErrorContains(t, err, "install: write plugins.lock")
 
 }
@@ -34,7 +36,7 @@ func TestPersistWizardConfigFailures(t *testing.T) {
 func TestUpgradeFileOperationFailures(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	s := Service{Extractor: fixedFileExtractor{"a.txt": {data: []byte("a")}, "bad.txt": {err: errors.New("boom")}}}
+	s := Service{Extractor: installtest.FixedFileExtractor{"a.txt": {Data: []byte("a")}, "bad.txt": {Err: errors.New("boom")}}}
 
 	require.ErrorContains(t, s.writeUpgradeFile(dir, "bad.txt"), "upgrade: read embedded bad.txt")
 	require.Error(t, s.writeUpgradeFile(dir, "../escape.txt"))
@@ -55,13 +57,13 @@ func TestUpgradeFileOperationFailures(t *testing.T) {
 func TestReconcileUpgradedStateAndFinalizeFailures(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, pluginLockFileName), []byte("bindings: [unclosed"), 0o644))
-	err := Service{Extractor: fixedFileExtractor{}}.reconcileUpgradedState(dir, UpgradePlan{LockMigration: []string{"discovery"}})
+	require.NoError(t, os.WriteFile(filepath.Join(dir, names.PluginLockFileName), []byte("bindings: [unclosed"), 0o644))
+	err := Service{Extractor: installtest.FixedFileExtractor{}}.reconcileUpgradedState(dir, UpgradePlan{LockMigration: []string{"discovery"}})
 	require.ErrorContains(t, err, "upgrade: migrate plugins.lock")
 
-	err = Service{Extractor: fixedFileExtractor{}}.reconcileUpgradedState(dir, UpgradePlan{})
+	err = Service{Extractor: installtest.FixedFileExtractor{}}.reconcileUpgradedState(dir, UpgradePlan{})
 	require.ErrorContains(t, err, "upgrade: reconcile ranked runtimes")
 
-	s := Service{Extractor: fixedFileExtractor{"bad.txt": {err: errors.New("boom")}}}
+	s := Service{Extractor: installtest.FixedFileExtractor{"bad.txt": {Err: errors.New("boom")}}}
 	require.ErrorContains(t, s.finalizeUpgrade(t.TempDir(), UpgradePlan{}, []string{"bad.txt"}, nil), "upgrade: read embedded")
 }

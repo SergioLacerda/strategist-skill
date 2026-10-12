@@ -87,6 +87,14 @@ linters:
           - gosec
           - errcheck
           - dupl
+      # installtest holds fixtures shared by the install packages' tests and is
+      # imported by tests only, so it follows the same exclusions as _test.go.
+      - path: internal/install/installtest/
+        linters:
+          - wrapcheck
+          - gosec
+          - errcheck
+          - dupl
       - path: internal/install/installer\.go
         linters:
           - contextcheck
