@@ -42,6 +42,8 @@ func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
 		RecordRoute:     recordMissionRoute,
 		RecordLifecycle: recordMissionLifecycle,
 		LifecycleWarn:   warnMissionLifecycle,
+		RecordBindings:  recordMissionBindings,
+		BindingChanges:  missionBindingChanges,
 		ActivateCriticalHit: func(root, missionID string) (domain.MissionEngineStatus, error) {
 			return missionruntime.ActivateCriticalHitRoute(root, missionID, loadMission, saveMission)
 		},
@@ -60,6 +62,7 @@ func missionNormalizeDependencies() missionadapter.NormalizeDependencies {
 	return missionadapter.NormalizeDependencies{
 		RootFlag: cliutil.FlagRoot, RequireMissionID: validateMissionID,
 		ResolvePaths: resolveNormalizePaths, RecordConfidence: recordNormalizeConfidence,
+		RecordAdvisories:  recordNormalizeAdvisories,
 		RecordPublication: recordNormalizePublication, LoadMission: loadNormalizeMission,
 		GateLabel: resolveNormalizeGateLabel,
 	}
@@ -76,6 +79,9 @@ func missionReportUsageDependencies() missionadapter.ReportUsageDependencies {
 		},
 		Validate:      validateMissionReportUsageOptions,
 		TelemetrySink: selectDiscoveryTelemetrySink,
+		ResolvePhaseRunID: func(root, missionID, phase string) (string, error) {
+			return telemetry.ResolveOpenPhaseRun(telemetry.MissionLifecyclePath(root), missionID, phase)
+		},
 	}
 }
 

@@ -15,7 +15,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/SergioLacerda/strategist-skill/internal/provider"
-	"github.com/SergioLacerda/strategist-skill/internal/rolevalidation"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/validation"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"

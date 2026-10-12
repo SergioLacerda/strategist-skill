@@ -1,10 +1,10 @@
 package leveling
 
-import "github.com/SergioLacerda/strategist-skill/internal/filelock"
+import "github.com/SergioLacerda/strategist-skill/internal/filesystem/filelock"
 
 // withLedgerLock guards a ledger read-modify-write critical section against
 // concurrent CLI invocations. This package's own Unix/Windows flock
-// implementation was generalized into internal/filelock (ADR-0057 § D2) so
+// implementation was generalized into internal/filesystem/filelock (ADR-0057 § D2) so
 // mission-state persistence could reuse it instead of duplicating the
 // platform split; this is now a thin delegation to keep every existing
 // caller in this package unchanged.

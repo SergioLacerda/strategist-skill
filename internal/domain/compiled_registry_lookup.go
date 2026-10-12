@@ -73,7 +73,7 @@ func ParseWeaponRef(ref string) (id, version string) {
 }
 
 // CompiledRegistryDocument is the decoded registry section of catalog.yaml.
-// YAML decoding is owned by internal/catalog; this type and its validation are
+// YAML decoding is owned by internal/runtime/catalog; this type and its validation are
 // kept in the domain so runtime adapters cannot invent a second contract.
 type CompiledRegistryDocument struct {
 	SchemaVersion   string                  `yaml:"schema_version"`

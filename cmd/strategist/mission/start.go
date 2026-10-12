@@ -52,6 +52,13 @@ type LifecycleDependencies struct {
 	RecordLifecycle func(root, missionID string, markers []domain.LifecycleMarker) error
 	// LifecycleWarn makes a marker write failure observable. Nil is silent.
 	LifecycleWarn func(missionID string, err error)
+	// RecordBindings captures the slot bindings a mission started with, the
+	// baseline binding drift is measured against. Best effort: a failure is
+	// reported through LifecycleWarn and never fails the command.
+	RecordBindings func(root, missionID string) error
+	// BindingChanges lists, as advisory lines, the slots whose binding differs
+	// from the one the mission started with. Nil or empty prints nothing.
+	BindingChanges func(root, missionID string) []string
 }
 
 // withMissionLock runs fn under deps.Lock when one is configured, or
@@ -109,6 +116,7 @@ func RunStart(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 			return lockedErr
 		}
 		recordLifecycleBestEffort(deps, root, missionID, domain.LifecycleMarkersForStart(s))
+		recordBindingsBestEffort(deps, root, missionID)
 		status = s
 		return nil
 	})
@@ -133,4 +141,15 @@ func startLocked(deps LifecycleDependencies, root, missionID string) (domain.Mis
 		return domain.MissionEngineStatus{}, fmt.Errorf("start mission: %w", err)
 	}
 	return status, nil
+}
+
+// recordBindingsBestEffort captures the mission's starting bindings. A failure
+// is made observable and never fails the start.
+func recordBindingsBestEffort(deps LifecycleDependencies, root, missionID string) {
+	if deps.RecordBindings == nil {
+		return
+	}
+	if err := deps.RecordBindings(root, missionID); err != nil && deps.LifecycleWarn != nil {
+		deps.LifecycleWarn(missionID, err)
+	}
 }

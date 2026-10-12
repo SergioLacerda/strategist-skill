@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -22,7 +22,7 @@ type installTransaction struct {
 func newInstallTransaction(strategistDir string) *installTransaction {
 	return &installTransaction{
 		strategistDir: strategistDir,
-		existedBefore: runtimefs.Exists(strategistDir),
+		existedBefore: filesystem.Exists(strategistDir),
 	}
 }
 

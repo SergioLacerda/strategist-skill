@@ -8,8 +8,11 @@ internal/mission	quality-maintainers	baseline coverage policy is pending a dedic
 internal/plugins/governance	quality-maintainers	baseline coverage policy is pending a dedicated governance plugin test budget
 internal/provider	quality-maintainers	local provider onboarding slice has focused contract/transaction tests (84.7%); dedicated error-matrix coverage budget remains outside this implementation slice
 internal/refinement	quality-maintainers	baseline coverage policy is pending a dedicated refinement test budget
-internal/rolevalidation	quality-maintainers	baseline coverage policy is pending a dedicated role validation test budget
-internal/runtimeenv	quality-maintainers	baseline coverage policy is pending a dedicated runtime environment test budget
+internal/roles/jeweler	quality-maintainers	JEWELER support-role boundary has focused contract tests (78.1%); dedicated error-matrix coverage budget remains pending
+internal/roles/validation	quality-maintainers	baseline coverage policy is pending a dedicated role validation test budget
+internal/runtime/env	quality-maintainers	baseline coverage policy is pending a dedicated runtime environment test budget
+internal/runtime/integrity	quality-maintainers	package-local runtime manifest integrity tests are minimal; dedicated coverage budget remains pending
+cmd/treasure-chest-tmp	quality-maintainers	temporary TREASURE-CHEST-TMP Weapon CLI adapter has focused command tests; dedicated package-local coverage budget remains pending
 treasure-chest/domain	quality-maintainers	baseline coverage policy is pending a dedicated Treasure Chest domain test budget
 cmd/strategist/eval	quality-maintainers	adapter extraction pending dedicated package-local coverage budget; existing CLI contract tests remain authoritative
 cmd/strategist/install	quality-maintainers	adapter extraction pending migration of hermetic CLI install fixtures to package-local tests

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 	"gopkg.in/yaml.v3"
 )
 
@@ -118,7 +118,7 @@ func bootstrapOpenSpecRuntimeWith(ctx context.Context, root string, runtime doma
 	if err != nil {
 		return fmt.Errorf("invalid healthcheck command: %w", err)
 	}
-	if runtimefs.Exists(filepath.Join(root, "config.yaml")) {
+	if filesystem.Exists(filepath.Join(root, "config.yaml")) {
 		return validateExistingOpenSpecRuntime(ctx, root, exe, healthcheckArgs)
 	}
 	return initializeOpenSpecRuntime(ctx, root, exe, bootstrapArgs, healthcheckArgs)
@@ -129,7 +129,7 @@ func validateExistingOpenSpecRuntime(ctx context.Context, root string, exe ranke
 	if err != nil {
 		return fmt.Errorf("healthcheck failed: %w", err)
 	}
-	if err := domain.ValidateOpenSpecHealthcheck(output, root, runtimefs.PathResolver{}); err != nil {
+	if err := domain.ValidateOpenSpecHealthcheck(output, root, filesystem.PathResolver{}); err != nil {
 		return fmt.Errorf("healthcheck failed: %w", err)
 	}
 	return removeLegacyNestedOpenSpecRoot(root)
@@ -142,7 +142,7 @@ func initializeOpenSpecRuntime(ctx context.Context, root string, exe rankedExecu
 	if _, err := runRankedRuntimeCommand(ctx, filepath.Dir(root), exe.name, exe.args(bootstrapArgs)...); err != nil {
 		return fmt.Errorf("bootstrap failed: %w", err)
 	}
-	if !runtimefs.Exists(filepath.Join(root, "config.yaml")) {
+	if !filesystem.Exists(filepath.Join(root, "config.yaml")) {
 		return fmt.Errorf("bootstrap completed without %s/config.yaml", root)
 	}
 	return validateExistingOpenSpecRuntime(ctx, root, exe, healthcheckArgs)

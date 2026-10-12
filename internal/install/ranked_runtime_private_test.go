@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/payload"
 	"github.com/stretchr/testify/require"
 )
 
@@ -97,14 +97,14 @@ func TestPrepareRankedProviderRuntimes_IgnoresATamperedOnDiskOpenSpecTree(t *tes
 	bundle := filepath.Join(tree, "dist", "core", "artifact-graph")
 	require.NoError(t, os.MkdirAll(bundle, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(bundle, "openspec.mjs"), []byte("// tampered\n"), 0o644))
-	digest, size, err := runtimepayload.TreeDigest(os.DirFS(strategist), rel)
+	digest, size, err := payload.TreeDigest(os.DirFS(strategist), rel)
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(tree, runtimepayload.BuildInfoFile), []byte(fmt.Sprintf(
+	require.NoError(t, os.WriteFile(filepath.Join(tree, payload.BuildInfoFile), []byte(fmt.Sprintf(
 		"version: 9.9.9\nbundle: dist/core/artifact-graph/openspec.mjs\ntree_sha256: %s\ntree_bytes: %d\n", digest, size)), 0o644))
 
 	// Sanity: the forgery does verify against itself, so the only thing that
 	// rejects it is reading the embedded authority instead.
-	selfCheck, _, selfErr := runtimepayload.MaterializeOpenSpec(os.DirFS(strategist), filepath.Join(t.TempDir(), "self"), "")
+	selfCheck, _, selfErr := payload.MaterializeOpenSpec(os.DirFS(strategist), filepath.Join(t.TempDir(), "self"), "")
 	require.NoError(t, selfErr, "the forged tree certifies itself")
 	selfBody, readErr := os.ReadFile(selfCheck) //nolint:gosec // G304: test-controlled path
 	require.NoError(t, readErr)

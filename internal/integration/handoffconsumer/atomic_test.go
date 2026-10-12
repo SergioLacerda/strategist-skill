@@ -157,14 +157,14 @@ func atomicRecord(t *testing.T, threshold float64) calibration.Record {
 }
 
 func TestAnAtomicPrecheckApprovesWhenTheLowestCriterionClearsTheThreshold(t *testing.T) {
-	r := atomicGateRig(t, allCriteria(0.9), nil)
+	r := atomicGateRig(t, allCriteria(0.95), nil)
 
 	report := r.consumer.Precheck(context.Background(), gateRequest())
 
 	require.Equal(t, StatusApproved, report.Status)
 	require.NotNil(t, report.Delegation)
 	require.NoError(t, report.Delegation.Validate())
-	assert.InDelta(t, 0.9, report.Confidence, 1e-9)
+	assert.InDelta(t, 0.95, report.Confidence, 1e-9)
 	assert.Equal(t, AggregateKey, report.Delegation.Criterion)
 	assert.NotContains(t, r.sim.LastBody(), AggregateKey, "the provider is asked only the criterion questions")
 }

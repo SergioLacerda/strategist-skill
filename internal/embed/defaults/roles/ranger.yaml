@@ -24,19 +24,19 @@ canonical:
         Before invoking this weapon's own CLI/tooling, ensure
         .strategist/weapon-runtime/<provider_id>/ exists (create if absent)
         and run the weapon with that as the working directory.
-  - search:                     # Feat: filters jewel/potion candidates from treasure chests
+  - search:                     # Feat: filters admitted jewel/potion candidates from JEWELER
       when: before consult_treasure_chests decides which chests to open (Retrieval Cascade stage 6)
       filters: [jewel, potion]
       output: relevant_sources_hint     # carried in the handoff artifact, reused by Archivist by default
-  - select_runbook:              # Feat: scores docs/runbooks/*.runbook.yaml sidecars against mission signals
+  - select_runbook:              # Feat: selects provider-indexed runbooks against mission signals
       when: same point as search — before consult_treasure_chests opens the runbooks chest (Retrieval Cascade stage 6)
       must_invoke: true              # the pipeline runs it; skipping it leaves selected_runbooks_hint null (a reported gap)
       invoke: "strategist runbook select --format json --signal <signal> [--signal <signal> ...]"
       signals: [mission_contract.task_type, route_decision.discovery_subtype, salient keywords of the request]
-      reads: docs/runbooks/*.runbook.yaml   # via internal/runbook.ParseSidecar
-      policy: internal/runbook.DefaultSelectionPolicy()   # max_primary=1, max_supporting=2, require_reason=true
+      reads: JEWELER -> external Treasure Chest runbook index
+      policy: provider-bounded (max_primary=1, max_supporting=2, require_reason=true)
       output: selected_runbooks_hint    # list in the handoff artifact ([] = ran, no match), reused by Archivist by default
-      evidence: record the command, the signals and the result in the analysis artifact
+      evidence: "record the command, signals, provider binding and result in the analysis artifact; record any JEWELER readiness, provenance or authorization error under the uncertainties of the artifact"
   - consult_treasure_chests     # consult T0/T1 chests scoped to discovery before generating artifact
   - scope_observation:          # surface side quests and unexpected items during exploration
       detect: [treasure_chests, side_quests]

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/catalog"
 )
 
 // upgradeBackupRelDir is where ApplyUpgrade snapshots a file before
@@ -116,7 +116,7 @@ func customizedCatalogIndex(entries []UpgradePlanEntry) int {
 // catalogRegistryDrifted reports whether the workspace catalog's registry
 // differs from (or cannot be parsed against) the embedded one.
 func (s Service) catalogRegistryDrifted(strategistDir string) (bool, error) {
-	runtimePath, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(pluginCatalogPath))
+	runtimePath, err := filesystem.SafeJoin(strategistDir, filepath.FromSlash(pluginCatalogPath))
 	if err != nil {
 		return false, fmt.Errorf("upgrade: resolve %s: %w", pluginCatalogPath, err)
 	}
@@ -153,11 +153,11 @@ func planEntriesForCurrentTree(
 ) ([]UpgradePlanEntry, error) {
 	entries := make([]UpgradePlanEntry, 0, len(paths))
 	for _, p := range paths {
-		runtimePath, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(p))
+		runtimePath, err := filesystem.SafeJoin(strategistDir, filepath.FromSlash(p))
 		if err != nil {
 			return nil, fmt.Errorf("upgrade: resolve %s: %w", p, err)
 		}
-		currentHash, exists, err := runtimefs.ReadSHA256(runtimePath)
+		currentHash, exists, err := filesystem.ReadSHA256(runtimePath)
 		if err != nil {
 			return nil, fmt.Errorf("upgrade: read %s: %w", p, err)
 		}

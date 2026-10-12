@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // mtime returns the Unix mtime of path in seconds, or 0 on error.
@@ -48,7 +48,7 @@ func sourceFileSHA256(path string) string {
 // The write is atomic: data is written to a temp file and renamed into place so
 // concurrent readers never observe a partially-written archive.
 func writeGzJSON(outputPath string, v any) error {
-	if err := runtimefs.WriteGzJSON(outputPath, v); err != nil {
+	if err := filesystem.WriteGzJSON(outputPath, v); err != nil {
 		return fmt.Errorf("write gz json: %w", err)
 	}
 	return nil
@@ -56,7 +56,7 @@ func writeGzJSON(outputPath string, v any) error {
 
 // sha256Artifact returns "sha256:<hex>" for the file at path, or "unavailable" on error.
 func sha256Artifact(path string) string {
-	hash, exists, err := runtimefs.ReadSHA256(path)
+	hash, exists, err := filesystem.ReadSHA256(path)
 	if err != nil || !exists {
 		return "unavailable"
 	}

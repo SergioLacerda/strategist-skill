@@ -9,9 +9,16 @@ type InstallConfig struct {
 	// Global installs to a global root and skips project-local behaviors
 	// such as writing target/.gitignore.
 	Global bool
-	// Force overwrites all files, including user-modified ones.
-	// When false (default), files that differ from the embedded default are preserved.
+	// Force overwrites the normative runtime files, including user-modified
+	// ones. When false (default), files that differ from the embedded default
+	// are preserved. It never rewrites the user's configuration (active.yaml,
+	// plugins.lock, .config.lock); that takes ResetConfig.
 	Force bool
+	// ResetConfig rewrites active.yaml, plugins.lock and .config.lock from the
+	// epic template, after backing the three files up. It is a deliberate,
+	// separate request: slots, language and documentation roots go back to the
+	// defaults.
+	ResetConfig bool
 	// AllowDowngrade lets an older binary replace normative runtime files a
 	// newer binary installed (a deliberate rollback). Without it the install
 	// fails with runtime_newer_than_binary.

@@ -113,7 +113,7 @@ func TestPromptDocumentationRootsNormalizesAbsolutePathsWithinWorkspace(t *testi
 		filepath.Join(workspace, "docs", "runbooks"),
 	}}
 
-	adr, runbooks, err := promptDocumentationRoots(prompter, i18n.EN, filepath.Join(workspace, ".analysis"), workspace)
+	adr, runbooks, err := promptDocumentationRoots(prompter, i18n.EN, filepath.Join(workspace, ".analysis"), workspace, wizardDefaults{})
 	require.NoError(t, err)
 	assert.Equal(t, ".analysis/adr", adr)
 	assert.Equal(t, "docs/runbooks", runbooks)
@@ -123,7 +123,7 @@ func TestPromptDocumentationRootsRejectsAbsolutePathOutsideWorkspace(t *testing.
 	workspace := t.TempDir()
 	prompter := &documentationRootPrompter{values: []string{filepath.Join(t.TempDir(), "adr")}}
 
-	_, _, err := promptDocumentationRoots(prompter, i18n.EN, ".analysis", workspace)
+	_, _, err := promptDocumentationRoots(prompter, i18n.EN, ".analysis", workspace, wizardDefaults{})
 	require.Error(t, err)
 	require.ErrorContains(t, err, "adr.canonical_path")
 	assert.ErrorContains(t, err, "selected project workspace")

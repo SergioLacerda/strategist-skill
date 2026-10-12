@@ -12,7 +12,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/feats/opportunity_attack"
 	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
-	"github.com/SergioLacerda/strategist-skill/internal/missionview"
+	missionview "github.com/SergioLacerda/strategist-skill/internal/mission/view"
 	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"

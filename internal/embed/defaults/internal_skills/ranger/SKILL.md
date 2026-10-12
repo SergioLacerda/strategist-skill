@@ -55,8 +55,10 @@ Before writing the artifact:
 
 At Retrieval Cascade stage 6, run `strategist runbook select --format json --signal <signal> ...`
 (one `--signal` per mission signal: `task_type`, `discovery_subtype`, and the salient keywords
-of the request) and record its result in `selected_runbooks_hint`. An empty list means it ran
-and nothing matched; `null` is reserved for "not run" and must be reported in `uncertainties`.
+of the request) and record its result in `selected_runbooks_hint`. The command consults the
+admitted external Treasure Chest through JEWELER; it never falls back to the local sidecar
+selector in production. An empty list means it ran and nothing matched; `null` is reserved
+for "not run" and must be reported in `uncertainties`.
 
 ## Scope Observations
 

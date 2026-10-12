@@ -29,6 +29,8 @@ func confidenceRecordFromClaim(agent, missionID, timestamp string, claim domain.
 	return ConfidenceRecord{
 		MissionID:          missionID,
 		ClaimID:            claim.ID,
+		Statement:          claim.Statement,
+		Result:             claim.Result,
 		Agent:              agent,
 		CorrelationKey:     claim.CorrelationKey,
 		ClaimKind:          claim.ClaimKind,
@@ -74,6 +76,9 @@ func ConfidenceEventID(record ConfidenceRecord) string {
 		record.ClaimKind, fmt.Sprint(record.ConfidencePercent), strings.Join(ids, ","),
 		record.GroundTruthRef, record.GroundTruthKind, record.GroundTruthOutcome,
 	)
+	if record.Result != "" {
+		parts = append(parts, record.Result)
+	}
 	seed := strings.Join(parts, "\x00")
 	return fmt.Sprintf("ce-%x", sha256.Sum256([]byte(seed)))
 }

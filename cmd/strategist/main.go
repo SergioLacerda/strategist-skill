@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/payload"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -26,5 +26,5 @@ func main() {
 }
 
 func init() {
-	runtimepayload.RegisterOpenSpec(embed.DefaultsFS())
+	payload.RegisterOpenSpec(embed.DefaultsFS())
 }

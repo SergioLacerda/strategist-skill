@@ -8,7 +8,7 @@
 ## Context
 
 The provider pre-check approves a handoff when the provider's probability of accept is above a
-threshold. The default (0.80) came from one live look. The DOJO already owns durable scenarios, a
+threshold. The default is 0.80, an uncalibrated starting point. The DOJO already owns durable scenarios, a
 run mode for the agent and durable learning, but it can only assert structure: it cannot express a
 judgment, a rate or a calibration. Labeled data is almost all positive, so a calibration needs
 generated negatives.

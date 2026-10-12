@@ -87,10 +87,10 @@ func TestE2E_CLI_InstallWarningsStayVisibleByDefault(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(active, append(raw, []byte("# edited\n")...), 0o644))
 
-	forced := runStrategistCLI(t, workspace, "install", "--silent", "--force", "--no-shim", "--target", workspace)
+	forced := runStrategistCLI(t, workspace, "install", "--silent", "--reset-config", "--no-shim", "--target", workspace)
 
 	require.Equal(t, 0, forced.exitCode, forced.output())
-	assert.Contains(t, forced.output(), "WARN [Strategist] install force-overwriting user-owned config", "a destructive notice is not hidden")
+	assert.Contains(t, forced.output(), "WARN [Strategist] install resetting user-owned configuration", "a destructive notice is not hidden")
 	assert.NotContains(t, forced.output(), " INFO ")
 }
 

@@ -42,21 +42,34 @@ func claimRow(c claims, criterion, agent string) Row {
 	if c.err != nil {
 		return unknown(criterion, claimsSource, "o ledger de confiança não pôde ser lido")
 	}
+	latest := latestClaim(c.records, agent)
+	if latest == nil {
+		return notEvaluated(criterion, claimsSource, "nenhum registro de "+agent)
+	}
+	if latest.CoverageStatus == telemetry.ConfidenceCoverageMissing {
+		return notEvaluated(criterion, claimsSource, "registro ausente: "+orDefault(latest.MissingReason, "motivo não informado"))
+	}
+	return evaluated(criterion, claimValue(*latest), claimsSource, latest.ClaimID)
+}
+
+func latestClaim(records []telemetry.ConfidenceRecord, agent string) *telemetry.ConfidenceRecord {
 	var latest *telemetry.ConfidenceRecord
-	for i := range c.records {
-		if c.records[i].Agent == agent {
-			latest = &c.records[i]
+	for i := range records {
+		if records[i].Agent == agent {
+			latest = &records[i]
 		}
 	}
-	switch {
-	case latest == nil:
-		return notEvaluated(criterion, claimsSource, "nenhum registro de "+agent)
-	case latest.CoverageStatus == telemetry.ConfidenceCoverageMissing:
-		return notEvaluated(criterion, claimsSource, "registro ausente: "+orDefault(latest.MissingReason, "motivo não informado"))
-	case latest.ClaimKind == domain.ClaimKindQuestion:
-		return evaluated(criterion, "pergunta em aberto (sem percentual)", claimsSource, latest.ClaimID)
+	return latest
+}
+
+func claimValue(claim telemetry.ConfidenceRecord) string {
+	if claim.Result != "" {
+		return claim.Result
 	}
-	return evaluated(criterion, fmt.Sprintf("%d%% (%s)", latest.ConfidencePercent, latest.ClaimKind), claimsSource, latest.ClaimID)
+	if claim.ClaimKind == domain.ClaimKindQuestion {
+		return "pergunta em aberto (sem percentual)"
+	}
+	return fmt.Sprintf("%d%% (%s)", claim.ConfidencePercent, claim.ClaimKind)
 }
 
 // reviewRow reuses the confidence gate review that already exists.

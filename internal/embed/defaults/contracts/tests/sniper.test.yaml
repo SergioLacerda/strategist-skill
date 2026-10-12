@@ -14,6 +14,10 @@ invariants:
     description: A resolver-produced side-quest group is executable without a textual documentation_target task
     rule: accepted_side_quest artifacts are materialized at declared paths without Weapon-specific discovery
 
+  - id: runbook_sidecar_from_prepared_candidate
+    description: A runbook sidecar is generated from the prepared candidate in the OA manifest, never composed from prose
+    rule: kind=runbook_sidecar → copy runbook_preparation.proposed_runbook with runbook_id/source_doc from artifact metadata; status other than prepared → blocked reason=runbook_candidate_unavailable
+
   - id: scope_violation_detection
     description: Sniper reports out-of-scope writes during materialization — does not invoke opportunity_attack
     rule: out_of_scope_write detected → emit scope_violation=detected, STOP, wait for user
@@ -55,11 +59,25 @@ cases:
             completion_policy: all_required
             artifacts:
               - {id: runbook-1-main, role: primary, path: docs/runbooks/one.md, kind: runbook}
-              - {id: runbook-1-sidecar, role: sidecar, path: docs/runbooks/one.meta.json, kind: runbook_metadata}
+              - {id: runbook-1-sidecar, role: sidecar, path: docs/runbooks/one.runbook.yaml, kind: runbook_sidecar}
       documentation_target_checkboxes: 0
     expect:
       action: materialize both declared artifacts and complete the group
       mission_status: documentation_applied
+
+  - name: runbook_sidecar_without_prepared_candidate
+    given:
+      execution_snapshot:
+        groups:
+          - id: runbook-1
+            completion_policy: all_required
+            artifacts:
+              - {id: runbook-1-main, role: primary, path: docs/runbooks/one.md, kind: runbook}
+              - {id: runbook-1-sidecar, role: sidecar, path: docs/runbooks/one.runbook.yaml, kind: runbook_sidecar}
+      runbook_preparation_status: insufficient_evidence
+    expect:
+      emit: "blocked reason=runbook_candidate_unavailable"
+      action: STOP, write no sidecar, invent no runbook fields
 
   - name: out_of_scope_write_detected
     given:

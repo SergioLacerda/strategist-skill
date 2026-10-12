@@ -1,0 +1,51 @@
+apiVersion: skillsforhire.dev/v1
+kind: Skill
+
+metadata:
+  name: treasure-chest-tmp
+  version: "0.1.0"
+  displayName: TREASURE-CHEST-TMP
+  description: Temporary host Weapon for the root Treasure Chest implementation.
+  owner: strategist-skill
+  lifecycle: experimental
+  tags:
+    - knowledge
+    - temporary
+    - jeweler
+
+spec:
+  entrypoint: SKILL.md
+  compatibility:
+    clients:
+      - name: generic-agent-skills
+        version: ">=1"
+  capabilities:
+    network:
+      mode: denied
+    filesystem:
+      mode: workspace-read
+    subprocess:
+      mode: denied
+    secrets:
+      mode: denied
+    destructiveActions:
+      confirmation: required
+  execution:
+    timeoutSeconds: 120
+    maxOutputBytes: 10485760
+    installDependenciesAtRuntime: false
+  dependencies:
+    required: []
+    optional: []
+  composition:
+    provides:
+      - knowledge.search
+      - runbook.select
+    conflictsWith: []
+    priority: 100
+  distribution:
+    licenseFile: ../../LICENSE
+    changelog: CHANGELOG.md
+    sourceRepository: https://github.com/SergioLacerda/strategist-skill
+    integrity:
+      algorithm: sha256

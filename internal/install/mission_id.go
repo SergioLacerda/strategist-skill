@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // GenerateMissionID returns a date-prefixed mission ID from slug.
@@ -73,7 +73,7 @@ func patternCollides(pattern string) bool {
 		return false
 	}
 	for _, match := range matches {
-		if runtimefs.Exists(match) {
+		if filesystem.Exists(match) {
 			return true
 		}
 	}

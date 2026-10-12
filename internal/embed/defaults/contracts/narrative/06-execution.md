@@ -128,6 +128,11 @@ mention, and it does not execute them.
 - execute claim protocol before any action
 - consume the authorized `execution_snapshot`; do not infer a target from the
   selected Weapon (`writing-plans`, OpenSpec, or any future Weapon)
+- report every `execution_snapshot.deferred` entry under "Accepted side quests not
+  materialized" in the report: a deferred entry is an accepted intent whose kind has no
+  execution resolver (an accepted `OA-CHEST`, registered afterwards with `strategist
+  treasure-chest add`); it is never an artifact, never extends the write scope and never
+  blocks the mission
 - never start without explicit approval gate acceptance evidence
 - execute the pre-materialization scan before the first task in the loop
 - read numbered documentation tasks from `tasks.md`

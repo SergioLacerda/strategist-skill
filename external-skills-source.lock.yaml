@@ -79,6 +79,26 @@ packages:
       license: MIT
       supported_slots:
         - refinement
+    - id: treasure-chest-tmp
+      version: 0.1.0
+      kind: atomic
+      origin: embedded
+      runtime_kind: host
+      digest: sha256:8d3110a44f85c668dca219ae78972c1e5bcca9b38dd785fce612b78f92e14c9b
+      source: external-skills-source/treasure-chest-tmp
+      contract_version: skill-package/v2
+      original_digest: sha256:8d3110a44f85c668dca219ae78972c1e5bcca9b38dd785fce612b78f92e14c9b
+      normalized_digest: sha256:d6988bed30cf160d7aedb65836ddb1ac7bb0a77acc52d6f00b61b3bb06afce03
+      transformation: none
+      local_modifications: unknown
+      verification_state: declared
+      original_digest_evidence: verified
+      normalized_digest_evidence: verified
+      canonical_source: https://github.com/SergioLacerda/strategist-skill
+      upstream_revision: local-sprint-1
+      license: MIT
+      supported_slots:
+        - treasure
     - id: writing-plans
       version: 1.0.0
       kind: atomic

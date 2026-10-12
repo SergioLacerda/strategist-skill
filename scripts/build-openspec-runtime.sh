@@ -92,7 +92,7 @@ open(os.path.join(out, "THIRD_PARTY_LICENSES.txt"), "w").write(header + "\n".joi
 PY
 cp LICENSE "$out/LICENSE"
 
-# Tree digest: must match runtimepayload.TreeDigest (sorted rel paths, each as
+# Tree digest: must match payload.TreeDigest (sorted rel paths, each as
 # "<path>\0<sha256(content)>\n", skipping runtime.build.yaml itself).
 read -r tree_sha tree_bytes < <(python3 - "$out" <<'PY'
 import hashlib, os, sys

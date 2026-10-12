@@ -22,6 +22,9 @@ type slotOptions struct {
 	rankedRefs    []string
 	rankedDefault string
 	excluded      []excludedProviderOption
+	// preferCustom pre-selects defaultID (the Custom entry) even when Ranked
+	// options exist: the existing binding is a Custom one.
+	preferCustom bool
 }
 
 // compatibleSlotOptions lists the catalog candidates for roleName that

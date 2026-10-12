@@ -4,15 +4,15 @@ runbook_type: operational
 source_doc: docs/runbooks/jewelcrafter-offline-curation-recovery.md
 
 applies_when:
-  - "JEWELCRAFTER, the treasure support slot, or the BAU DO TESOURO skill-for-hire provider is unavailable, degraded, unverified, expired, or corrupt"
+  - "JEWELER (or its JEWELCRAFTER migration alias), the treasure support slot, or the BAU DO TESOURO skill-for-hire provider is unavailable, degraded, unverified, expired, or corrupt"
   - "Ranger or Archivist needs offline BAU DO TESOURO data"
   - "the external provider cannot be imported and an integration test needs the explicit bau-do-tesouro-mock provider"
   - "the embedded internal Jewelcrafter skill is being assessed for controlled retirement"
 
-objective: "Recover or diagnose JEWELCRAFTER offline queries and the BAU DO TESOURO support binding while preserving single-owner authority, explicit Mock selection, fail-closed readiness, and source/data immutability."
+objective: "Recover or diagnose JEWELER offline queries and the BAU DO TESOURO support binding while preserving single-owner authority, explicit Mock selection, fail-closed readiness, and source/data immutability."
 
 preconditions:
-  - "JEWELCRAFTER is the only Role allowed to handle the BAU DO TESOURO Weapon"
+  - "JEWELER is the only Role allowed to handle the BAU DO TESOURO Weapon; JEWELCRAFTER is an observable migration alias"
   - "Ranger and Archivist consume a read-only offline query boundary and do not call the provider directly"
   - "the external skill-for-hire provider and bau-do-tesouro-mock use the same bounded query/response envelope"
   - "Mock is selected only by an explicit test/development profile and never by production fallback"
@@ -22,7 +22,7 @@ decision_gates:
   - id: identify-provider-mode
     statement: "Record whether the active provider mode is external or explicitly selected mock; do not infer mode from cache or catalog state."
   - id: confirm-jewelcrafter-authority
-    statement: "Confirm the request passed through JEWELCRAFTER and that no consumer role invoked the Weapon or provider directly."
+    statement: "Confirm the request passed through JEWELER, or an explicitly recorded JEWELCRAFTER alias, and that no consumer role invoked the Weapon or provider directly."
   - id: readiness-evidence
     statement: "Keep the support binding unavailable/degraded when any required external evidence is missing."
   - id: preserve-derived-boundary

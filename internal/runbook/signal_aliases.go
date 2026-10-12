@@ -27,6 +27,8 @@ var signalAliases = map[CanonicalSignal][]string{
 	},
 	SignalVerifyingImplementedDemands: {
 		"already finished", "move it to done", "bootstrap stale scan", "refined/<mission_id>",
+		"evaluation", "implementation_evaluation", "implementation evaluation",
+		"telemetry", "gate-quality-criterion", "gate quality criterion", "sniper", "archivist",
 	},
 	SignalComplexityRefactor: {
 		"golangci-lint", "gocritic", "wrapcheck", "complexity tooling", "reduce complexity below a numeric limit",

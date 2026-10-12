@@ -161,3 +161,18 @@ func TestNormativeRuntimeDefaultFiles_AreAllRequired(t *testing.T) {
 		assert.True(t, file.Required, file.Path)
 	}
 }
+
+// The stale-runtime diagnostics used to end with "run strategist install
+// --force" and said nothing about what the flag overwrites; a forced install
+// reset a user's slot binding. They now recommend the repair that leaves the
+// configuration alone and say what --force touches.
+func TestStaleDiagnosticsRecommendUpgradeBeforeForce(t *testing.T) {
+	for _, decision := range []domain.RuntimeDefaultDecision{
+		domain.RuntimeDecisionConflict, domain.RuntimeDecisionUnknownManifest, domain.RuntimeDecisionForceOverwrite,
+	} {
+		got := domain.FormatRuntimeStaleDiagnostic("contracts/x.yaml", decision)
+		assert.Contains(t, got, "strategist upgrade --dry-run", string(decision))
+		assert.Contains(t, got, "never rewrites active.yaml", string(decision))
+		assert.NotContains(t, got, "run strategist install --force", string(decision))
+	}
+}

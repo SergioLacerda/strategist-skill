@@ -21,6 +21,14 @@ func resolveNormalizePaths(opts missionadapter.NormalizeOptions) (string, string
 		resolvePath(opts.Pending, filepath.Join(basePath, "pending", opts.MissionID+"-analysis.md"), projectRoot), nil
 }
 
+func recordNormalizeAdvisories(opts missionadapter.NormalizeOptions, input refinement.AdvisoryInput) error {
+	strategistRoot, _, err := cliutil.ResolveActiveBasePath(opts.Root)
+	if err != nil {
+		return fmt.Errorf("resolve active base path for advisories: %w", err)
+	}
+	return recordArchivistAdvisories(strategistRoot, input)
+}
+
 func recordNormalizeConfidence(opts missionadapter.NormalizeOptions, claim domain.ConfidenceClaim, evidence []domain.Evidence) error {
 	strategistRoot, _, err := cliutil.ResolveActiveBasePath(opts.Root)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -60,6 +61,9 @@ func archivistPorts(root, missionID string) application.NormalizeOpenSpecPorts {
 				return fmt.Errorf("persist Archivist confidence: %w", err)
 			}
 			return nil
+		},
+		RecordAdvisories: func(input refinement.AdvisoryInput) error {
+			return recordArchivistAdvisories(root, input)
 		},
 		RecordPublication: func(publication application.NormalizeOpenSpecPublication) error {
 			if err := telemetry.AppendRefinedPackagePublication(telemetry.RefinedPackagePublicationHistoryPath(root), telemetry.RefinedPackagePublicationRecord{

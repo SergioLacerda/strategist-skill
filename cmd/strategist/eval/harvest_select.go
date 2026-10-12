@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/treasure-chest"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +13,7 @@ import (
 // The --all branch uses the tolerant scan so one mission with an unparseable
 // side_quests_approved: block (see .analysis/archived/20260804-treasure-scan-sq-block-bug-adr.md
 // DEC-1) is skipped and reported as a warning instead of aborting the whole run.
-func SelectHarvestMissionIDs(args []string, opts HarvestOptions, basePath string) ([]string, []treasure.ScanWarning, error) {
+func SelectHarvestMissionIDs(args []string, opts HarvestOptions, basePath string) ([]string, []ScanWarning, error) {
 	if opts.All {
 		if len(args) > 0 {
 			return nil, nil, fmt.Errorf("eval harvest: mission_id and --all are mutually exclusive")
@@ -29,8 +28,8 @@ func SelectHarvestMissionIDs(args []string, opts HarvestOptions, basePath string
 
 // selectAllHarvestMissionIDs resolves every mission treasure.ScanMissionsTolerant
 // finds under basePath into its ID, passing through any skip warnings.
-func selectAllHarvestMissionIDs(basePath string) ([]string, []treasure.ScanWarning, error) {
-	missions, warnings, err := treasure.ScanMissionsTolerant(basePath)
+func selectAllHarvestMissionIDs(basePath string) ([]string, []ScanWarning, error) {
+	missions, warnings, err := scanMissionsTolerant(basePath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("eval harvest: %w", err)
 	}
@@ -43,7 +42,7 @@ func selectAllHarvestMissionIDs(basePath string) ([]string, []treasure.ScanWarni
 
 // PrintHarvestWarnings reports missions skipped by the tolerant scan,
 // mirroring treasure_chest_index.go's printTreasureChestIndexWarnings shape.
-func PrintHarvestWarnings(cmd *cobra.Command, warnings []treasure.ScanWarning) {
+func PrintHarvestWarnings(cmd *cobra.Command, warnings []ScanWarning) {
 	for _, warning := range warnings {
 		cmd.PrintErrf("Warning: eval harvest: skipped inconsistent mission file: %v\n", warning)
 	}

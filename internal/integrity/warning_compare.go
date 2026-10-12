@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // statConfig, lockPathMismatch, pathMismatchResult, compareConfigState,
@@ -102,11 +102,11 @@ func readLock(lockPath string) (configLock, bool, error) {
 	return lock, true, nil
 }
 
-// hashFile reuses internal/runtimefs's fingerprint helper — the same one
+// hashFile reuses internal/filesystem's fingerprint helper — the same one
 // internal/stale uses for artifact hashing — so both drift-detection modules
 // agree on one hash format ("sha256:<hex>") without merging their packages.
 func hashFile(path string) (string, error) {
-	hash, exists, err := runtimefs.ReadSHA256(path)
+	hash, exists, err := filesystem.ReadSHA256(path)
 	if err != nil {
 		return "", fmt.Errorf("integrity: read config hash: %w", err)
 	}

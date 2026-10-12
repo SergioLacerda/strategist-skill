@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"go.opentelemetry.io/otel/codes"
@@ -127,7 +127,7 @@ func planRuntimeDefaultFile(
 	policy runtimeDefaultPolicy,
 ) (domain.RuntimeDefaultDecision, error) {
 	runtimePath := filepath.Join(strategistDir, filepath.FromSlash(relPath))
-	currentHash, exists, readErr := runtimefs.ReadSHA256(runtimePath)
+	currentHash, exists, readErr := filesystem.ReadSHA256(runtimePath)
 	if readErr != nil {
 		return "", fmt.Errorf("install: read normative runtime file %s: %w", relPath, readErr)
 	}
@@ -188,7 +188,7 @@ func (s Service) applyRuntimeDefaultFile(strategistDir, relPath string, decision
 		return fmt.Errorf("install: read embedded normative default %s: %w", relPath, err)
 	}
 	targetPath := filepath.Join(strategistDir, filepath.FromSlash(relPath))
-	if err := runtimefs.WriteFile(targetPath, data, 0o644); err != nil {
+	if err := filesystem.WriteFile(targetPath, data, 0o644); err != nil {
 		return fmt.Errorf("install: write normative default %s: %w", relPath, err)
 	}
 	return nil

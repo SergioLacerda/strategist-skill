@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
-	catalogadapter "github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
+	catalogadapter "github.com/SergioLacerda/strategist-skill/internal/runtime/catalog"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )

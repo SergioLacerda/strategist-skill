@@ -82,7 +82,7 @@ func TestWizardCoverageForEmptyActivationAndExecutionCatalog(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, lock.BindingArtifacts)
 
-	provider, mode, err := promptExecutionSlot(&answerPrompter{}, i18n.EN, pluginCatalog{}, nil)
+	provider, mode, err := promptExecutionSlot(&answerPrompter{}, i18n.EN, pluginCatalog{}, nil, wizardDefaults{})
 	require.NoError(t, err)
 	assert.Equal(t, nativeExecutionProvider, provider)
 	assert.Equal(t, domain.SlotBindingModeCustom, mode)
@@ -90,7 +90,7 @@ func TestWizardCoverageForEmptyActivationAndExecutionCatalog(t *testing.T) {
 	err = validateWizardActivationInputs(minimalExtractor{}, domain.WizardConfig{}, pluginOnboardingPlan{}, "", false)
 	require.ErrorContains(t, err, "invalid install plan")
 
-	_, _, _, _, _, _, err = promptSlots(&answerPrompter{}, i18n.EN, versionedRangerCatalog(), knownProviderRisk, false)
+	_, _, _, _, _, _, err = promptSlots(&answerPrompter{}, i18n.EN, versionedRangerCatalog(), knownProviderRisk, false, wizardDefaults{})
 	require.ErrorContains(t, err, "refinement: no compatible weapon")
 
 	err = printExcludedCandidatesTo(documentationFailWriter{}, []excludedProviderOption{{id: "excluded", reasons: []domain.CompatibilityReason{{Code: "reason", Detail: "detail"}}}})

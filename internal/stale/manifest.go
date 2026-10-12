@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 type compiledManifest struct {
@@ -53,7 +53,7 @@ func readManifest(path string) (compiledManifest, error) {
 }
 
 func artifactSHA256(path string) string {
-	hash, exists, err := runtimefs.ReadSHA256(path)
+	hash, exists, err := filesystem.ReadSHA256(path)
 	if err != nil || !exists {
 		return "unavailable"
 	}

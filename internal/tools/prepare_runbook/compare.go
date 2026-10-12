@@ -15,15 +15,15 @@ func compare(in Input, candidate runbook.Runbook) (Comparison, error) {
 	if reason := runbookRootReason(in.RunbookRoot); reason != "" {
 		return insufficientComparison(reason), nil
 	}
-	var err error
-	paths, err := inventoryPaths(in.RunbookRoot, in.MaxInventory)
+	paths, err := inventoryPaths(in.RunbookRoot, maxInventoryWalk)
 	if err != nil {
 		return insufficientComparison("Runbook inventory could not be read"), nil
 	}
 	paths = prioritizePaths(paths, in.SelectedRunbooksHint)
+	paths, notCompared := capInventory(paths, in.MaxInventory)
 	comparison := compareInventory(paths, candidate)
 	comparison.SelectedHints = append([]string(nil), in.SelectedRunbooksHint...)
-	return comparison, nil
+	return markTruncation(comparison, notCompared), nil
 }
 
 func runbookRootReason(root string) string {
@@ -44,37 +44,10 @@ func insufficientComparison(reason string) Comparison {
 	return Comparison{Classification: ComparisonInsufficient, Reason: reason}
 }
 
-func compareInventory(paths []string, candidate runbook.Runbook) Comparison {
-	refs := make([]ComparisonRef, 0, len(paths))
-	classification := ComparisonNovel
-	for _, path := range paths {
-		ref, relation, reason := comparePath(path, candidate)
-		if reason != "" {
-			return insufficientComparison(reason)
-		}
-		if relation != "none" {
-			refs = append(refs, ref)
-		}
-		classification = nextComparison(classification, relation)
-	}
-	return Comparison{Classification: classification, Compared: refs, Reason: comparisonReason(classification)}
-}
-
-func nextComparison(current ComparisonKind, relation string) ComparisonKind {
-	switch {
-	case relation == "duplicate":
-		return ComparisonDuplicate
-	case relation == "extension" && current == ComparisonNovel:
-		return ComparisonExtension
-	default:
-		return current
-	}
-}
-
 func inventoryPaths(root string, maxInventory int) ([]string, error) {
 	limit := maxInventory
 	if limit <= 0 {
-		limit = 32
+		limit = maxInventoryWalk
 	}
 	paths := make([]string, 0, limit)
 	err := filepath.WalkDir(root, collectInventoryPath(&paths, limit))

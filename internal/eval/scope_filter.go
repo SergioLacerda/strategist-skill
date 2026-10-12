@@ -2,13 +2,16 @@ package eval
 
 import (
 	"fmt"
-
-	"github.com/SergioLacerda/strategist-skill/treasure-chest"
 )
+
+type scopeFilterRow struct {
+	ID    string
+	Scope []string
+}
 
 func runScopeFilterScenario(s Scenario, res *ScenarioResult) {
 	rows, value := parseScopeFilterParams(s.Input.Params)
-	filtered := treasure.FilterRowsByScope(rows, value)
+	filtered := filterRowsByScope(rows, value)
 	actualIDs := make([]string, 0, len(filtered))
 	for _, r := range filtered {
 		actualIDs = append(actualIDs, r.ID)
@@ -20,21 +23,43 @@ func runScopeFilterScenario(s Scenario, res *ScenarioResult) {
 	applyScopeAssertions(s.Assertions, actualIDs, res)
 }
 
-func parseScopeFilterParams(params map[string]any) ([]treasure.StatusRow, string) {
+func parseScopeFilterParams(params map[string]any) ([]scopeFilterRow, string) {
 	rowsRaw, ok := params["rows"].([]any)
 	if !ok {
 		return nil, paramString(params, "value")
 	}
-	rows := make([]treasure.StatusRow, 0, len(rowsRaw))
+	rows := make([]scopeFilterRow, 0, len(rowsRaw))
 	for _, r := range rowsRaw {
 		rm, ok := r.(map[string]any)
 		if !ok {
 			continue
 		}
 		id := paramString(rm, "id")
-		rows = append(rows, treasure.StatusRow{ID: id, Scope: paramStringSlice(rm, "scope")})
+		rows = append(rows, scopeFilterRow{ID: id, Scope: paramStringSlice(rm, "scope")})
 	}
 	return rows, paramString(params, "value")
+}
+
+func filterRowsByScope(rows []scopeFilterRow, value string) []scopeFilterRow {
+	if value == "" {
+		return rows
+	}
+	out := make([]scopeFilterRow, 0, len(rows))
+	for _, row := range rows {
+		if rowMatchesScope(row, value) {
+			out = append(out, row)
+		}
+	}
+	return out
+}
+
+func rowMatchesScope(row scopeFilterRow, value string) bool {
+	for _, scope := range row.Scope {
+		if scope == value || scope == "all" {
+			return true
+		}
+	}
+	return false
 }
 
 func applyScopeAssertions(assertions []Assertion, actualIDs []string, res *ScenarioResult) {

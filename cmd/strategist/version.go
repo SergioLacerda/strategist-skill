@@ -9,7 +9,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/payload"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -90,7 +90,7 @@ func vcsSettings() map[string]string {
 }
 
 func embeddedPayload() *buildPayload {
-	version, err := runtimepayload.EmbeddedOpenSpecVersion(embed.DefaultsFS())
+	version, err := payload.EmbeddedOpenSpecVersion(embed.DefaultsFS())
 	if err != nil {
 		return nil
 	}

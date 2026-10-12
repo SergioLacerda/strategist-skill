@@ -103,7 +103,7 @@ func TestE2E_CLI_ValidateOnMinimalRoot(t *testing.T) {
 	assert.Contains(t, validate.output(), "[Strategist] validate OK")
 }
 
-func TestE2E_CLI_InstallForceRewritesActiveYAML(t *testing.T) {
+func TestE2E_CLI_InstallResetConfigRewritesActiveYAMLAndForceDoesNot(t *testing.T) {
 	t.Parallel()
 
 	workspace := t.TempDir()
@@ -124,13 +124,27 @@ func TestE2E_CLI_InstallForceRewritesActiveYAML(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(afterNoForce), "custom_note: keep-me")
 
+	// --force repairs the runtime only: the configuration is left alone.
 	forcedInstall := runStrategistCLI(t, workspace, "install", "--target", workspace, "--silent", "--force")
 	require.Equal(t, 0, forcedInstall.exitCode, forcedInstall.output())
 	afterForce, err := os.ReadFile(filepath.Join(strategistDir, "active.yaml"))
 	require.NoError(t, err)
-	assert.NotContains(t, string(afterForce), "custom_note: keep-me")
-	assert.Contains(t, string(afterForce), "mode: epic")
-	assert.Contains(t, string(afterForce), "base_path: .analysis")
+	assert.Contains(t, string(afterForce), "custom_note: keep-me", "--force must not rewrite active.yaml")
+
+	// --reset-config is the explicit request: it rewrites from the template and backs up.
+	resetInstall := runStrategistCLI(t, workspace, "install", "--target", workspace, "--silent", "--reset-config")
+	require.Equal(t, 0, resetInstall.exitCode, resetInstall.output())
+	afterReset, err := os.ReadFile(filepath.Join(strategistDir, "active.yaml"))
+	require.NoError(t, err)
+	assert.NotContains(t, string(afterReset), "custom_note: keep-me")
+	assert.Contains(t, string(afterReset), "mode: epic")
+	assert.Contains(t, string(afterReset), "base_path: .analysis")
+	backups, err := filepath.Glob(filepath.Join(strategistDir, ".upgrade-backups", "*", "active.yaml"))
+	require.NoError(t, err)
+	require.NotEmpty(t, backups, "the reset must back the previous active.yaml up")
+	saved, err := os.ReadFile(backups[0])
+	require.NoError(t, err)
+	assert.Contains(t, string(saved), "custom_note: keep-me")
 }
 
 func TestE2E_CLI_TreasureChestsFlowIntoCompiledConfig(t *testing.T) {

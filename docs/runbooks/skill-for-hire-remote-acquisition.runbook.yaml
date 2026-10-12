@@ -1,7 +1,7 @@
 schema_version: "1"
 runbook_id: skill-for-hire-remote-acquisition
 runbook_type: operational
-source_doc: docs/runbooks/skill-for-hire-remote-acquisition.runbook.yaml
+source_doc: docs/runbooks/skill-for-hire-remote-acquisition.md
 
 applies_when:
   - "An operator explicitly requests acquisition of a Skill-for-Hire package from the approved upstream Git repository"

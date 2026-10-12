@@ -85,7 +85,7 @@ mechanisms:
   - id: weapon_binding
     display_name: Weapon Binding
     family: mechanism
-    owner_package: internal/plugins;internal/provider;internal/rolevalidation
+    owner_package: internal/plugins;internal/provider;internal/roles/validation
     contract_file: plugins/catalog.yaml
     enforcement_kind: code
     enforcement_tier: machine_enforced
@@ -326,9 +326,9 @@ mechanisms:
     contract_file: roles/ranger.yaml#canonical.select_runbook;contracts/narrative/03-discovery.md
     enforcement_kind: contract
     enforcement_tier: agent_only
-    summary: scores runbook sidecars against mission signals; at most one primary and two supporting, each with a reason.
+    summary: JEWELER runbooks; 1 primary, 2 supporting; reasons.
     when_to_use: Retrieval Cascade stage 6, alongside Search
-    invoked_by: [ranger]
+    invoked_by: [ranger, archivist]
     how_to_invoke: "strategist runbook select --format json --signal <signal>"
     phase_scope: [discovery]
 

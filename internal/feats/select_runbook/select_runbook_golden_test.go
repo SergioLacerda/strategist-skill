@@ -128,6 +128,12 @@ func TestSelect_GoldenAgainstRealRunbookFixtures(t *testing.T) {
 			wantMatch:   true,
 		},
 		{
+			name:        "verifying_implemented_demands: implementation evaluation signals match the declared sidecar",
+			sidecarFile: "verifying-implemented-demands.runbook.yaml",
+			signals:     MissionSignals{"implementation_evaluation", "telemetry", "gate-quality-criterion", "sniper", "archivist"},
+			wantMatch:   true,
+		},
+		{
 			name:        "complexity_refactor: reworded signal matches via vocabulary",
 			sidecarFile: "refactoring-for-agent-operations.runbook.yaml",
 			signals:     MissionSignals{"golangci-lint flagged a gocritic violation in this package"},

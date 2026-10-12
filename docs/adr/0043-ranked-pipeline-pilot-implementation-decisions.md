@@ -15,7 +15,7 @@ as certified, how the Wizard presents the choice, and how validation avoids
 running Custom-only checks against a Ranked binding.
 
 `internal/domain/role_invocation_plan.go` and
-`internal/rolevalidation/role_weapon.go` already contain explicit,
+`internal/roles/validation/role_weapon.go` already contain explicit,
 fail-closed rejection points for `mode: ranked` (added while implementing the
 `mode` discriminator, before this ADR) — nothing produces or resolves a
 Ranked binding today. This ADR scopes a pilot: prove the pipeline end to end
@@ -207,6 +207,6 @@ logic.
 - `.analysis/pending/cli_refactor/20260916-ranked-pipeline-implementation-plan/`
   — the mission that produced this decision.
 - `internal/domain/role_invocation_plan.go`,
-  `internal/rolevalidation/role_weapon.go` — the existing fail-closed
+  `internal/roles/validation/role_weapon.go` — the existing fail-closed
   `mode: ranked` rejection points this ADR's tasks will replace with real
   resolution/validation.

@@ -12,6 +12,11 @@ const (
 
 	// SlotExecution is the canonical execution pipeline slot.
 	SlotExecution SlotName = "execution"
+
+	// SlotTreasure is the non-pipeline support slot owned by JEWELER. It is
+	// intentionally absent from RequiredSlots: it never participates in the
+	// discovery/refinement/execution checkpoint sequence.
+	SlotTreasure SlotName = "treasure"
 )
 
 const requiredSlotList = "discovery, refinement, execution"
@@ -20,6 +25,7 @@ var validSlots = stringSet(
 	string(SlotDiscovery),
 	string(SlotRefinement),
 	string(SlotExecution),
+	string(SlotTreasure),
 )
 
 // RequiredSlots returns the ordered slot vocabulary required by runtime config.

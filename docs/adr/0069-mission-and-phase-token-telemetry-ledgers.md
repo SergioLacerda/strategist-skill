@@ -21,7 +21,7 @@ established, from code and contracts inspected on 2026-10-10:
   mission or phase elapsed time and forbade deriving a "phase total" from the usage ledgers**,
   which is exactly what the requested capability needs;
 - `mission view` sums the legacy ledger as if every record were incremental
-  (`internal/missionview/token_usage.go`), while the agent protocol asked for cumulative reports
+  (`internal/mission/view/token_usage.go`), while the agent protocol asked for cumulative reports
   at the gate and at DONE (finding F8), so the sum can double count;
 - the Strategist binary never calls an LLM provider and cannot verify agent-reported counts.
 
@@ -36,7 +36,7 @@ established, from code and contracts inspected on 2026-10-10:
 3. **Quality is part of every number**: `provider_measured`, `host_measured`,
    `reported_unverified`, `tokenizer_estimated`, `heuristic_estimated`, `unavailable`.
    Unobserved values render as unavailable, never as zero; estimates are never labeled measured.
-4. **One aggregation, two entry points.** A shared builder in `internal/missionview` feeds both
+4. **One aggregation, two entry points.** A shared builder in `internal/mission/view` feeds both
    `mission view` and a new `mission usage` command (gate answer Q1).
 5. **No backward-compatibility layer.** The legacy ledger is shown on its own row, outside the
    mission total, and is never imputed to a phase; no migration is designed (gate answer Q2).

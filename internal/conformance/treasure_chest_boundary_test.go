@@ -68,10 +68,10 @@ func TestClassifyTreasureChestImportersRequiresReviewedExceptions(t *testing.T) 
 func TestClassifyTreasureChestImportersExpiresExceptionAndAcceptsDelegate(t *testing.T) {
 	now := time.Date(2026, time.September, 19, 0, 0, 0, 0, time.UTC)
 	entries := ClassifyTreasureChestImporters([]string{
-		"github.com/SergioLacerda/strategist-skill/internal/jewelcrafter",
+		"github.com/SergioLacerda/strategist-skill/internal/roles/jeweler",
 		"github.com/SergioLacerda/strategist-skill/cmd/strategist",
 	}, []ImportException{
-		{Importer: "github.com/SergioLacerda/strategist-skill/internal/jewelcrafter", Mediated: true},
+		{Importer: "github.com/SergioLacerda/strategist-skill/internal/roles/jeweler", Mediated: true},
 		{Importer: "github.com/SergioLacerda/strategist-skill/cmd/strategist", Owner: "eval", Reason: "fixture generation", Scope: "eval harvest", ReviewBy: now.Add(-time.Second)},
 	}, now)
 

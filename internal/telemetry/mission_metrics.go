@@ -41,7 +41,11 @@ type MissionMetrics struct {
 	TotalWallTimeMS      int64
 	TokensIn             int64
 	TokensOut            int64
-	LinesEmitted         int64
+	// TokensObserved distinguishes an explicitly observed zero from the
+	// ambient CLI invocation, which has no provider counter of its own.
+	// Non-zero legacy values remain renderable even when this field is false.
+	TokensObserved bool
+	LinesEmitted   int64
 }
 
 // FormatMissionMetrics returns a canonical mission metrics line. The trailing
@@ -50,7 +54,7 @@ type MissionMetrics struct {
 // cross-invocation mission-level measurement.
 func FormatMissionMetrics(m MissionMetrics) string {
 	return fmt.Sprintf(
-		"[Strategist] metrics mission=%s t_start_to_intake_ms=%d t_intake_to_scout_ms=%d t_scout_to_ranger_ms=%d t_intake_to_ranger_ms=%d t_ranger_to_archivist_ms=%d t_archivist_to_gate_ms=%d t_gate_wait_ms=%d t_gate_to_sniper_ms=%d t_sniper_to_done_ms=%d total_wall_time_ms=%d tokens_in=%d tokens_out=%d lines_emitted=%d scope=%s",
+		"[Strategist] metrics mission=%s t_start_to_intake_ms=%d t_intake_to_scout_ms=%d t_scout_to_ranger_ms=%d t_intake_to_ranger_ms=%d t_ranger_to_archivist_ms=%d t_archivist_to_gate_ms=%d t_gate_wait_ms=%d t_gate_to_sniper_ms=%d t_sniper_to_done_ms=%d total_wall_time_ms=%d tokens_in=%s tokens_out=%s lines_emitted=%d scope=%s",
 		m.MissionID,
 		m.TStartToIntakeMS,
 		m.TIntakeToScoutMS,
@@ -62,8 +66,8 @@ func FormatMissionMetrics(m MissionMetrics) string {
 		m.TGateToSniperMS,
 		m.TSniperToDoneMS,
 		m.TotalWallTimeMS,
-		m.TokensIn,
-		m.TokensOut,
+		metricCountText(m.TokensIn, m.TokensObserved),
+		metricCountText(m.TokensOut, m.TokensObserved),
 		m.LinesEmitted,
 		MetricsScopePerInvocation,
 	)
@@ -71,8 +75,7 @@ func FormatMissionMetrics(m MissionMetrics) string {
 
 // EmitMissionMetrics logs a canonical mission metrics line through slog.
 func EmitMissionMetrics(m MissionMetrics) {
-	slog.Info(
-		FormatMissionMetrics(m),
+	args := []any{
 		AttrMissionID, m.MissionID,
 		AttrStartToIntakeMS, m.TStartToIntakeMS,
 		AttrIntakeToScoutMS, m.TIntakeToScoutMS,
@@ -84,11 +87,27 @@ func EmitMissionMetrics(m MissionMetrics) {
 		AttrGateToSniperMS, m.TGateToSniperMS,
 		AttrSniperToDoneMS, m.TSniperToDoneMS,
 		AttrTotalWallTimeMS, m.TotalWallTimeMS,
-		AttrTokensIn, m.TokensIn,
-		AttrTokensOut, m.TokensOut,
 		AttrLinesEmitted, m.LinesEmitted,
 		AttrMetricsScope, MetricsScopePerInvocation,
-	)
+	}
+	if metricObserved(m.TokensIn, m.TokensObserved) {
+		args = append(args, AttrTokensIn, m.TokensIn)
+	}
+	if metricObserved(m.TokensOut, m.TokensObserved) {
+		args = append(args, AttrTokensOut, m.TokensOut)
+	}
+	slog.Info(FormatMissionMetrics(m), args...)
+}
+
+func metricObserved(value int64, observed bool) bool {
+	return observed || value != 0
+}
+
+func metricCountText(value int64, observed bool) string {
+	if !metricObserved(value, observed) {
+		return "unavailable"
+	}
+	return fmt.Sprintf("%d", value)
 }
 
 // Explicit, agent-reported mission token-usage records

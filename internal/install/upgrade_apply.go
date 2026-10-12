@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // ApplyUpgrade writes every Missing/AutoUpgrade file (and, when force is
@@ -17,6 +17,12 @@ import (
 // updated full-tree install manifest. Orphaned entries are only reported —
 // never deleted. Returns the backup dir (empty if nothing was overwritten).
 func (s Service) ApplyUpgrade(strategistDir string, plan UpgradePlan, force bool) (backupDir string, retErr error) {
+	slotsBefore := readSlotBindings(strategistDir)
+	defer func() {
+		if retErr == nil {
+			recordUpgradeAudit(strategistDir, force, slotsBefore)
+		}
+	}()
 	toWrite, toBackup, toRemove := upgradeWriteSet(plan, force)
 	if err := s.refuseNormativeDowngrade(strategistDir, plan.embeddedHashes, toWrite); err != nil {
 		return "", err
@@ -115,11 +121,11 @@ func (s Service) writeUpgradeFile(strategistDir, relPath string) error {
 	if err != nil {
 		return fmt.Errorf("upgrade: read embedded %s: %w", relPath, err)
 	}
-	target, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(relPath))
+	target, err := filesystem.SafeJoin(strategistDir, filepath.FromSlash(relPath))
 	if err != nil {
 		return fmt.Errorf("upgrade: resolve %s: %w", relPath, err)
 	}
-	if err := runtimefs.WriteFile(target, data, 0o644); err != nil {
+	if err := filesystem.WriteFile(target, data, 0o644); err != nil {
 		return fmt.Errorf("upgrade: write %s: %w", relPath, err)
 	}
 	return nil
@@ -132,7 +138,7 @@ func (s Service) writeUpgradeFile(strategistDir, relPath string) error {
 // there is nothing to preserve for it.
 func (s Service) snapshotBeforeUpgrade(strategistDir string, paths []string) (string, error) {
 	stamp := time.Now().UTC().Format("20060102T150405Z")
-	backupDir, err := runtimefs.SafeJoin(strategistDir, filepath.Join(upgradeBackupRelDir, stamp))
+	backupDir, err := filesystem.SafeJoin(strategistDir, filepath.Join(upgradeBackupRelDir, stamp))
 	if err != nil {
 		return "", fmt.Errorf("resolve backup dir: %w", err)
 	}
@@ -150,22 +156,22 @@ func (s Service) snapshotBeforeUpgrade(strategistDir string, paths []string) (st
 }
 
 func (s Service) snapshotUpgradePath(strategistDir, backupDir, relPath string) error {
-	src, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(relPath))
+	src, err := filesystem.SafeJoin(strategistDir, filepath.FromSlash(relPath))
 	if err != nil {
 		return fmt.Errorf("resolve %s: %w", relPath, err)
 	}
-	data, err := os.ReadFile(src) //nolint:gosec // path validated by runtimefs.SafeJoin
+	data, err := os.ReadFile(src) //nolint:gosec // path validated by filesystem.SafeJoin
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return fmt.Errorf("snapshot read %s: %w", relPath, err)
 	}
-	dst, err := runtimefs.SafeJoin(backupDir, filepath.FromSlash(relPath))
+	dst, err := filesystem.SafeJoin(backupDir, filepath.FromSlash(relPath))
 	if err != nil {
 		return fmt.Errorf("resolve backup path %s: %w", relPath, err)
 	}
-	if err := runtimefs.WriteFile(dst, data, 0o644); err != nil {
+	if err := filesystem.WriteFile(dst, data, 0o644); err != nil {
 		return fmt.Errorf("snapshot write %s: %w", relPath, err)
 	}
 	return nil

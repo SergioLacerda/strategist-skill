@@ -33,6 +33,9 @@ type ReportUsageDependencies struct {
 	Validate        func(*cobra.Command, ReportUsageOptions) error
 	// TelemetrySink exports one event per new usage record. Nil disables export.
 	TelemetrySink func() telemetry.EventSink
+	// ResolvePhaseRunID infers the only open lifecycle run when an observation
+	// omits --phase-run-id. Ambiguous or closed phases fail closed.
+	ResolvePhaseRunID func(root, missionID, phase string) (string, error)
 }
 
 // NewReportUsage builds `mission report-usage`.
@@ -102,8 +105,8 @@ func RunReportUsage(cmd *cobra.Command, deps ReportUsageDependencies, opts Repor
 		return fmt.Errorf("mission report-usage: %w", err)
 	}
 	result, err := application.RecordMissionUsage(strategistRoot, basePath, usageInput(opts), time.Now(), application.MissionUsagePorts{
-		MissionKnown: deps.MissionKnown,
-		Append:       usageAppender(deps.TelemetrySink),
+		MissionKnown: deps.MissionKnown, ResolvePhaseRunID: deps.ResolvePhaseRunID,
+		Append: usageAppender(deps.TelemetrySink),
 	})
 	if err != nil {
 		return fmt.Errorf("mission report-usage: %w", err)

@@ -72,6 +72,20 @@ func TestFormatMissionMetrics_ScopeMarksDeltasAsPerInvocation(t *testing.T) {
 	}
 }
 
+func TestFormatMissionMetrics_DoesNotRenderUnobservedTokensAsZero(t *testing.T) {
+	t.Parallel()
+
+	line := FormatMissionMetrics(MissionMetrics{MissionID: "m-unobserved"})
+	if !strings.Contains(line, "tokens_in=unavailable tokens_out=unavailable") {
+		t.Fatalf("expected unavailable token counts, got: %s", line)
+	}
+
+	line = FormatMissionMetrics(MissionMetrics{MissionID: "m-zero", TokensObserved: true})
+	if !strings.Contains(line, "tokens_in=0 tokens_out=0") {
+		t.Fatalf("expected observed zero token counts, got: %s", line)
+	}
+}
+
 func TestValidateMissionTokenUsage(t *testing.T) {
 	t.Parallel()
 

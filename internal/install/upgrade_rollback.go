@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // ListUpgradeBackups returns the available backup stamps under
 // strategistDir/.upgrade-backups, newest first — each one a directory
 // snapshotBeforeUpgrade wrote before an upgrade run overwrote files.
 func ListUpgradeBackups(strategistDir string) ([]string, error) {
-	root, err := runtimefs.SafeJoin(strategistDir, upgradeBackupRelDir)
+	root, err := filesystem.SafeJoin(strategistDir, upgradeBackupRelDir)
 	if err != nil {
 		return nil, fmt.Errorf("resolve backup dir: %w", err)
 	}
@@ -41,11 +41,11 @@ func ListUpgradeBackups(strategistDir string) ([]string, error) {
 // the backup does not contain, and it does not delete the backup itself —
 // a rollback can be repeated safely.
 func RollbackUpgrade(strategistDir, stamp string) (restoredCount int, retErr error) {
-	backupDir, err := runtimefs.SafeJoin(strategistDir, filepath.Join(upgradeBackupRelDir, stamp))
+	backupDir, err := filesystem.SafeJoin(strategistDir, filepath.Join(upgradeBackupRelDir, stamp))
 	if err != nil {
 		return 0, fmt.Errorf("resolve backup %s: %w", stamp, err)
 	}
-	if !runtimefs.Exists(backupDir) {
+	if !filesystem.Exists(backupDir) {
 		return 0, fmt.Errorf("upgrade: no backup found for %q under %s", stamp, upgradeBackupRelDir)
 	}
 
@@ -79,11 +79,11 @@ func restoreBackupFile(backupDir, strategistDir, path string, entry fs.DirEntry,
 	if err != nil {
 		return false, fmt.Errorf("read backup %s: %w", rel, err)
 	}
-	dst, err := runtimefs.SafeJoin(strategistDir, rel)
+	dst, err := filesystem.SafeJoin(strategistDir, rel)
 	if err != nil {
 		return false, fmt.Errorf("resolve restore target %s: %w", rel, err)
 	}
-	if err := runtimefs.WriteFile(dst, data, 0o644); err != nil {
+	if err := filesystem.WriteFile(dst, data, 0o644); err != nil {
 		return false, fmt.Errorf("restore %s: %w", rel, err)
 	}
 	return true, nil

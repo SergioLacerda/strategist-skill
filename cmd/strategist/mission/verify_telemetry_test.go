@@ -10,7 +10,7 @@ import (
 
 	mission "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/SergioLacerda/strategist-skill/internal/telemetryverify"
+	telemetryverify "github.com/SergioLacerda/strategist-skill/internal/telemetry/verify"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

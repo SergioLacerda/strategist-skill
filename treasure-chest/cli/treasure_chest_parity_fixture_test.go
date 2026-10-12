@@ -87,24 +87,6 @@ sources:
 	return root
 }
 
-func parityMigrationFixture(t *testing.T) string {
-	t.Helper()
-	root := parityFixture(t)
-	require.NoError(t, os.WriteFile(filepath.Join(root, "jewels.yaml"), []byte(`
-schema_version: "1"
-jewels:
-  - id: legacy-jewel
-    chest_id: source
-    kind: pattern
-    statement: "Legacy status is migrated."
-    source_refs: ["source#legacy"]
-    trust: T1
-    status: active
-    reviewed_by: agent
-`), 0o644))
-	return root
-}
-
 func parityScanFixture(t *testing.T) string {
 	t.Helper()
 	root := parityFixture(t)

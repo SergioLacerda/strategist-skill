@@ -8,11 +8,11 @@ import (
 	"time"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
-	catalogadapter "github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
+	catalogadapter "github.com/SergioLacerda/strategist-skill/internal/runtime/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )

@@ -43,6 +43,28 @@ func TestNewInvocationRequestCarriesTypedExecutionTargetsForSniper(t *testing.T)
 	require.Equal(t, []domain.ExecutionTarget{target}, request.Input["execution_targets"])
 }
 
+func TestNewInvocationRequestCarriesDeferredNoticesInTheSnapshot(t *testing.T) {
+	snapshot := domain.ExecutionSnapshot{
+		Version: domain.ExecutionSnapshotVersion, MissionID: "m1",
+		Groups: []domain.ExecutionGroup{{
+			ID: "documentation-m1", Resolver: domain.ResolverKey{Kind: "documentation", Origin: domain.ExecutionTargetOriginRefinedPackage},
+			Kind: "documentation", Origin: domain.ExecutionTargetOriginRefinedPackage, CompletionPolicy: domain.ExecutionCompletionAllRequired,
+			Artifacts: []domain.ExecutionArtifact{{ID: "a1", Role: domain.ExecutionArtifactRolePrimary, Path: "docs/a.md", Kind: "documentation"}},
+		}},
+		Deferred: []domain.DeferredIntent{{SideQuestID: "OA-CHEST-m1", Kind: "oa_treasure_chest", Origin: domain.ExecutionTargetOriginAcceptedSideQuest, Reason: domain.DeferredReasonNoExecutionResolver}},
+	}
+	request, _, err := NewInvocationRequest(t.Context(), InvocationRequestInput{
+		BasePath: "analysis", MissionID: "m1", Role: "sniper", Slot: string(domain.SlotExecution),
+		Binding:                   domain.RoleWeaponBinding{BindingDigest: "sha256:binding", ExecutionMode: "prompt", Entrypoint: "run"},
+		Weapon:                    domain.CompiledWeapon{ID: "sniper", Version: "0.0.0", Digest: "sha256:weapon"},
+		ApprovalGatePackageDigest: "sha256:package", ExecutionSnapshot: &snapshot,
+	})
+	require.NoError(t, err)
+	carried, ok := request.Input["execution_snapshot"].(domain.ExecutionSnapshot)
+	require.True(t, ok)
+	require.Equal(t, snapshot.Deferred, carried.Deferred)
+}
+
 func TestNewInvocationRequestHonorsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()

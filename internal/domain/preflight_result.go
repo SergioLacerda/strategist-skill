@@ -9,7 +9,7 @@ const PreflightResultSchemaVersion = "strategist-preflight-result/v1"
 // versioned envelope, per
 // docs/adr/0041-cli-enforcement-sequencing-and-role-invocation-plan-naming.md
 // D2. It wraps internal/check/check_slots.go's and
-// internal/rolevalidation/role_weapon.go's already-computed outputs — it
+// internal/roles/validation/role_weapon.go's already-computed outputs — it
 // does not re-derive readiness independently, to avoid two implementations
 // of the same check drifting apart (see D2's regression-test rationale).
 //

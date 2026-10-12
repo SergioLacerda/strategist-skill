@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -92,10 +92,12 @@ func (s Service) InstallWithReport(ctx context.Context, cfg domain.InstallConfig
 		return Report{}, err
 	}
 
+	slotsBefore := readSlotBindings(strategistDir)
 	report, err := s.runInstallSteps(ctx, strategistDir, cfg, runtimePlan, tx)
 	if err != nil {
 		return Report{}, err
 	}
+	recordInstallAudit(strategistDir, cfg, slotsBefore)
 
 	succeeded = true
 	slog.InfoContext(ctx, "[Strategist] install complete",
@@ -159,7 +161,7 @@ func ensureProjectGitignore(cfg domain.InstallConfig) ([]string, error) {
 		return nil, nil
 	}
 	gitignorePath := filepath.Join(cfg.Target, ".gitignore")
-	gitignoreExisted := runtimefs.Exists(gitignorePath)
+	gitignoreExisted := filesystem.Exists(gitignorePath)
 	if err := ensureGitignore(cfg.Target); err != nil {
 		return nil, fmt.Errorf("install: gitignore: %w", err)
 	}

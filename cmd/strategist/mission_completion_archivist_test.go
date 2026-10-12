@@ -8,10 +8,11 @@ import (
 	"testing"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
-	catalogadapter "github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
+	catalogadapter "github.com/SergioLacerda/strategist-skill/internal/runtime/catalog"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -169,6 +170,13 @@ func TestCompleteMissionInvocationPublishesTheArchivistPackageAndRejectsAReplay(
 	assert.Contains(t, string(analysis), "mission_status: archivist_done")
 	assert.Contains(t, string(analysis), "provider: writing-plans")
 	assert.NoFileExists(t, filepath.Join(basePath, "pending", archivistMissionID+"-analysis.md"), "the pending analysis is promoted")
+	records, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	require.Len(t, records, 3, "Archivist confidence plus bounded critic and mission-quality advisories are persisted")
+	assert.Equal(t, telemetry.ConfidenceAgentCritic, records[1].Agent)
+	assert.Equal(t, "no_rubric", records[1].MissingReason)
+	assert.Equal(t, telemetry.ConfidenceAgentMissionQuality, records[2].Agent)
+	assert.Equal(t, "no_decisions_or_evidence", records[2].MissingReason)
 
 	_, err = completeMissionInvocation(t.Context(), archivistComplete(root, basePath, request.RequestID, archivistResult))
 	require.ErrorContains(t, err, "invocation_replay")

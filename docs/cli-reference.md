@@ -326,7 +326,8 @@ strategist install [--target=<dir>] [--wizard] [--silent] [--force]
 | `--target` | `.` (current directory) | Repository root where `.strategist/` will be created |
 | `--wizard` | `false` | Interactive mode: collects mode, base_path, providers, and treasure chest settings; LEVELING is internal and automatic by default, without a mode prompt |
 | `--silent` | `false` (default behavior when no flag is passed) | Installation without prompts, using **epic** profile defaults |
-| `--force` | `false` | Overwrite all files, including user-modified ones (default: preserve customizations that differ from the embedded default) |
+| `--force` | `false` | Overwrite the normative runtime files, including user-modified ones (default: preserve customizations that differ from the embedded default). It never rewrites `active.yaml`, `plugins.lock` or `.config.lock` |
+| `--reset-config` | `false` | Rewrite `active.yaml`, `plugins.lock` and `.config.lock` from the epic template: slots, language and documentation roots return to the defaults. The previous files are backed up under `.strategist/.upgrade-backups/<timestamp>/` and restored by `strategist upgrade --rollback <timestamp\|latest>` |
 | `--strict-compile` | `false` | Make a `CompileAll` failure after extraction fatal — the install rolls back instead of completing with a partial/uncompiled runtime. Default is warning-only (install still completes) |
 | `--no-shim` | `false` | Skip writing the SKILL.md shim entirely — no write to `~/.claude/skills` at all. Useful for CI/containers without a writable home directory. Mutually exclusive with `--shim-path` |
 | `--shim-path` | `` (default: `~/.claude/skills/strategist/SKILL.md`) | Write the shim to this path instead of the default home-relative location. Mutually exclusive with `--no-shim` |
@@ -340,7 +341,7 @@ strategist install [--target=<dir>] [--wizard] [--silent] [--force]
 4. Installs the shim at `~/.claude/skills/strategist/SKILL.md`, unless `--no-shim` or `--shim-path` is set
 5. Compiles all artifacts to `.strategist/.compiled/` — a failure here is warning-only by default, fatal with `--strict-compile`
 
-**Rollback:** if any step fails, the install is rolled back. On a **fresh** install (no pre-existing `.strategist/`), Strategist owns the entire tree and removes it wholesale (`rm -rf .strategist/`), plus any `.gitignore`/shim entries it added. On a **re-install over an existing tree** (`--force`), pre-existing content is never deleted — only the specific entries added during that run (e.g. a new `.gitignore` line or shim file) are rolled back.
+**Rollback:** if any step fails, the install is rolled back. On a **fresh** install (no pre-existing `.strategist/`), Strategist owns the entire tree and removes it wholesale (`rm -rf .strategist/`), plus any `.gitignore`/shim entries it added. On a **re-install over an existing tree** (`--force` or `--reset-config`), pre-existing content is never deleted — only the specific entries added during that run (e.g. a new `.gitignore` line or shim file) are rolled back.
 
 Only `env/profile`-based shim precedence is out of scope for now — CLI flags (`--no-shim`/`--shim-path`) are the only supported override today.
 
@@ -664,6 +665,30 @@ back-compat alias calling the exact same code.
 strategist treasure-chest list [--format table|json] [--scope <slot-scope>]
 ```
 
+### `treasure-chest provider query` / `maintain`
+
+The explicit JEWELER seam delegates to the external Treasure Chest provider.
+It requires an executable and immutable provider identity evidence; provider
+failure is reported and never falls back to the local implementation.
+
+```text
+strategist treasure-chest provider query \
+  --provider-executable <path> --provider-digest <digest> \
+  --provider-provenance <provenance> --requester ranger|archivist \
+  --mission <id> --correlation <id> [--format table|json]
+
+strategist treasure-chest provider maintain \
+  --provider-executable <path> --provider-digest <digest> \
+  --provider-provenance <provenance> --principal <operator> \
+  --authorization jeweler:maintenance/v1 --operation <operation> \
+  --correlation <id> [--idempotency-key <key>]
+```
+
+`query` is bounded and read-only. `maintain` is the separately authorized
+path for indexing, curation, migration, reconciliation, probe, and health.
+The compatibility namespace remains local until the final external cutover
+gate passes.
+
 ### `treasure-chest add` / `treasure-chest remove`
 
 Registry mutation commands (Track T-I, implemented in `SQ-006`). Update `active.yaml`,
@@ -970,13 +995,10 @@ tier, no pre-approval gate).
 
 ## runbook select
 
-Scores `docs/runbooks/*.runbook.yaml` sidecars against mission signals and prints a
-bounded, reasoned selection — the concrete implementation backing the `select_runbook`
-ability declared in `.strategist/roles/ranger.yaml#canonical.select_runbook` (see
-`contracts/narrative/03-discovery.md` § Retrieval Cascade, stage 6). This is the CLI
-surface an agent embodying Ranger invokes via Bash to actually run
-`internal/runbook.Select()`, rather than approximating the algorithm by reading sidecars
-manually.
+Routes the `select_runbook` ability through the JEWELER-mediated external Treasure
+Chest provider and prints its bounded, source-backed selection. The provider's
+runbook index entries are normalized by JEWELER; no local package or implicit
+fallback is consulted in production.
 
 ```
 strategist runbook select --signal <text> [--signal <text> ...] [--format table|json]
@@ -989,17 +1011,22 @@ strategist runbook select --signal <text> [--signal <text> ...] [--format table|
 | `--root` | `.strategist` (auto-discovered) | Path to the `.strategist/` root |
 | `--signal` | *(required, repeatable)* | Mission signal to match against runbook `applies_when` entries — one per keyword/phrase |
 | `--format` | `table` | Output format: `table` or `json` |
+| `--provider-executable` | `STRATEGIST_TREASURE_CHEST_EXECUTABLE` | Explicit external Treasure Chest executable; no PATH discovery |
+| `--requester` | `ranger` | Authorized consumer: `ranger` or `archivist` |
+| `--mission` | ambient mission | Mission identifier used by JEWELER |
+| `--correlation` | mission identifier | Correlation identifier used by JEWELER |
 
-Selection is always bounded by `internal/runbook.DefaultSelectionPolicy()` — at most one
-`primary` and two `supporting` runbooks, each carrying a non-empty match `reason`. These
-limits and the reason requirement are not configurable via flags: making them
-configurable would let a caller silently disable the exact safety property the mechanism
-exists to enforce (see `runbook_v2.txt`'s own stance against unreasoned automatic
-application).
+Selection is bounded to one `primary` and two `supporting` provider results, each
+carrying source evidence and a non-empty reason. Readiness, identity, requester
+authorization, and item-kind validation are enforced by JEWELER before rendering.
 
-Prints an empty-result message (exit 0, not an error) both when no `.runbook.yaml`
-sidecar exists yet and when none match the given signals. A sidecar that fails to parse
-is a hard error naming the offending file — never silently skipped.
+Prints an empty-result message (exit 0, not an error) when the admitted provider
+has no matching runbook candidate.
+
+The provider owns candidate indexing and diagnostics. A missing, stale, malformed,
+or unhealthy provider binding is an error from JEWELER; it is never converted into
+a local-corpus answer. The previous sidecar diagnostics belong only to the hidden
+local-staging regression path and are not part of the production command contract.
 
 **Example output (`--format json`):**
 

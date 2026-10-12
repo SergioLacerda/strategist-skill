@@ -49,13 +49,12 @@ func (e RoleExtensibility) IsPluggable() bool { return e == RoleExtensibilityPlu
 var unverifiedRoleIDs = map[string]struct{}{
 	"pathfinder":   {},
 	"cartographer": {},
-	"jeweler":      {},
 	"jewelcrafter": {},
 }
 
 // ValidateRoleReference rejects role names that were proposed but not approved
-// for activation. Other custom role ids remain available to workspace-specific
-// role registries.
+// for activation. JEWELER is the approved non-pipeline Treasure Chest support
+// role; jewelcrafter remains only as an explicit migration alias.
 func ValidateRoleReference(id string) error {
 	normalized := strings.ToLower(strings.TrimSpace(id))
 	if _, found := unverifiedRoleIDs[normalized]; found {

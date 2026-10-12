@@ -141,7 +141,7 @@ calibration_record:
 handoff_consumption:
   config_key: calibration_id in the provider block of .strategist/integrations.yaml, written only by `strategist integrations calibration pin <id>` after the numbers and the risk policy are shown
   never: 'the id "latest", an automatic pin, or a copy of the dataset'
-  resolution: at pre-check time, after the provider answered, the calibration is valid only when the resolved model, the question profile and its version match and it is younger than max_age (default 90 days); otherwise the configured default threshold applies and the gate and `integrations doctor` say `não calibrado`
+  resolution: at pre-check time, after the provider answered, the calibration is valid only when the resolved model, the question profile and its version match and it is younger than max_age (default 90 days); otherwise the configured default threshold (0.80 when omitted) applies and the gate and `integrations doctor` say `não calibrado`
   display: '"calibrado (model, profile, golden cases, held-out false approval, date)" or "não calibrado"'
 
 storage:

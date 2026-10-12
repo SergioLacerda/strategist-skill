@@ -18,13 +18,13 @@ import (
 // (compatibleProviderOptions), not a hardcoded slice. Handoff production is a
 // fixed role checkpoint, so a weapon is not hidden merely because its adapter
 // does not declare the handoff schema.
-func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string, verbose bool) (discovery, refinement, execution, discoveryMode, refinementMode, executionMode string, err error) {
+func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string, verbose bool, defaults wizardDefaults) (discovery, refinement, execution, discoveryMode, refinementMode, executionMode string, err error) {
 	if verbose {
 		fmt.Println(b.HeaderSlots)
 	}
 
 	optionSet := newInstallOptionSet(catalog)
-	discoveryOptions := optionSet.forSlot(string(domain.SlotDiscovery))
+	discoveryOptions := defaults.applyToSlot(optionSet.forSlot(string(domain.SlotDiscovery)), string(domain.SlotDiscovery))
 	printExcludedCandidates(discoveryOptions.excluded)
 	if len(discoveryOptions.ids) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: discovery: no compatible weapon for role ranger")
@@ -35,7 +35,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 		return "", "", "", "", "", "", err
 	}
 
-	refinementOptions := optionSet.forSlot(string(domain.SlotRefinement))
+	refinementOptions := defaults.applyToSlot(optionSet.forSlot(string(domain.SlotRefinement)), string(domain.SlotRefinement))
 	printExcludedCandidates(refinementOptions.excluded)
 	if len(refinementOptions.ids) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: refinement: no compatible weapon for role archivist")
@@ -45,7 +45,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 	if err != nil {
 		return "", "", "", "", "", "", err
 	}
-	execution, executionMode, err = promptExecutionSlot(p, b, catalog, providerRisk)
+	execution, executionMode, err = promptExecutionSlot(p, b, catalog, providerRisk, defaults)
 	if err != nil {
 		return "", "", "", "", "", "", err
 	}
@@ -72,8 +72,8 @@ func printRankedRuntimeNote(b i18n.WizardStrings, catalog pluginCatalog, rankedI
 	}
 }
 
-func promptExecutionSlot(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (string, string, error) {
-	options := newInstallOptionSet(catalog).forSlot(string(domain.SlotExecution))
+func promptExecutionSlot(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string, defaults wizardDefaults) (string, string, error) {
+	options := defaults.applyToSlot(newInstallOptionSet(catalog).forSlot(string(domain.SlotExecution)), string(domain.SlotExecution))
 	printExcludedCandidates(options.excluded)
 	if len(options.ids) == 0 {
 		// Older synthetic extractors predate the catalogued internal skill.

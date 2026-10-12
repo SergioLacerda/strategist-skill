@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -107,11 +107,11 @@ func BoolFlag(cmd *cobra.Command, name string, fallback bool) bool {
 // share one parser instead of each unmarshalling the file. A missing file wraps
 // os.ErrNotExist so callers can tell it from a malformed one.
 func LoadActiveConfig(strategistRoot string) (domain.ActiveConfig, error) {
-	activeYamlPath, err := runtimefs.SafeJoin(strategistRoot, "active.yaml")
+	activeYamlPath, err := filesystem.SafeJoin(strategistRoot, "active.yaml")
 	if err != nil {
 		return domain.ActiveConfig{}, fmt.Errorf("resolve active.yaml path: %w", err)
 	}
-	raw, err := os.ReadFile(activeYamlPath) //nolint:gosec // G304: path validated by runtimefs.SafeJoin, confined to strategistRoot
+	raw, err := os.ReadFile(activeYamlPath) //nolint:gosec // G304: path validated by filesystem.SafeJoin, confined to strategistRoot
 	if err != nil {
 		return domain.ActiveConfig{}, fmt.Errorf("read active.yaml: %w", err)
 	}

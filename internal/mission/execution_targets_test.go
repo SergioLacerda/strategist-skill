@@ -64,7 +64,30 @@ func TestResolveExecutionTargetsProjectsAcceptedRunbookGroup(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, targets, 2)
 	assert.Equal(t, "docs/runbooks/m1-runbook.md", targets[0].Path)
-	assert.Equal(t, "docs/runbooks/m1-runbook.meta.json", targets[1].Path)
+	assert.Equal(t, "docs/runbooks/m1-runbook.runbook.yaml", targets[1].Path, "the sidecar is the typed .runbook.yaml, never a .meta.json")
+	assert.NotContains(t, targets[1].Path, ".meta.json")
+	assert.Equal(t, "runbook_sidecar", targets[1].Kind)
+}
+
+func TestResolveRunbookSidecarIdentityAgreesWithTheMaterializedMarkdown(t *testing.T) {
+	f := newSQFixture(t, "m1")
+	require.NoError(t, os.WriteFile(filepath.Join(f.base, "refined", "m1", "tasks.md"), []byte("# t\n```yaml\nside_quests_approved:\n  - {id: OA-RUNBOOK-m1, description: procedure, strategy: execute_later, status: proposed}\n```\n"), 0o600))
+	_, err := DecideSideQuest(SideQuestDecision{
+		StrategistRoot: f.root, BasePath: f.base, MissionID: "m1", SideQuestID: OARunbookSideQuestID("m1"),
+		Decision: SideQuestAccepted, State: domain.StateApprovalGate, CanonicalPath: "docs/runbooks", Now: time.Now(),
+	})
+	require.NoError(t, err)
+	snapshot, err := ResolveExecutionSnapshot(f.root, f.base, "m1", nil, time.Now())
+	require.NoError(t, err)
+	require.Len(t, snapshot.Groups, 1)
+	var sidecar domain.ExecutionArtifact
+	for _, artifact := range snapshot.Groups[0].Artifacts {
+		if artifact.Role == domain.ExecutionArtifactRoleSidecar {
+			sidecar = artifact
+		}
+	}
+	assert.Equal(t, "m1-runbook", sidecar.Metadata["runbook_id"], "runbook_id equals the markdown stem: no manual rename on promotion")
+	assert.Equal(t, "docs/runbooks/m1-runbook.md", sidecar.Metadata["source_doc"])
 }
 
 func TestResolveExecutionTargetsExistingADRFailsClosed(t *testing.T) {

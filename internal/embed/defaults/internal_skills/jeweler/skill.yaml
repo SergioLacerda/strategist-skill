@@ -1,0 +1,25 @@
+id: jeweler
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: controlled
+category: knowledge
+
+description: >
+  Canonical non-pipeline support skill that mediates the external Treasure
+  Chest provider. It owns the bounded consumer projection and the separately
+  authorized maintenance path; it never owns the provider's domain storage.
+
+ownership:
+  provider: external
+  host: strategist
+  canonical_role: jeweler
+  compatibility_alias: jewelcrafter
+  support_slot: treasure
+
+boundary:
+  query_roles: [ranger, archivist]
+  query_mode: read_only
+  maintenance_requires_authorization: true
+  implicit_fallback: forbidden
+  direct_provider_access: forbidden

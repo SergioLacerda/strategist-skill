@@ -56,11 +56,10 @@ must distinguish conceptual, accepted, implemented, verified, and invocable stat
 
 ## What the runtime actually reads vs. what is directive-only
 
-Not all of `docs/` is consumed the same way. Only `docs/runbooks/*.runbook.yaml`
-sidecars are read by the runtime at mission time — scored against mission signals by
-`internal/runbook.Select()` (see `internal/treasurecli/runbook_select.go`) and
-registered as a knowledge source in `.strategist/treasure-chests.yaml` and
-`.strategist/knowledge.index.yaml`. Every other part of `docs/` — `adr/`, `architecture/`,
+Not all of `docs/` is consumed the same way. Accepted runbook material is indexed by
+the external Treasure Chest and queried at mission time through JEWELER. The local
+`docs/runbooks/*.runbook.yaml` selector remains only a hidden staging/regression
+path. Every other part of `docs/` — `adr/`, `architecture/`,
 `onboarding/`, `design/`, `plans/`, `generated/`, and the top-level files in this
 directory — is directive-only: written for humans and for agents to read during a
 mission, but never loaded back by the pipeline itself.

@@ -147,12 +147,12 @@ func TestPromptExecutionSlot_ResolvesRankedAndCustomModes(t *testing.T) {
 	}}
 	b := i18n.BundleFor("en")
 
-	provider, mode, err := promptExecutionSlot(NewTextPrompter(strings.NewReader("sniper::ranked\n")), b, catalog, knownProviderRisk)
+	provider, mode, err := promptExecutionSlot(NewTextPrompter(strings.NewReader("sniper::ranked\n")), b, catalog, knownProviderRisk, wizardDefaults{})
 	require.NoError(t, err)
 	assert.Equal(t, "sniper", provider)
 	assert.Equal(t, domain.SlotBindingModeRanked, mode)
 
-	provider, mode, err = promptExecutionSlot(NewTextPrompter(strings.NewReader("custom-execution\n")), b, catalog, knownProviderRisk)
+	provider, mode, err = promptExecutionSlot(NewTextPrompter(strings.NewReader("custom-execution\n")), b, catalog, knownProviderRisk, wizardDefaults{})
 	require.NoError(t, err)
 	assert.Equal(t, "custom-execution", provider)
 	assert.Equal(t, domain.SlotBindingModeCustom, mode)

@@ -58,8 +58,9 @@ type Input struct {
 	RefinedPath          string
 	RunbookRoot          string
 	SelectedRunbooksHint []string
-	MaxInventory         int
-	Evaluate             Evaluator
+	// MaxInventory caps the compared sidecars; zero means DefaultMaxInventory.
+	MaxInventory int
+	Evaluate     Evaluator
 }
 
 // ProviderRequest contains only the bounded, typed projection approved for a
@@ -101,6 +102,12 @@ type Comparison struct {
 	Compared       []ComparisonRef `yaml:"compared,omitempty" json:"compared,omitempty"`
 	SelectedHints  []string        `yaml:"selected_hints,omitempty" json:"selected_hints,omitempty"`
 	Reason         string          `yaml:"reason" json:"reason"`
+	// SkippedEntries counts inventory sidecars that could not be read or
+	// parsed; they never abort the comparison.
+	SkippedEntries int `yaml:"skipped_entries,omitempty" json:"skipped_entries,omitempty"`
+	// Truncated and NotCompared report an inventory larger than the cap.
+	Truncated   bool `yaml:"truncated,omitempty" json:"truncated,omitempty"`
+	NotCompared int  `yaml:"not_compared,omitempty" json:"not_compared,omitempty"`
 }
 
 // Evidence records the deterministic evidence fields found in the candidate.

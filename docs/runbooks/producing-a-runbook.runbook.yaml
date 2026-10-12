@@ -1,0 +1,56 @@
+schema_version: "1"
+runbook_id: producing-a-runbook
+runbook_type: analytical
+source_doc: docs/runbooks/producing-a-runbook.md
+
+applies_when:
+  - "A mission produced or an operator verified a reusable agent procedure that should become a runbook"
+  - "An OA-RUNBOOK side quest or a runbook candidate (RB-<mission_id>) is surfaced at the Approval Gate"
+  - "Someone asks how a runbook is produced, promoted, given a typed sidecar and made selectable"
+  - "A materialized runbook (<mission_id>-runbook.md with a .meta.json sidecar) needs review and promotion"
+
+objective: Turn a verified reusable procedure into a runbook with a typed sidecar that the selector offers, following the system's current lifecycle and recording the open decisions honestly.
+
+preconditions:
+  - "The procedure was verified against real command output or current file content in the mission"
+  - "No existing runbook already covers the procedure"
+  - "The operator can review the materialized markdown before promotion"
+
+analysis:
+  - "Check duplicates with the selector and by reading the matching runbooks"
+  - "Confirm the Opportunity Attack runbook criteria and non-signals hold"
+  - "Read the prepared candidate status (prepared, duplicate, insufficient_evidence, needs_review)"
+  - "Identify the root the readers use today and the root the resolver writes to"
+
+decision_gates:
+  - id: candidate-is-warranted-and-verified
+    statement: "The runbook criteria hold and every step is verified; otherwise the procedure is not written"
+  - id: gate-decision-recorded
+    statement: "The OA-RUNBOOK side quest was explicitly accepted or declined at the Approval Gate; nothing is materialized without acceptance"
+  - id: sidecar-validates-and-is-selectable
+    statement: "The typed sidecar parses and the selector offers the runbook for one of its own signals"
+  - id: open-decisions-are-not-presented-as-implemented
+    statement: "D1 (typed sidecar as the format) and D2 (select_runbook uses the configured root) are decided but not implemented; the runbook states the manual promotion step until they are"
+
+checks:
+  - id: duplicate-check-run
+    level: mandatory
+  - id: steps-verified-against-real-output
+    level: mandatory
+  - id: runbook-id-equals-markdown-stem
+    level: mandatory
+  - id: sidecar-parses-before-it-stays-in-the-directory
+    level: mandatory
+  - id: selector-offers-the-runbook
+    level: mandatory
+  - id: chest-registration-approved-by-operator
+    level: conditional
+    when: "the runbook lives under a root that no registered chest covers"
+  - id: placeholder-meta-json-not-treated-as-a-sidecar
+    level: recommended
+  - id: openspec-or-weapon-name-not-used-as-a-signal
+    level: informational
+
+metadata:
+  version: 1
+  reviewed_at: "2026-10-11"

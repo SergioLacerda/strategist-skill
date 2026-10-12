@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // orphanEntries reports every manifest-tracked path that is no longer part
@@ -45,11 +45,11 @@ func orphanState(strategistDir string, file domain.InstallManifestFile, versione
 	if !isLegacyLayoutPath(file.Path, versioned) {
 		return domain.UpgradeOrphaned, nil
 	}
-	runtimePath, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(file.Path))
+	runtimePath, err := filesystem.SafeJoin(strategistDir, filepath.FromSlash(file.Path))
 	if err != nil {
 		return "", fmt.Errorf("upgrade: resolve %s: %w", file.Path, err)
 	}
-	currentHash, exists, err := runtimefs.ReadSHA256(runtimePath)
+	currentHash, exists, err := filesystem.ReadSHA256(runtimePath)
 	if err != nil {
 		return "", fmt.Errorf("upgrade: read %s: %w", file.Path, err)
 	}

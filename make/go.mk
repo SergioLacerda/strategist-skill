@@ -3,7 +3,16 @@
 	test test-all integration spec eval golden leveling-integration \
 	validate-expanded validate-all \
 	test-lite test-telemetry-lite test-compile-cache test-domain-architecture \
-	bench validate-fixtures
+	bench validate-fixtures treasure-chest-tmp
+
+# External Weapon source and versioned embedded payloads may contain source
+# files for the provider's own module. They are artifacts, not packages of the
+# Strategist host module; keep host-owned Go gates from treating them as local
+# dependencies. The generated list still covers every tracked/untracked Go
+# package under the host-owned roots.
+HOST_GO_DIRS := $(shell find cmd internal treasure-chest -type f -name '*.go' ! -path 'internal/embed/defaults/*' -exec dirname {} \; | sort -u)
+HOST_GO_PACKAGES := $(addprefix ./,$(HOST_GO_DIRS))
+TREASURE_CHEST_TMP_BIN := bin/treasure-chest-tmp$(EXE)
 
 fmt:
 	git ls-files -co --exclude-standard -z '*.go' | xargs -0r -n1 sh -c 'if test -f "$$1"; then gofmt -w "$$1"; fi' sh
@@ -27,15 +36,19 @@ mod-check:
 	GOCACHE="$(GOCACHE)" go mod verify
 
 vet:
-	GOCACHE="$(GOCACHE)" go vet ./...
+	GOCACHE="$(GOCACHE)" go vet $(HOST_GO_PACKAGES)
 
 build: generate-embedded
 	GOCACHE="$(GOCACHE)" go build -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o "$(STRATEGIST_BIN)" ./cmd/strategist
 	GOCACHE="$(GOCACHE)" go run ./cmd/strategist plugins prepare-embedded --check
 	"$(STRATEGIST_BIN)" version --build
 
+treasure-chest-tmp:
+	GOCACHE="$(GOCACHE)" go build -o "$(TREASURE_CHEST_TMP_BIN)" ./cmd/treasure-chest-tmp
+	@echo "[Strategist] temporary Weapon built: $(TREASURE_CHEST_TMP_BIN)"
+
 test:
-	GOCACHE="$(GOCACHE)" go test -race ./...
+	GOCACHE="$(GOCACHE)" go test -race $(HOST_GO_PACKAGES)
 
 test-all: test spec integration
 
@@ -126,7 +139,7 @@ test-domain-architecture:
 	GOCACHE="$(GOCACHE)" go test -race internal/domain/architecture_test.go
 
 bench:
-	GOCACHE="$(GOCACHE)" go test -bench=. -benchmem ./...
+	GOCACHE="$(GOCACHE)" go test -bench=. -benchmem $(HOST_GO_PACKAGES)
 
 validate-fixtures:
 	python3 -c "import yaml" || python3 -m pip install --user pyyaml

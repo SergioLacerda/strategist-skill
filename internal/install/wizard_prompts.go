@@ -9,9 +9,9 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 )
 
-func promptDocumentationRoots(p Prompter, b i18n.WizardStrings, basePath, workspaceRoot string) (string, string, error) {
-	adrDefault := documentationRootDefault(basePath, workspaceRoot, "adr")
-	runbookDefault := documentationRootDefault(basePath, workspaceRoot, "runbooks")
+func promptDocumentationRoots(p Prompter, b i18n.WizardStrings, basePath, workspaceRoot string, defaults wizardDefaults) (string, string, error) {
+	adrDefault := orDefault(defaults.ADRRoot, documentationRootDefault(basePath, workspaceRoot, "adr"), nil)
+	runbookDefault := orDefault(defaults.RunbookRoot, documentationRootDefault(basePath, workspaceRoot, "runbooks"), nil)
 	adr, err := promptDocumentationRootWithin(p, b.PromptADRRoot, adrDefault, "adr.canonical_path", workspaceRoot)
 	if err != nil {
 		return "", "", err
@@ -80,41 +80,41 @@ func documentationRootDefault(basePath, workspaceRoot, child string) string {
 	return child
 }
 
-func promptLanguages(p Prompter, skillCfg skillConfig) (uiLang, docLang, chatLang, codeLang string, b i18n.WizardStrings, err error) {
-	uiLang, err = p.Select("Preferred language / Idioma preferido", "en", skillCfg.LangOptions)
+func promptLanguages(p Prompter, skillCfg skillConfig, defaults wizardDefaults) (uiLang, docLang, chatLang, codeLang string, b i18n.WizardStrings, err error) {
+	uiLang, err = p.Select("Preferred language / Idioma preferido", orDefault(defaults.UI, "en", skillCfg.LangOptions), skillCfg.LangOptions)
 	if err != nil {
 		err = fmt.Errorf("wizard: ui_language: %w", err)
 		return
 	}
 	uiLang = normLang(uiLang)
 	b = i18n.BundleFor(uiLang)
-	docLang, err = selectLang(p, b.PromptDocLang, skillCfg.LangOptions, "doc_language")
+	docLang, err = selectLang(p, b.PromptDocLang, skillCfg.LangOptions, "doc_language", defaults.Docs)
 	if err != nil {
 		return
 	}
-	chatLang, err = selectLang(p, b.PromptChatLang, skillCfg.LangOptions, "chat_language")
+	chatLang, err = selectLang(p, b.PromptChatLang, skillCfg.LangOptions, "chat_language", defaults.Chat)
 	if err != nil {
 		return
 	}
-	codeLang, err = selectLang(p, b.PromptCodeLang, skillCfg.LangOptions, "code_language")
+	codeLang, err = selectLang(p, b.PromptCodeLang, skillCfg.LangOptions, "code_language", defaults.Code)
 	return
 }
 
-func selectLang(p Prompter, prompt string, options []string, field string) (string, error) {
-	value, err := p.Select(prompt, "en", options)
+func selectLang(p Prompter, prompt string, options []string, field, existing string) (string, error) {
+	value, err := p.Select(prompt, orDefault(existing, "en", options), options)
 	if err != nil {
 		return "", fmt.Errorf("wizard: %s: %w", field, err)
 	}
 	return value, nil
 }
 
-func promptWorkspace(p Prompter, b i18n.WizardStrings, skillCfg skillConfig) (string, string, error) {
+func promptWorkspace(p Prompter, b i18n.WizardStrings, skillCfg skillConfig, defaults wizardDefaults) (string, string, error) {
 	fmt.Println(b.HeaderWorkspace)
-	mode, err := p.Select(b.PromptMode, "epic", skillCfg.ModeOptions)
+	mode, err := p.Select(b.PromptMode, orDefault(defaults.Mode, "epic", skillCfg.ModeOptions), skillCfg.ModeOptions)
 	if err != nil {
 		return "", "", fmt.Errorf("wizard: mode: %w", err)
 	}
-	basePath, err := p.Input(b.PromptBasePath, ".analysis")
+	basePath, err := p.Input(b.PromptBasePath, orDefault(defaults.BasePath, ".analysis", nil))
 	if err != nil {
 		return "", "", fmt.Errorf("wizard: base_path: %w", err)
 	}

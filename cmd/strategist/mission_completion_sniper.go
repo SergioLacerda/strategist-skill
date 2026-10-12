@@ -41,6 +41,10 @@ func verifySniperCompletion(input missionadapter.InvocationCompleteInput, record
 	if isCriticalHitInvocation(input.Root, record.Request.MissionID) {
 		return verifyCriticalHitCompletion(input, record)
 	}
+	return verifyStandardSniperCompletion(input, record)
+}
+
+func verifyStandardSniperCompletion(input missionadapter.InvocationCompleteInput, record domain.MissionInvocationRecord) (string, []byte, error) {
 	refined := filepath.Join(input.BasePath, "refined", record.Request.MissionID)
 	executionSnapshot, err := missionadapter.LoadExecutionSnapshot(input.Root, input.BasePath, record.Request.MissionID)
 	if err != nil {
@@ -51,6 +55,9 @@ func verifySniperCompletion(input missionadapter.InvocationCompleteInput, record
 		return "", nil, err
 	}
 	if err := requireSniperMaterializations(input.Root, record, targets); err != nil {
+		return "", nil, err
+	}
+	if err := requireValidRunbookSidecars(filepath.Dir(input.Root), executionSnapshot); err != nil {
 		return "", nil, err
 	}
 	reportPath := filepath.Join(input.BasePath, "archived", record.Request.MissionID+"-report.md")

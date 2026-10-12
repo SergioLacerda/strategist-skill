@@ -1,4 +1,4 @@
-.PHONY: ci-lint ci-test ci
+.PHONY: ci-lint ci-test ci treasure-chest-tmp
 
 # Fail fast with one clear, actionable message when make cannot reach a POSIX
 # shell — e.g. invoked directly from PowerShell/cmd.exe on Windows instead of

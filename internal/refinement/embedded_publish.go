@@ -25,6 +25,9 @@ type EmbeddedInput struct {
 	// RecordConfidence persists the Archivist boundary claim before any file is
 	// published; it is required so refinement cannot finish silently.
 	RecordConfidence func(domain.ConfidenceClaim, []domain.Evidence) error
+	// RecordAdvisories persists optional critic and mission-quality boundary
+	// observations before the package is published.
+	RecordAdvisories func(AdvisoryInput) error
 	// RecordPublication persists a publication event; nil is permitted for
 	// library-only callers.
 	RecordPublication func(PackagePublication) error
@@ -78,7 +81,13 @@ func (p PreparedEmbedded) Publish() (EmbeddedResult, error) {
 	err := publishTail(publishTailInput{
 		MissionID: p.input.MissionID, ProviderChangeID: p.input.RequestID, Refined: p.refined,
 		Pending: p.input.PendingAnalysisPath, Contents: p.contents,
-		RecordConfidence:  func() error { return recordEmbeddedConfidence(p.input) },
+		RecordConfidence: func() error { return recordEmbeddedConfidence(p.input) },
+		RecordAdvisories: func(packageDigest string, analysis []byte) error {
+			if p.input.RecordAdvisories == nil {
+				return nil
+			}
+			return p.input.RecordAdvisories(AdvisoryInput{MissionID: p.input.MissionID, PackageDigest: packageDigest, Analysis: analysis})
+		},
 		RecordPublication: p.input.RecordPublication,
 	})
 	if err != nil {
@@ -153,11 +162,6 @@ func embeddedContents(input EmbeddedInput) (map[string][]byte, error) {
 	return contents, nil
 }
 
-// alreadyPublished makes completion retry-safe after a crash between the
-// atomic publication (which promotes and removes the pending analysis) and the
-// invocation journal's finalization. It reports true only when the pending
-// analysis is gone and the published package is exactly this request's: same
-// provenance id and same three documents. Any other existing package conflicts.
 func alreadyPublished(input EmbeddedInput, refined string) (bool, error) {
 	if _, err := os.Stat(input.PendingAnalysisPath); !os.IsNotExist(err) {
 		return false, nil

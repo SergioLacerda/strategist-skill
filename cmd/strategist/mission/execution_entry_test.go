@@ -49,6 +49,31 @@ func TestPrepareExecutionEntryPersistsTypedExecutionTargetSnapshot(t *testing.T)
 	require.Equal(t, []domain.ExecutionTarget{target}, loaded.TargetMetadata)
 }
 
+func TestPrepareExecutionEntryPersistsDeferredNoticesAndReplaysThem(t *testing.T) {
+	root := t.TempDir()
+	status := domain.MissionEngineStatus{MissionID: "m1", Phase: domain.PhaseExecution}
+	outcome := handoff.Outcome{MissionID: "m1", Integrity: "outcome-a"}
+	target := domain.ExecutionTarget{Path: "docs/a.md", Kind: domain.ExecutionTargetKindDocumentation, Origin: domain.ExecutionTargetOriginRefinedPackage}
+	snapshot, err := domain.SnapshotFromTargets("m1", []domain.ExecutionTarget{target})
+	require.NoError(t, err)
+	snapshot.Deferred = []domain.DeferredIntent{{
+		SideQuestID: "OA-CHEST-m1", Kind: "oa_treasure_chest",
+		Origin: domain.ExecutionTargetOriginAcceptedSideQuest, Reason: domain.DeferredReasonNoExecutionResolver,
+	}}
+	entry, err := prepareExecutionEntryWithSnapshot(root, "m1", "package-a", []string{target.Path}, []domain.ExecutionTarget{target}, snapshot, &outcome, status)
+	require.NoError(t, err)
+	require.NotNil(t, entry.ExecutionSnapshot)
+	require.Equal(t, snapshot.Deferred, entry.ExecutionSnapshot.Deferred)
+
+	loaded, err := loadExecutionEntry(executionEntryPath(root, "m1"))
+	require.NoError(t, err)
+	require.Equal(t, snapshot.Deferred, loaded.ExecutionSnapshot.Deferred)
+
+	replayed, err := prepareExecutionEntryWithSnapshot(root, "m1", "package-a", []string{target.Path}, []domain.ExecutionTarget{target}, snapshot, &outcome, status)
+	require.NoError(t, err, "a replay with the same notices must not conflict")
+	require.Equal(t, entry.ID, replayed.ID)
+}
+
 func TestPrepareExecutionEntryRotatesCompletedRevision(t *testing.T) {
 	root := t.TempDir()
 	status := domain.MissionEngineStatus{MissionID: "m1", Phase: domain.PhaseExecution}

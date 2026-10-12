@@ -13,7 +13,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/payload"
 )
 
 // isolatedStrategistDir builds a self-contained .strategist/ runtime tree from
@@ -43,7 +43,7 @@ var isolatedStrategistDirOnce = sync.OnceValues(func() (string, error) {
 
 	// The CLI registers the embedded OpenSpec bundle at startup; an in-process
 	// install must do the same before a Ranked runtime can be materialized.
-	runtimepayload.RegisterOpenSpec(embedpkg.DefaultsFS())
+	payload.RegisterOpenSpec(embedpkg.DefaultsFS())
 	svc := install.Service{
 		Extractor: embedpkg.Extractor{},
 		Compiler:  compile.Compiler{},

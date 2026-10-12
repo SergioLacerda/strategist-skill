@@ -154,6 +154,30 @@ func TestPluginCatalogCandidateDigestTracksNormalizedManifest(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("sha256:%x", sum), catalogProviderDigest(provider))
 }
 
+func TestNormalizedDigestManifestIncludesLegacyContractAndAuxiliaryTools(t *testing.T) {
+	t.Parallel()
+	manifest := normalizedDigestManifestFor(pluginCatalogProvider{
+		ID: "fixture", Version: "1.0.0", SchemaVersion: "v1", Status: "active",
+		RiskScore: "write_analysis", Category: "test", CanonicalRole: "ranger",
+		Roles: []string{"ranger"}, ScratchRoot: "runtime", Description: "first line\n\nlast line",
+		AuxiliaryTools: []string{"helper-a", "helper-b"},
+		WeaponContract: WeaponContract{
+			RoleOwner: "ranger", Participation: "required", InvocationEvidence: "required",
+			UnavailableBehavior: "role_invocation_failed", NativeSubstitution: "forbidden",
+		},
+	})
+	text := string(manifest)
+	assert.Contains(t, text, "weapon_contract:")
+	assert.Contains(t, text, "\nauxiliary_tools_allowed:\n  - helper-a\n  - helper-b\n")
+	assert.Contains(t, text, "description: >\n  first line")
+}
+
+func TestNormalizedDigestManifestRejectsAnUnknownProvider(t *testing.T) {
+	t.Parallel()
+	_, err := normalizedDigestManifest(pluginCatalog{}, "missing")
+	require.ErrorContains(t, err, `plugin catalog: provider "missing" not found`)
+}
+
 func reverseCatalogCandidates(in []resolver.Candidate) []resolver.Candidate {
 	out := append([]resolver.Candidate(nil), in...)
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {

@@ -27,6 +27,13 @@ canonical:
   - reuse_search_cache:               # Feat result: reuse Ranger's Search/select_runbook output by default
       default: [reuse_ranger_relevant_sources_hint, reuse_ranger_selected_runbooks_hint]    # from handoff-ranger-to-archivist.schema.yaml#relevant_sources_hint / #selected_runbooks_hint
       rerun_requires: declared_reason  # see contracts/machine/handoff-contract.yaml#refinement_context_policy.allowed_reasons
+  - select_runbook:                   # Feat: rerun the provider-backed lookup only when reuse is insufficient
+      when: a declared refinement reason requires fresh runbook context
+      must_invoke: true
+      invoke: "strategist runbook select --format json --requester archivist --signal <signal> [--signal <signal> ...]"
+      reads: JEWELER -> external Treasure Chest runbook index
+      policy: provider-bounded (max_primary=1, max_supporting=2, require_reason=true)
+      output: selected_runbooks_hint    # replace the reused hint only after the rerun succeeds
   - consult_treasure_chests          # consult chests scoped to refinement
   - opportunity_attack:              # Archivist ADR evaluation routine — mandatory after four refined artifacts
       detect: [adr_criteria]         # evaluate after all four refined artifacts are written

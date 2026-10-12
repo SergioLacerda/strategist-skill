@@ -48,6 +48,22 @@ func assertMissionSnapshot(t *testing.T, snap MissionMetrics) {
 	if snap.TokensIn != 11 || snap.TokensOut != 22 {
 		t.Fatalf("unexpected tokens: %#v", snap)
 	}
+	if !snap.TokensObserved {
+		t.Fatal("SetTokens must mark both counts as observed, including an observed zero")
+	}
+}
+
+func TestMissionRun_SnapshotMarksTokensUnavailableUntilSet(t *testing.T) {
+	t.Parallel()
+
+	run := NewMissionRun("m-no-token-observation")
+	if got := run.Snapshot(); got.TokensObserved {
+		t.Fatalf("ambient invocation must not claim token observation: %#v", got)
+	}
+	run.SetTokens(0, 0)
+	if got := run.Snapshot(); !got.TokensObserved {
+		t.Fatalf("explicit zero counts must remain observable: %#v", got)
+	}
 }
 
 func assertNonNegativeTimings(t *testing.T, snap MissionMetrics) {

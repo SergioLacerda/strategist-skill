@@ -15,17 +15,19 @@ import (
 // (handoff-ranger-to-archivist.schema.yaml).
 const runbookChestID = "runbooks"
 
-// runbookSidecarGlob is the same directory/pattern
-// internal/treasure.ScanRunbookDirectory's sibling mechanism scans for
-// Potions, but for the typed sidecar (*.runbook.yaml) instead of the
-// canonical markdown — see docs/runbooks/README.md.
-const runbookSidecarGlob = "docs/runbooks/*.runbook.yaml"
-
 type runbookSelectOptions struct {
-	Signals []string
-	Format  string
-	Root    string
+	Signals             []string
+	Format              string
+	Root                string
+	Strict              bool
+	ProviderExecutable  string
+	Requester           string
+	MissionID           string
+	CorrelationID       string
+	LocalStagingAllowed bool
 }
+
+const treasureChestExecutableEnv = "STRATEGIST_TREASURE_CHEST_EXECUTABLE"
 
 // runbookCmd is the parent for Strategist's runbook-corpus subcommands.
 // Only `select` exists today — see
@@ -33,22 +35,27 @@ type runbookSelectOptions struct {
 // Decision 1 for why list/show are deliberately not built yet.
 var runbookCmd = &cobra.Command{
 	Use:   "runbook",
-	Short: "Operate on the typed docs/runbooks/*.runbook.yaml corpus",
+	Short: "Query provider-backed runbooks for mission signals",
 }
 
 var runbookSelectCmd = &cobra.Command{
 	Use:   "select",
 	Short: "Select applicable runbooks for the given mission signals",
-	Long: `Scores docs/runbooks/*.runbook.yaml sidecars against mission signals via
-internal/feats/select_runbook.Select(), bounded by
-internal/feats/select_runbook.DefaultSelectionPolicy()
-(at most one primary, at most two supporting runbooks, each with a non-empty
-match reason). This is the select_runbook ability's concrete implementation
-(see .strategist/roles/ranger.yaml#canonical.select_runbook and
-contracts/narrative/03-discovery.md § Retrieval Cascade, stage 6).
+	Long: `Routes runbook selection through the JEWELER-mediated external Treasure
+Chest provider. The provider returns bounded runbook/playbook candidates with
+source evidence; JEWELER validates readiness, identity and item kind before
+rendering the result.
 
-Prints an empty-result message (exit 0) when no runbook sidecar exists yet,
-or when none match the given signals — neither case is an error.`,
+The provider executable must be supplied by --provider-executable or the
+explicit STRATEGIST_TREASURE_CHEST_EXECUTABLE environment binding. There is no
+implicit PATH lookup or local production fallback.
+This is the select_runbook ability's concrete implementation (see
+.strategist/roles/ranger.yaml#canonical.select_runbook and
+contracts/narrative/03-discovery.md § Retrieval Cascade, stage 6).
+Prints an empty-result message (exit 0) when the admitted provider has no
+matching runbook candidate. The deprecated local sidecar selector remains
+available only through the hidden --allow-local-staging flag for hermetic
+regression tests and migration rehearsal.`,
 	Args: cobra.NoArgs,
 }
 
@@ -57,6 +64,20 @@ func init() {
 	runbookCmd.PersistentFlags().StringVar(&selectOpts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
 	runbookSelectCmd.Flags().StringArray("signal", nil, "mission signal to match against runbook applies_when entries (repeatable; at least one required)")
 	runbookSelectCmd.Flags().StringVar(&selectOpts.Format, flagFormat, outputFormatTable, "output format: table or json")
+	runbookSelectCmd.Flags().BoolVar(&selectOpts.Strict, "strict", false, "render the selection, then exit non-zero when any sidecar was skipped or flagged")
+	if err := runbookSelectCmd.Flags().MarkHidden("strict"); err != nil {
+		panic(fmt.Sprintf("hide runbook select strict flag: %v", err))
+	}
+	runbookSelectCmd.Flags().StringVar(&selectOpts.ProviderExecutable, "provider-executable", "", "explicit external Treasure Chest provider executable (or STRATEGIST_TREASURE_CHEST_EXECUTABLE)")
+	runbookSelectCmd.Flags().StringVar(&selectOpts.Requester, "requester", "ranger", "authorized consumer role: ranger or archivist")
+	runbookSelectCmd.Flags().StringVar(&selectOpts.MissionID, "mission", "", "mission identifier (defaults to the ambient mission run)")
+	runbookSelectCmd.Flags().StringVar(&selectOpts.CorrelationID, "correlation", "", "correlation identifier (defaults to the mission identifier)")
+	// This flag exists only for hermetic regression tests and reversible staging
+	// rehearsals. Production invocations must omit it and use JEWELER.
+	runbookSelectCmd.Flags().BoolVar(&selectOpts.LocalStagingAllowed, "allow-local-staging", false, "explicitly use the deprecated local selector; never use in production")
+	if err := runbookSelectCmd.Flags().MarkHidden("allow-local-staging"); err != nil {
+		panic(fmt.Sprintf("hide runbook select local staging flag: %v", err))
+	}
 	runbookSelectCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return runRunbookSelect(cmd, args, selectOpts)
 	}
@@ -90,16 +111,50 @@ func runRunbookSelect(cmd *cobra.Command, _ []string, opts runbookSelectOptions)
 	if err != nil {
 		return err
 	}
+	if !opts.LocalStagingAllowed {
+		return runExternalRunbookSelect(cmd, opts, strategistDir, signals)
+	}
 
-	candidates, sourceDocByID, err := loadRunbookSidecars(strategistDir, projectRoot)
+	corpus, err := loadRunbookSidecars(strategistDir, projectRoot)
 	if err != nil {
 		return err
 	}
-	if len(candidates) == 0 {
-		fmt.Println("[Strategist] runbook select: no docs/runbooks/*.runbook.yaml sidecars found")
+	printCorpusDiagnostics(os.Stderr, corpus)
+	renderErr := renderCorpusSelection(corpus, signals, opts.Format)
+	if renderErr != nil {
+		return renderErr
+	}
+	return strictCorpusError(cmd, opts, corpus)
+}
+
+// renderCorpusSelection selects among the usable candidates and renders the
+// result; the "nothing to select from" messages say whether sidecars exist but
+// were all skipped.
+func renderCorpusSelection(corpus runbookCorpus, signals []string, format string) error {
+	if len(corpus.Candidates) > 0 {
+		return selectAndRenderRunbooks(corpus.Candidates, corpus.SourceDocByID, signals, format)
+	}
+	if skipped, _ := corpus.counts(); skipped > 0 {
+		fmt.Printf("[Strategist] runbook select: no usable docs/runbooks/*.runbook.yaml sidecars (skipped=%d)\n", skipped)
 		return nil
 	}
-	return selectAndRenderRunbooks(candidates, sourceDocByID, signals, opts.Format)
+	fmt.Println("[Strategist] runbook select: no docs/runbooks/*.runbook.yaml sidecars found")
+	return nil
+}
+
+// strictCorpusError turns any skip or warning into a non-zero exit, after the
+// selection was rendered. --strict is read from the command so a rebuilt
+// options struct cannot lose it.
+func strictCorpusError(cmd *cobra.Command, opts runbookSelectOptions, corpus runbookCorpus) error {
+	strict, err := cmd.Flags().GetBool("strict")
+	if err != nil {
+		strict = opts.Strict
+	}
+	skipped, warnings := corpus.counts()
+	if strict && skipped+warnings > 0 {
+		return fmt.Errorf("runbook select: strict: skipped=%d warnings=%d", skipped, warnings)
+	}
+	return nil
 }
 
 func selectAndRenderRunbooks(candidates []runbook.Runbook, sourceDocByID map[string]string, signals []string, format string) error {

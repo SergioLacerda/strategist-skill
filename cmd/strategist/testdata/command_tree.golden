@@ -313,10 +313,11 @@ long: |
   repository. Use --no-shim to skip that write entirely (e.g. CI/containers
   without a writable home directory), or --shim-path to redirect it.
 flag: --allow-downgrade (bool) default="false" usage="let this binary replace normative runtime files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)"
-flag: --force (bool) default="false" usage="overwrite all files, including user-modified ones (default: preserve customizations)"
+flag: --force (bool) default="false" usage="overwrite the normative runtime files, including user-modified ones; never rewrites active.yaml, plugins.lock or .config.lock (see --reset-config)"
 flag: --global (bool) default="false" usage="install into global root (default: local project)"
 flag: --integration (string) default="" usage="silent selection for the optional external provider integration: enable, disable or keep (default: no selection; a new install records no decision and an upgrade preserves the existing one)"
 flag: --no-shim (bool) default="false" usage="skip writing the SKILL.md shim under ~/.claude/skills (mutually exclusive with --shim-path)"
+flag: --reset-config (bool) default="false" usage="rewrite active.yaml, plugins.lock and .config.lock from the epic template (slots, language and documentation roots return to the defaults); the previous files are backed up under .strategist/.upgrade-backups/ and restored by `strategist upgrade --rollback`"
 flag: --shim-path (string) default="" usage="write the SKILL.md shim to this path instead of the default ~/.claude/skills/strategist/SKILL.md (mutually exclusive with --no-shim)"
 flag: --silent (bool) default="false" usage="silent install with epic defaults (default)"
 flag: --strict-compile (bool) default="false" usage="fail install (and roll back) on a CompileAll error, instead of warning-only (default: warning-only)"
@@ -939,25 +940,18 @@ flag: --format (string) default="table" usage="output format: table, json, or ya
 
 == strategist runbook
 use: runbook
-short: Operate on the typed docs/runbooks/*.runbook.yaml corpus
-persistent: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+short: Query provider-backed runbooks for mission signals
+persistent: --root (string) default="" usage="path to .strategist/ root (default: current workspace)"
 
 == strategist runbook select
 use: select
-short: Select applicable runbooks for the given mission signals
-long: |
-  Scores docs/runbooks/*.runbook.yaml sidecars against mission signals via
-  internal/feats/select_runbook.Select(), bounded by
-  internal/feats/select_runbook.DefaultSelectionPolicy()
-  (at most one primary, at most two supporting runbooks, each with a non-empty
-  match reason). This is the select_runbook ability's concrete implementation
-  (see .strategist/roles/ranger.yaml#canonical.select_runbook and
-  contracts/narrative/03-discovery.md § Retrieval Cascade, stage 6).
-  
-  Prints an empty-result message (exit 0) when no runbook sidecar exists yet,
-  or when none match the given signals — neither case is an error.
+short: Select applicable runbooks for mission signals
+flag: --correlation (string) default="" usage="correlation identifier"
 flag: --format (string) default="table" usage="output format: table or json"
-flag: --signal (stringArray) default="[]" usage="mission signal to match against runbook applies_when entries (repeatable; at least one required)"
+flag: --mission (string) default="" usage="mission identifier"
+flag: --provider-executable (string) default="" usage="explicit TREASURE-CHEST-TMP executable"
+flag: --requester (string) default="ranger" usage="authorized consumer role: ranger or archivist"
+flag: --signal (stringArray) default="[]" usage="mission signal to match (repeatable; at least one required)"
 
 == strategist sync-governance
 use: sync-governance
@@ -976,159 +970,6 @@ long: |
 flag: --dry-run (bool) default="false" usage="preview changes without writing"
 flag: --governance-dir (string) default="" usage="path to the explicitly provisioned governance directory"
 flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
-
-== strategist treasure-chest
-use: treasure-chest
-short: Show treasure chest runtime status and index health
-long: |
-  Show the current treasure chest configuration, governance, index, and compiled artifact status.
-  
-  Default: read-only status view. Merges four runtime truth layers:
-    - .strategist/active.yaml         (configured/scoped chests)
-    - .strategist/treasure-chests.yaml (governed trust and routing policy)
-    - .strategist/knowledge.index.yaml (indexed retrieval sources)
-    - .strategist/.compiled/.index.gz  (compiled fast-path artifact)
-  
-  Use --index to rebuild the compiled knowledge index from declared sources.
-  Use --include-historical with --index to opt in to indexing T2/T3 sources.
-flag: --format (string) default="table" usage="output format: table or json"
-flag: --include-historical (bool) default="false" usage="include T2/T3 historical sources in index rebuild (requires --index)"
-flag: --index (bool) default="false" usage="rebuild compiled knowledge index from declared sources"
-flag: --scope (string) default="" usage="filter output by slot scope (e.g. discovery, refinement, execution)"
-persistent: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
-
-== strategist treasure-chest add
-use: add <path>
-short: Register a new treasure chest across active/governed/indexed layers
-long: |
-  Add a treasure chest source, updating active.yaml, treasure-chests.yaml, and
-  knowledge.index.yaml together in one pass. Existing file comments/formatting are preserved.
-  
-  Leaves the compiled index (.compiled/.index.gz) stale unless --index is also passed.
-flag: --id (string) default="" usage="chest id (default: derived from the last path segment)"
-flag: --index (bool) default="false" usage="rebuild the compiled index immediately after adding"
-flag: --reviewed-by (string) default="human" usage="who reviewed this source"
-flag: --scope (string) default="all" usage="slot Scope: all, discovery, refinement, or execution"
-flag: --tags (string) default="" usage="comma-separated task_type tags (default: all)"
-flag: --trust-tier (string) default="T1" usage="trust tier: T0, T1, T2, or T3"
-
-== strategist treasure-chest doctor
-use: doctor
-short: Detect consistency drift across active.yaml, treasure-chests.yaml, and knowledge.index.yaml
-long: |
-  Read-only diagnostic for treasure-chest add/remove consistency.
-  
-  Reports chests present in one of the three registry truth layers
-  (active.yaml, treasure-chests.yaml, knowledge.index.yaml) but missing from
-  another — the divergence a batch write failure can leave behind.
-  
-  Detection only: no automatic repair is attempted. Exits non-zero when any
-  divergence is found.
-
-== strategist treasure-chest index
-use: index
-short: Rebuild the offline knowledge substrate (scan, propose jewels, refresh compiled index)
-long: |
-  Rebuild the offline knowledge substrate from declared sources and mission history.
-  
-  Responsibilities:
-    - Validate configured, governed, indexed, and compiled layers.
-    - Run the internal scan phase over <base_path>/refined/**/tasks.md and <base_path>/done/**.
-    - Detect and polish reusable knowledge units into deduplicated status:proposed jewels.
-    - Rebuild the compiled knowledge index (.strategist/.compiled/.index.gz).
-  
-  Use --include-historical to opt in to indexing T2/T3 sources into the compiled artifact.
-flag: --include-historical (bool) default="false" usage="include T2/T3 historical sources in the compiled index rebuild"
-
-== strategist treasure-chest items
-use: items
-short: Inspect and curate jewels and potions regardless of curation status
-
-== strategist treasure-chest items accept
-use: accept <item-id>...
-short: Promote item ids to status: accepted
-
-== strategist treasure-chest items check-evidence
-use: check-evidence <chest-id>
-short: Advisory scan for expired, duplicate, or conflicting jewels in a chest
-long: |
-  Runs three advisory checks over a chest's non-deprecated jewels:
-    expired    — valid_until has passed
-    duplicate  — same normalized statement (trimmed, case-folded)
-    conflict   — overlapping source_refs with a differing statement or status
-  
-  Never modifies a jewel. Always exits 0, regardless of findings — same
-  advisory-only posture as mission_quality, not a CI gate.
-
-== strategist treasure-chest items deprecate
-use: deprecate <item-id>...
-short: Mark item ids as status: deprecated
-
-== strategist treasure-chest items list
-use: list
-short: List items (jewels and/or potions), optionally filtered by kind, status, or chest
-long: |
-  Lists items across all chests.
-  
-  Without --status: shows proposed, accepted, and verified items (everything "alive").
-  deprecated items are excluded unless --status=all or --status=deprecated is given.
-  Without --kind: shows both jewels and potions.
-flag: --chest (string) default="" usage="filter by chest id"
-flag: --format (string) default="table" usage="output format: table or json"
-flag: --kind (string) default="" usage="filter by item kind: jewel or potion (default: both)"
-flag: --status (string) default="" usage="filter by status: all, proposed, accepted, verified, or deprecated (default: all except deprecated)"
-
-== strategist treasure-chest items migrate-status
-use: migrate-status
-short: One-time migration: rewrite legacy status: active jewels to status: accepted
-
-== strategist treasure-chest items show
-use: show <item-id>
-short: Show a single item's (jewel or potion) full content
-flag: --format (string) default="table" usage="output format: table or json"
-
-== strategist treasure-chest items verify
-use: verify <item-id>...
-short: Promote item ids to status: verified (requires --evidence)
-flag: --evidence (string) default="" usage="evidence reference recorded with verify (jewels only — see PromotePotion)"
-
-== strategist treasure-chest list
-use: list
-short: Show treasure chest runtime status (explicit name for the default view)
-flag: --format (string) default="table" usage="output format: table or json"
-flag: --scope (string) default="" usage="filter output by slot scope (e.g. discovery, refinement, execution)"
-
-== strategist treasure-chest remove
-use: remove [path]
-short: Tombstone a treasure chest (mark inactive, do not hard-delete)
-long: |
-  Remove a treasure chest from active.yaml's active declarations and mark it
-  status: inactive in treasure-chests.yaml and knowledge.index.yaml, preserving an audit
-  trail instead of hard-deleting the entry. Resolve by positional path or --id; if both are
-  given and disagree, the command stops with an ambiguity error.
-flag: --id (string) default="" usage="chest id to remove (alternative to positional path)"
-
-== strategist treasure-chest scan
-use: scan
-hidden: true
-short: [internal] Mine .analysis/refined and .analysis/done for recurring clusters and open gaps
-long: |
-  Internal phase folded into "strategist treasure-chest index" — not part of the
-  public steady-state UX. Kept as a standalone command for debugging/dry-run inspection of
-  the scan phase in isolation.
-  
-  Scan mission history for recurring themes and unresolved side quests.
-  
-  Input: <base_path>/refined/**/tasks.md and <base_path>/done/** only. Never reads
-  <base_path>/pending/ or <base_path>/archived/ reports.
-  
-  Method: lexical/tag matching only. No embeddings, no vector index.
-  
-  Output: .strategist/treasure/clusters/ and .strategist/treasure/gaps/, regenerated from
-  scratch on every run (safe to delete — see docs/configuration.md § Storage Domain).
-  
-  Use --dry-run to preview output without writing to disk.
-flag: --dry-run (bool) default="false" usage="print what would be written without touching disk"
 
 == strategist upgrade
 use: upgrade

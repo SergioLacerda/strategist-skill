@@ -309,7 +309,7 @@ implementation (waves 0 to 3). The versioned marker is recorded in
   embedded, digest-pinned description of the Weapon, and the lock records which instance is
   bound.
 - **Readers moved.** Preflight (`internal/check`), role validation
-  (`internal/rolevalidation`), the embedded roster and binding enumeration, readiness
+  (`internal/roles/validation`), the embedded roster and binding enumeration, readiness
   probing, the dojo, the grant readiness (`requested_permissions`), and the Ranger and
   Archivist `scratch_root` instruction read the catalog-first facts. Installable detection is
   keyed on the catalog's `installable` flag. `provider add` bind checks read the package's own

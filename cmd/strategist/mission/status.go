@@ -28,5 +28,22 @@ func RunStatus(cmd *cobra.Command, deps LifecycleDependencies, rootInput, missio
 	if err != nil {
 		return fmt.Errorf("mission status: %w", err)
 	}
-	return deps.WriteResult(cmd, asJSON, status)
+	if err := deps.WriteResult(cmd, asJSON, status); err != nil {
+		return err
+	}
+	return printBindingChanges(cmd, deps, root, missionID)
+}
+
+// printBindingChanges writes one advisory line per slot whose binding changed
+// since the mission started to stderr, so stdout (the status JSON) is unchanged.
+func printBindingChanges(cmd *cobra.Command, deps LifecycleDependencies, root, missionID string) error {
+	if deps.BindingChanges == nil {
+		return nil
+	}
+	for _, line := range deps.BindingChanges(root, missionID) {
+		if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "[Strategist] mission status: %s\n", line); err != nil {
+			return fmt.Errorf("mission status: write advisory: %w", err)
+		}
+	}
+	return nil
 }

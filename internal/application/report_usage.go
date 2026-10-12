@@ -51,7 +51,11 @@ type MissionUsageRecord struct {
 // reports false for a duplicate delivery.
 type MissionUsagePorts struct {
 	MissionKnown func(basePath, missionID string) bool
-	Append       func(root string, record MissionUsageRecord) (bool, error)
+	// ResolvePhaseRunID supplies the only open lifecycle run when the caller
+	// omitted --phase-run-id. Nil preserves compatibility for library callers
+	// that do not have a lifecycle ledger.
+	ResolvePhaseRunID func(root, missionID, phase string) (string, error)
+	Append            func(root string, record MissionUsageRecord) (bool, error)
 }
 
 // MissionUsageResult reports the persisted record and whether it was new.
@@ -66,10 +70,21 @@ type MissionUsageResult struct {
 // observes the provider or host counter itself. The artifact requirement is
 // kept: usage is refused for a mission with no artifact yet.
 func RecordMissionUsage(root, basePath string, in MissionUsageInput, now time.Time, ports MissionUsagePorts) (MissionUsageResult, error) {
+	return recordMissionUsage(root, basePath, in.MissionID, in.Phase, in.PhaseRunID, ports, "mission report-usage: usage ports are required", func(resolved string) (MissionUsageRecord, error) {
+		in.PhaseRunID = resolved
+		return normalizeMissionUsage(in, now)
+	})
+}
+
+func recordMissionUsage(root, basePath, missionID, phase, phaseRunID string, ports MissionUsagePorts, missingPortsMessage string, build func(string) (MissionUsageRecord, error)) (MissionUsageResult, error) {
 	if ports.MissionKnown == nil || ports.Append == nil {
-		return MissionUsageResult{}, errors.New("mission report-usage: usage ports are required")
+		return MissionUsageResult{}, errors.New(missingPortsMessage)
 	}
-	rec, err := normalizeMissionUsage(in, now)
+	resolved, err := resolveUsagePhaseRun(root, missionID, phase, phaseRunID, ports.ResolvePhaseRunID)
+	if err != nil {
+		return MissionUsageResult{}, err
+	}
+	rec, err := build(resolved)
 	if err != nil {
 		return MissionUsageResult{}, err
 	}

@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SergioLacerda/strategist-skill/internal/validate"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/validate"
 )
 
 // ValidationReport is the read-only result of validating an installed

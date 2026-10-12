@@ -8,7 +8,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/policy"
-	"github.com/SergioLacerda/strategist-skill/internal/rolevalidation"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/validation"
 	"github.com/SergioLacerda/strategist-skill/internal/stale"
 	"gopkg.in/yaml.v3"
 )

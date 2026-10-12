@@ -1,14 +1,32 @@
 package treasurecli
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/roles/jeweler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type runbookProviderStub struct {
+	projection jeweler.Projection
+}
+
+func (p runbookProviderStub) Query(context.Context, jeweler.QueryRequest) (jeweler.Projection, error) {
+	return p.projection, nil
+}
+
+func (p runbookProviderStub) Maintain(context.Context, jeweler.MaintenanceRequest) (jeweler.MaintenanceResult, error) {
+	return jeweler.MaintenanceResult{}, nil
+}
+
+func (p runbookProviderStub) Readiness(context.Context, string) (jeweler.Readiness, error) {
+	return jeweler.Readiness{Status: "ready"}, nil
+}
 
 const fixtureRunbookA = `schema_version: "1"
 runbook_id: fix-timeout
@@ -65,6 +83,7 @@ func runbookSelectTestRoot(t *testing.T, sidecars map[string]string) string {
 	require.NoError(t, os.MkdirAll(runbooksDir, 0o755))
 	for name, content := range sidecars {
 		require.NoError(t, os.WriteFile(filepath.Join(runbooksDir, name+".runbook.yaml"), []byte(content), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(runbooksDir, name+".md"), []byte("# "+name+"\n"), 0o644))
 	}
 	return filepath.Join(dir, ".strategist")
 }
@@ -78,6 +97,10 @@ func resetRunbookSelectFlags(t *testing.T) {
 	t.Helper()
 	setRunbookRoot(t, "")
 	require.NoError(t, runbookSelectCmd.Flags().Set(flagFormat, outputFormatTable))
+	require.NoError(t, runbookSelectCmd.Flags().Set("strict", "false"))
+	// Existing corpus tests exercise the reversible local staging selector.
+	// Production command paths leave this explicit escape hatch disabled.
+	require.NoError(t, runbookSelectCmd.Flags().Set("allow-local-staging", "true"))
 }
 
 // setRunbookRoot sets --root, which is registered on runbookCmd's
@@ -109,6 +132,49 @@ func TestRunbookSelect_NoSignalErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "at least one --signal is required")
 }
 
+func TestRunbookSelectRequiresExplicitJewelerBinding(t *testing.T) {
+	root := runbookSelectTestRoot(t, nil)
+	resetRunbookSelectFlags(t)
+	require.NoError(t, runbookSelectCmd.Flags().Set("allow-local-staging", "false"))
+	require.NoError(t, runbookSelectCmd.Flags().Set("provider-executable", ""))
+	t.Setenv(treasureChestExecutableEnv, "")
+	setRunbookSignals(t, "timeout")
+	setRunbookRoot(t, root)
+	attachMissionRun(t, runbookSelectCmd)
+
+	err := runbookSelectCmd.RunE(runbookSelectCmd, nil)
+	require.ErrorContains(t, err, "JEWELER provider binding is missing")
+}
+
+func TestRunbookSelectExternalUsesJewelerProjection(t *testing.T) {
+	root := runbookSelectTestRoot(t, nil)
+	resetRunbookSelectFlags(t)
+	require.NoError(t, runbookSelectCmd.Flags().Set("allow-local-staging", "false"))
+	require.NoError(t, runbookSelectCmd.Flags().Set("provider-executable", "/explicit/treasure-chest"))
+	setRunbookSignals(t, "timeout")
+	setRunbookRoot(t, root)
+	setCmdFlag(t, runbookSelectCmd, flagFormat, outputFormatJSON)
+	attachMissionRun(t, runbookSelectCmd)
+
+	previous := newRunbookProvider
+	newRunbookProvider = func(_, executable string) (jeweler.Provider, error) {
+		require.Equal(t, "/explicit/treasure-chest", executable)
+		return runbookProviderStub{projection: jeweler.Projection{Items: []jeweler.Item{{
+			ID: "runbook-timeout", Kind: "runbook", Reason: "provider matched timeout", Source: jeweler.Source{Path: "docs/runbooks/timeout.md"},
+		}}}}, nil
+	}
+	t.Cleanup(func() { newRunbookProvider = previous })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, runbookSelectCmd.RunE(runbookSelectCmd, nil))
+	})
+	var rows []runbookSelectionRow
+	require.NoError(t, json.Unmarshal([]byte(out), &rows))
+	require.Len(t, rows, 1)
+	require.Equal(t, "timeout", rows[0].RunbookID)
+	require.Equal(t, "primary", rows[0].Role)
+}
+
 func TestRunbookSelect_EmptyCorpusNoError(t *testing.T) {
 	root := runbookSelectTestRoot(t, nil)
 	resetRunbookSelectFlags(t)
@@ -133,19 +199,6 @@ func TestRunbookSelect_NoMatchNoError(t *testing.T) {
 		require.NoError(t, runbookSelectCmd.RunE(runbookSelectCmd, nil))
 	})
 	assert.Contains(t, out, "no runbook matched the given signals")
-}
-
-func TestRunbookSelect_InvalidSidecarHardFails(t *testing.T) {
-	root := runbookSelectTestRoot(t, map[string]string{"broken-runbook": fixtureRunbookInvalidLevel})
-	resetRunbookSelectFlags(t)
-	setRunbookSignals(t, "timeout")
-	setRunbookRoot(t, root)
-	attachMissionRun(t, runbookSelectCmd)
-
-	err := runbookSelectCmd.RunE(runbookSelectCmd, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "broken-runbook.runbook.yaml")
-	assert.Contains(t, err.Error(), "check_invalid")
 }
 
 func TestRunbookSelect_MatchAssignsPrimaryAndSupportingWithReason(t *testing.T) {

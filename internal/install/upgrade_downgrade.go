@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // refuseNormativeDowngrade stops `strategist upgrade` before any write when it
@@ -43,7 +43,7 @@ func normativeOnly(paths []string) []string {
 }
 
 func (s Service) checkNormativeDowngrade(strategistDir, path, embeddedHash string, manifest domain.InstallManifest) error {
-	currentHash, exists, err := runtimefs.ReadSHA256(filepath.Join(strategistDir, filepath.FromSlash(path)))
+	currentHash, exists, err := filesystem.ReadSHA256(filepath.Join(strategistDir, filepath.FromSlash(path)))
 	if err != nil {
 		return fmt.Errorf("upgrade: read normative runtime file %s: %w", path, err)
 	}

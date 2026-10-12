@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
-	"github.com/SergioLacerda/strategist-skill/internal/missionview"
+	missionview "github.com/SergioLacerda/strategist-skill/internal/mission/view"
 	"github.com/spf13/cobra"
 )
 

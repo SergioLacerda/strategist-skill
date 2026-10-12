@@ -63,7 +63,7 @@ func withRankedOptions(options slotOptions) (menu []string, uiDefault string) {
 		menu = append(menu, ref+rankedOptionSuffix)
 	}
 	menu = append(menu, options.ids...)
-	return menu, options.rankedDefault + rankedOptionSuffix
+	return menu, rankedMenuDefault(options)
 }
 
 // withRankedLabeledOptions keeps canonical values separate from the labels
@@ -92,7 +92,17 @@ func withRankedLabeledOptions(options slotOptions) (menu []promptOption, uiDefau
 		}
 		menu = append(menu, promptOption{Label: label, Value: ref})
 	}
-	return menu, options.rankedDefault + rankedOptionSuffix
+	return menu, rankedMenuDefault(options)
+}
+
+// rankedMenuDefault is the pre-selected menu value when Ranked options exist:
+// the Ranked default, or the Custom default when the existing binding is a
+// Custom one.
+func rankedMenuDefault(options slotOptions) string {
+	if options.preferCustom {
+		return options.defaultID
+	}
+	return options.rankedDefault + rankedOptionSuffix
 }
 
 // splitRankedChoiceAmong inverts withRankedOptions. A "<ref>::ranked" choice is

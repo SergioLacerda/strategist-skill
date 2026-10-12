@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/filelock"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem/filelock"
 )
 
 // BeginProcessing durably commits a completion to publish artifactDigest at

@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 func removeLegacyNestedOpenSpecRoot(root string) error {
 	legacyRoot := filepath.Join(root, "openspec")
-	if !runtimefs.Exists(filepath.Join(legacyRoot, "config.yaml")) {
+	if !filesystem.Exists(filepath.Join(legacyRoot, "config.yaml")) {
 		return nil
 	}
 	if err := validateLegacyNestedOpenSpecRoot(legacyRoot); err != nil {

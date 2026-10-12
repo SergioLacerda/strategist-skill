@@ -36,6 +36,18 @@ func TestRecordHostObservedUsageIsHostMeasuredAndWindowKeyed(t *testing.T) {
 	assert.Equal(t, int64(4000), *rec.TokensCache)
 }
 
+func TestRecordHostObservedUsageUsesTheOpenPhaseRunWhenAvailable(t *testing.T) {
+	store := &usageStore{known: true}
+	ports := store.ports()
+	ports.ResolvePhaseRunID = func(_, _, phase string) (string, error) {
+		assert.Equal(t, "DISCOVERY", phase)
+		return "r3", nil
+	}
+	res, err := application.RecordHostObservedUsage("root", "base", hostInput(), usageNow, ports)
+	require.NoError(t, err)
+	assert.Equal(t, "r3", res.Record.PhaseRunID)
+}
+
 func TestRecordHostObservedUsageRefusesToRecordNothingAsZero(t *testing.T) {
 	store := &usageStore{known: true}
 	in := hostInput()

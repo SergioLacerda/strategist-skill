@@ -34,6 +34,25 @@ only after all required artifacts are present. Distinct groups may progress
 independently. A legacy `execution_targets` projection may be read only for migration;
 it never expands the authorized set.
 
+## Runbook Sidecar Content
+
+An artifact with `role: sidecar` and `kind: runbook_sidecar` is the typed
+`<stem>.runbook.yaml` the Runbook selector reads. Its content comes from the prepared
+candidate, never from prose you compose:
+
+1. Read `.strategist/opportunity-attacks/<mission_id>.yaml` and take the candidate whose `id`
+   equals the group's `side_quest_id`. Its `runbook_preparation.proposed_runbook` is the only
+   source.
+2. Proceed only when `runbook_preparation.status` is `prepared`. Any other status, or a
+   missing preparation, emits `blocked reason=runbook_candidate_unavailable` with the status
+   and **STOP**: write no sidecar and do not invent runbook fields.
+3. Copy the proposed runbook unchanged, except `runbook_id` and `source_doc`: set them to the
+   artifact `metadata.runbook_id` and `metadata.source_doc`, so the sidecar and its markdown
+   agree.
+4. Write the YAML at the sidecar artifact path only after the primary markdown exists, then
+   record both materializations. Completion refuses a sidecar that does not parse as a
+   Runbook sidecar.
+
 ## Claim Protocol
 
 Before any action, you MUST execute the claim protocol:

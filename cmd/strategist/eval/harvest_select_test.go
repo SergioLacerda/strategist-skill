@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/treasure-chest"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -130,6 +129,6 @@ func TestPrintHarvestWarnings_PrintsEachWarning(t *testing.T) {
 	var buf bytes.Buffer
 	cmd.SetErr(&buf)
 
-	PrintHarvestWarnings(cmd, []treasure.ScanWarning{{Path: "refined/bad-mission", Err: errors.New("unparseable")}})
+	PrintHarvestWarnings(cmd, []ScanWarning{{Path: "refined/bad-mission", Err: errors.New("unparseable")}})
 	assert.Contains(t, buf.String(), "skipped inconsistent mission file")
 }

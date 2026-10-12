@@ -9,6 +9,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,6 +35,10 @@ func normalizeFixture(t *testing.T) (mission.NormalizeDependencies, string) {
 			return base, runtime, pending, nil
 		},
 		RecordConfidence: func(mission.NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error { return nil },
+		// The advisory ledger is injected like every other write: the production
+		// recorder resolves the workspace from the CWD, which in a test is this
+		// repository's own .strategist/memory.
+		RecordAdvisories: func(mission.NormalizeOptions, refinement.AdvisoryInput) error { return nil },
 		LoadMission: func(opts mission.NormalizeOptions) (domain.MissionEngineStatus, error) {
 			return loadNormalizeFixtureMission(base, opts)
 		},
@@ -80,6 +85,33 @@ func TestNormalizeOpenSpecDefaultOutputLineIsPinned(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "mission_id=m-1 provider_change_id=c-1 refined="+refined+" status=archivist_done\n", out)
 	require.Equal(t, "archivist", recorded.Agent)
+}
+
+// The advisory boundary is reached through the injected recorder, never through
+// a path the command resolves on its own.
+func TestNormalizeOpenSpecRecordsAdvisoriesThroughTheInjectedRecorder(t *testing.T) {
+	deps, _ := normalizeFixture(t)
+	var got refinement.AdvisoryInput
+	deps.RecordAdvisories = func(_ mission.NormalizeOptions, input refinement.AdvisoryInput) error {
+		got = input
+		return nil
+	}
+
+	_, err := runNormalize(t, deps, "--mission-id", "m-1", "--change-id", "c-1")
+
+	require.NoError(t, err)
+	require.Equal(t, "m-1", got.MissionID)
+	require.NotEmpty(t, got.PackageDigest)
+	require.Contains(t, string(got.Analysis), "mission_id: m-1")
+}
+
+func TestNormalizeOpenSpecRefusesToPublishWithoutAnAdvisoryRecorder(t *testing.T) {
+	deps, _ := normalizeFixture(t)
+	deps.RecordAdvisories = nil
+
+	_, err := runNormalize(t, deps, "--mission-id", "m-1", "--change-id", "c-1")
+
+	require.ErrorContains(t, err, "advisory recorder is unavailable")
 }
 
 // amendFixture publishes change c-1 through the default path, moves the package to

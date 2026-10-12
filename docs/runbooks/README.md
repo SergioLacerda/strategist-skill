@@ -126,6 +126,15 @@ rejects a sidecar missing any of them, an unrecognized `runbook_type`, an
 unrecognized `checks[].level`, or a `checks[].when` set on a non-`conditional`
 check.
 
+### Corpus loading is tolerant, and never silent
+
+`strategist runbook select` delegates to the admitted Treasure Chest provider
+through JEWELER. The provider owns the runbook index and returns source-backed
+candidates; JEWELER enforces readiness, requester bounds, item kind, freshness,
+and provenance before rendering. Missing or unready provider binding is an
+error, never a local answer. The hidden local staging switch is reserved for
+hermetic regression tests and migration rehearsal.
+
 ### Authoring guidance
 
 Derive `applies_when` from the same "Trigger"/"Symptom" section the Potion
@@ -181,3 +190,6 @@ A runbook candidate produced by Opportunity Attack (see
 is a request for a runbook, not an accepted runbook. It is only promoted into this
 directory after explicit human review — Opportunity Attack itself never writes directly to
 `docs/runbooks/<slug>.md`.
+
+For the end-to-end procedure (warranting, candidate, acceptance, review, typed sidecar, promotion and
+selector visibility), see `docs/runbooks/producing-a-runbook.md`.

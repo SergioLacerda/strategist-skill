@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // resolveRankedProvider finds the bound catalog provider and its validated
@@ -32,7 +32,7 @@ func bootstrapRankedProvider(ctx context.Context, strategistDir string, provider
 	if runtime.Kind != domain.RankedRuntimeOpenSpecRoot {
 		return nil, nil
 	}
-	root, err := runtimefs.SafeJoinExisting(strategistDir, filepath.ToSlash(runtime.Root)[len(".strategist/"):])
+	root, err := filesystem.SafeJoinExisting(strategistDir, filepath.ToSlash(runtime.Root)[len(".strategist/"):])
 	if err != nil {
 		return nil, fmt.Errorf("ranked runtime provider %q root: %w", provider.ID, err)
 	}

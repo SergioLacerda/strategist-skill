@@ -26,6 +26,9 @@ func TestTreasureChestCommandTreeParity(t *testing.T) {
 		"treasure-chest items deprecate":      false,
 		"treasure-chest items migrate-status": false,
 		"treasure-chest items check-evidence": false,
+		"treasure-chest provider":             false,
+		"treasure-chest provider query":       false,
+		"treasure-chest provider maintain":    false,
 	}
 
 	got := make(map[string]bool)

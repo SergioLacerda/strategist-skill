@@ -14,7 +14,7 @@ func TestRootCmd_RegistersEveryTopLevelCommand(t *testing.T) {
 	want := []string{
 		"check", "check-stale", "compile", "dojo", "eval", "handoff", "install", "integrations",
 		"leveling", "mechanisms", "metrics", "mission", "plugins", "provider", "runbook", "sync-governance",
-		"treasure-chest", "upgrade", "validate", "version",
+		"upgrade", "validate", "version",
 	}
 
 	var got []string

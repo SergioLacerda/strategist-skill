@@ -8,4 +8,5 @@ var SlotRiskContract = map[string]string{
 	string(SlotDiscovery):  "write_analysis",
 	string(SlotRefinement): "write_analysis",
 	string(SlotExecution):  "controlled",
+	string(SlotTreasure):   "controlled",
 }

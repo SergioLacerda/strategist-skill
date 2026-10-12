@@ -61,7 +61,7 @@ func TestAValidPinnedCalibrationDecidesTheThreshold(t *testing.T) {
 
 func TestACalibrationCanTightenTheThresholdToo(t *testing.T) {
 	r := pinned(t, pinnedRecord(t, 0.95, nil), 0.90)
-	assert.Equal(t, StatusSignal, r.consumer.Precheck(context.Background(), gateRequest()).Status, "0.90 would pass the default 0.80 but not the calibrated 0.95")
+	assert.Equal(t, StatusSignal, r.consumer.Precheck(context.Background(), gateRequest()).Status, "0.90 exceeds the default 0.80 but does not meet the calibrated 0.95")
 }
 
 func TestWithoutAPinTheConfiguredThresholdApplies(t *testing.T) {

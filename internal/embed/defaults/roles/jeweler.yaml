@@ -1,0 +1,16 @@
+role: jeweler
+slot: treasure
+origin: external
+extensibility: pluggable
+phase: 0
+must:
+  - "serve bounded, source-backed Treasure Chest projections to Ranger and Archivist"
+  - "separate read-only consumer queries from explicitly authorized maintenance"
+  - "report provider identity, provenance, freshness, and readiness on every response"
+must_not:
+  - "participate in discovery, refinement, or execution checkpoints"
+  - "invoke a local or mock provider as an implicit production fallback"
+  - "allow direct consumer access to Treasure Chest storage or provider internals"
+custom_brief: >
+  JEWELER is the canonical non-pipeline support Role for the external
+  Treasure Chest provider. JEWELCRAFTER is a time-bounded compatibility alias.

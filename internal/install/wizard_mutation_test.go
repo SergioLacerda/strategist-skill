@@ -55,7 +55,7 @@ func TestWizardCriticalMutants(t *testing.T) {
 		{
 			name: "execution ranked choice changes mode",
 			want: func(t *testing.T, catalog pluginCatalog) {
-				provider, mode, err := promptExecutionSlot(NewTextPrompter(strings.NewReader("sniper::ranked\n")), i18n.BundleFor("en"), catalog, knownProviderRisk)
+				provider, mode, err := promptExecutionSlot(NewTextPrompter(strings.NewReader("sniper::ranked\n")), i18n.BundleFor("en"), catalog, knownProviderRisk, wizardDefaults{})
 				require.NoError(t, err)
 				require.Equal(t, "sniper", provider)
 				require.Equal(t, domain.SlotBindingModeRanked, mode)

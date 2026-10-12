@@ -3,6 +3,9 @@ runbook_id: verifying-implemented-demands
 runbook_type: analytical
 source_doc: docs/runbooks/verifying-implemented-demands.md
 
+signals:
+  - verifying_implemented_demands
+
 applies_when:
   - "A request to implement a demand from `<base_path>/refined/<mission_id>/`, especially when phrased as \"if it's already finished, move it to done\" — or any time implementation work is about to start and a refined package already exists for it"
   - "The mandatory bootstrap stale scan (`.strategist/contracts/narrative/01-bootstrap.md`, `11-critical-hit.md` § Stale Card Detection Trigger 3) flags a candidate"

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/env"
 	"github.com/stretchr/testify/require"
 )
 
@@ -79,7 +79,7 @@ func TestInstall_RankedMissingExecutableRollsBackFreshWorkspace(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorContains(t, err, domain.ReasonRankedRuntimeExecutableMissing)
 	require.ErrorContains(t, err, `"openspec-propose"`)
-	var missing *runtimeenv.ExecutableNotFoundError
+	var missing *env.ExecutableNotFoundError
 	require.ErrorAs(t, err, &missing)
 	require.NoDirExists(t, filepath.Join(dir, ".strategist"), "a fresh install must be fully rolled back")
 }

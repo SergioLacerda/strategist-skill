@@ -24,6 +24,9 @@ type OpenSpecInput struct {
 	// package is published. The callback is required so refinement cannot
 	// finish silently when telemetry storage is unavailable.
 	RecordConfidence func(domain.ConfidenceClaim, []domain.Evidence) error
+	// RecordAdvisories persists optional critic and mission-quality boundary
+	// observations before the package is published.
+	RecordAdvisories func(AdvisoryInput) error
 	// HandoffFacts is the optional typed handoff_policy_facts mapping Archivist
 	// declares at publication. It is validated with handoff.ParsePolicyFacts and
 	// written into the published analysis.md frontmatter; nil publishes none and
@@ -84,6 +87,12 @@ func publishOpenSpec(input OpenSpecInput, changeDir string, contents map[string]
 		MissionID: input.MissionID, ProviderChangeID: input.ChangeID, Refined: refined,
 		Pending: input.PendingAnalysisPath, Contents: contents,
 		RecordConfidence: func() error { return recordArchivistConfidence(input) }, RecordPublication: input.RecordPublication,
+		RecordAdvisories: func(packageDigest string, analysis []byte) error {
+			if input.RecordAdvisories == nil {
+				return nil
+			}
+			return input.RecordAdvisories(AdvisoryInput{MissionID: input.MissionID, PackageDigest: packageDigest, Analysis: analysis})
+		},
 	})
 	if err != nil {
 		return OpenSpecResult{}, err

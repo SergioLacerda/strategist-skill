@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SergioLacerda/strategist-skill/internal/catalog"
+	"github.com/SergioLacerda/strategist-skill/internal/bindingdrift"
+
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 )
 
@@ -36,7 +38,31 @@ func preflightAdvisories(root string) []string {
 	advisories = append(advisories, registryDriftAdvisories(root)...)
 	advisories = append(advisories, layoutSkewAdvisories(root)...)
 	advisories = append(advisories, compatViewResidualAdvisories(root)...)
+	advisories = append(advisories, bindingDriftAdvisories(root)...)
 	return append(advisories, codexBootstrapAdvisories(root)...)
+}
+
+// bindingDriftAdvisories reports a slot whose binding differs from the one the
+// most recent mission started with. A reinstall once switched the refinement
+// Weapon under a running mission and nothing said so until an invocation was
+// refused. It is advisory: it never changes readiness or the exit status, and
+// starting the next mission re-baselines it.
+func bindingDriftAdvisories(root string) []string {
+	record, found, err := bindingdrift.Latest(root)
+	if err != nil || !found {
+		return nil
+	}
+	current, err := bindingdrift.CurrentSlots(root)
+	if err != nil {
+		return nil
+	}
+	var advisories []string
+	for _, change := range bindingdrift.Diff(record.Slots, current) {
+		advisories = append(advisories, fmt.Sprintf(
+			"[Strategist] phase=preflight status=warn reason=%s mission=%s (the binding changed since the last mission started; a request issued before the change may be refused)",
+			change.String(), record.MissionID))
+	}
+	return advisories
 }
 
 // compatViewResidualAdvisories reports cataloged Weapons whose old id-only

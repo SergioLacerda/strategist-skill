@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/env"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -220,6 +220,6 @@ func TestPrepareRankedProviderRuntimes_MissingExecutableIsActionable(t *testing.
 	require.ErrorContains(t, err, `"openspec-propose"`)
 	require.ErrorContains(t, err, "standalone-runtime-hermeticity.md")
 
-	var missing *runtimeenv.ExecutableNotFoundError
+	var missing *env.ExecutableNotFoundError
 	require.ErrorAs(t, err, &missing)
 }

@@ -60,7 +60,7 @@ func TestInstall_Silent_SealsConfigLock(t *testing.T) {
 		"silent install must seal .config.lock, same as wizard install")
 }
 
-func TestInstall_Silent_Force_RefreshesConfigLock(t *testing.T) {
+func TestInstall_Silent_ResetConfig_RefreshesConfigLock(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	svc := newSvc(t, &mockExtractor{}, &mockCompiler{})
@@ -78,12 +78,12 @@ func TestInstall_Silent_Force_RefreshesConfigLock(t *testing.T) {
 	require.True(t, modified, "precondition: tampered lock must read as out of sync")
 
 	forceCfg := cfg
-	forceCfg.Force = true
+	forceCfg.ResetConfig = true
 	require.NoError(t, svc.Install(context.Background(), forceCfg))
 
 	modified, err = integrity.IsModified(activeYAMLPath, lockPath)
 	require.NoError(t, err)
-	assert.False(t, modified, "force install must refresh .config.lock to match the rewritten active.yaml")
+	assert.False(t, modified, "a configuration reset must refresh .config.lock to match the rewritten active.yaml")
 }
 
 func TestInstall_Silent_Force_WritesStructuredLanguage(t *testing.T) {

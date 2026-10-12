@@ -48,6 +48,12 @@ func PrepareEmbeddedRefinement(request EmbeddedRefinementRequest, ports Normaliz
 		MissionID: request.MissionID, BasePath: request.BasePath, PendingAnalysisPath: request.PendingAnalysisPath,
 		ProviderID: request.ProviderID, RequestID: request.RequestID, Completion: completion,
 		RecordConfidence: ports.RecordConfidence,
+		RecordAdvisories: func(input refinement.AdvisoryInput) error {
+			if ports.RecordAdvisories == nil {
+				return nil
+			}
+			return ports.RecordAdvisories(input)
+		},
 		RecordPublication: func(publication refinement.PackagePublication) error {
 			if ports.RecordPublication == nil {
 				return nil

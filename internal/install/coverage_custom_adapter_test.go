@@ -107,7 +107,7 @@ func TestValidateExternalSkillAdapterRejections(t *testing.T) {
 		"slots":                         func(a *externalSkillAdapter) { a.SupportedSlots = nil },
 		"auxiliary tools":               func(a *externalSkillAdapter) { a.AuxiliaryTools = []string{"x"} },
 		"scratch root":                  func(a *externalSkillAdapter) { a.ScratchRoot = "workspace" },
-		"unverified role":               func(a *externalSkillAdapter) { a.Roles = []string{"jeweler"} },
+		"unverified role":               func(a *externalSkillAdapter) { a.Roles = []string{"jewelcrafter"} },
 		"weapon contract":               func(a *externalSkillAdapter) { a.WeaponContract = domain.WeaponContract{RoleOwner: "ranger"} },
 		"runtime":                       func(a *externalSkillAdapter) { a.Runtime = domain.WeaponRuntime{Kind: "bogus"} },
 		"composite without composition": func(a *externalSkillAdapter) { a.Kind = domain.WeaponKindComposite },

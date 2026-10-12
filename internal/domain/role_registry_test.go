@@ -37,7 +37,7 @@ func TestDefaultRoleRegistryDescribesTodaysRoles(t *testing.T) {
 	assert.Equal(t, "schemas/handoff-ranger-to-archivist.schema.yaml", reg.HandoffSchemaOf("ranger"))
 	assert.Equal(t, "schemas/handoff-archivist-to-sniper.schema.yaml", reg.HandoffSchemaOf("archivist"))
 	assert.Empty(t, reg.HandoffSchemaOf("sniper"), "terminal role hands nothing downstream")
-	for _, unverified := range []string{"pathfinder", "cartographer", "jeweler", "jewelcrafter"} {
+	for _, unverified := range []string{"pathfinder", "cartographer", "jewelcrafter"} {
 		assert.False(t, reg.Has(unverified), "%s must not be activated by the current taxonomy", unverified)
 	}
 }
@@ -133,12 +133,24 @@ func TestRoleRegistryRejectsUnknownTaxonomyValues(t *testing.T) {
 }
 
 func TestRoleRegistryRejectsUnverifiedRoleActivation(t *testing.T) {
-	for _, roleID := range []string{"Pathfinder", "Cartographer", "Jeweler", "Jewelcrafter"} {
+	for _, roleID := range []string{"Pathfinder", "Cartographer", "Jewelcrafter"} {
 		t.Run(roleID, func(t *testing.T) {
 			_, err := domain.NewRoleRegistry([]domain.Role{{ID: roleID}})
 			require.ErrorContains(t, err, "not approved for activation")
 		})
 	}
+}
+
+func TestRoleRegistryAcceptsCanonicalJewelerSupportRole(t *testing.T) {
+	reg, err := domain.NewRoleRegistry([]domain.Role{{
+		ID: "jeweler", Origin: domain.RoleOriginExternal,
+		Extensibility: domain.RoleExtensibilityPluggable, Slot: string(domain.SlotTreasure),
+	}})
+	require.NoError(t, err)
+	role, ok := reg.Get("jeweler")
+	require.True(t, ok)
+	assert.Equal(t, string(domain.SlotTreasure), role.Slot)
+	assert.Equal(t, 0, role.Phase)
 }
 
 func writeRoleFile(t *testing.T, dir, name, body string) {

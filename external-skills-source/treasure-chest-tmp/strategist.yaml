@@ -1,0 +1,28 @@
+version: "0.1.0"
+canonical_role: jeweler
+roles:
+  - jeweler
+kind: atomic
+supported_slots:
+  - treasure
+runtime:
+  kind: host
+  host_api: strategist-host-skill/v1
+risk_score: controlled
+category: knowledge
+default: false
+scratch_root: none
+
+upstream_repo: https://github.com/SergioLacerda/strategist-skill
+upstream_skill_path: treasure-chest/SKILL.md
+upstream_version: "0.1.0"
+upstream_commit: local-sprint-1
+license: MIT
+local_modifications: true
+
+weapon_contract:
+  role_owner: jeweler
+  participation: required
+  invocation_evidence: required
+  unavailable_behavior: role_invocation_failed
+  native_substitution: forbidden

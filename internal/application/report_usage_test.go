@@ -74,6 +74,29 @@ func TestRecordMissionUsageKeyedRecordIsDedupable(t *testing.T) {
 	assert.False(t, res.Record.DedupUnavailable)
 }
 
+func TestRecordMissionUsageUsesTheOpenPhaseRunWhenAvailable(t *testing.T) {
+	store := &usageStore{known: true}
+	ports := store.ports()
+	ports.ResolvePhaseRunID = func(_, _, phase string) (string, error) {
+		assert.Equal(t, "DISCOVERY", phase)
+		return "r2", nil
+	}
+	res, err := application.RecordMissionUsage("root", "base", baseUsage(), usageNow, ports)
+	require.NoError(t, err)
+	assert.Equal(t, "r2", res.Record.PhaseRunID)
+}
+
+func TestRecordMissionUsageRejectsAmbiguousPhaseRunResolution(t *testing.T) {
+	store := &usageStore{known: true}
+	ports := store.ports()
+	ports.ResolvePhaseRunID = func(string, string, string) (string, error) {
+		return "", errors.New("ambiguous open runs")
+	}
+	_, err := application.RecordMissionUsage("root", "base", baseUsage(), usageNow, ports)
+	require.ErrorContains(t, err, "ambiguous open runs")
+	assert.Empty(t, store.records)
+}
+
 func TestRecordMissionUsageRefusesAnUnknownMission(t *testing.T) {
 	store := &usageStore{known: false}
 	_, err := application.RecordMissionUsage("root", "base", baseUsage(), usageNow, store.ports())

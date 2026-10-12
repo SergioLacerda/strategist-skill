@@ -63,9 +63,9 @@ type Provider struct {
 
 const (
 	// DefaultThreshold is the default approval threshold: the confidence in
-	// acceptance must be strictly above it. 0.80 follows the first live check, where
-	// a well-formed handoff scored P(accept) 0.85; it is a starting point to be
-	// calibrated against labeled handoffs, not a measured optimum.
+	// acceptance must be strictly above it. The 0.80 threshold remains the
+	// uncalibrated starting point until labeled handoffs provide evidence for a
+	// different value.
 	DefaultThreshold = 0.80
 	// DefaultCallBudget is the default number of provider calls per mission and transition.
 	DefaultCallBudget = 2

@@ -97,7 +97,7 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	if strategistDir != "" {
 		workspaceRoot = filepath.Dir(strategistDir)
 	}
-	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor, workspaceRoot, verbose)
+	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor, workspaceRoot, verbose, loadWizardDefaults(strategistDir))
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
@@ -114,21 +114,21 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	return wc, nil
 }
 
-func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[string]string, extractor domain.FileExtractor, workspaceRoot string, verbose bool) (domain.WizardConfig, error) {
+func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[string]string, extractor domain.FileExtractor, workspaceRoot string, verbose bool, defaults wizardDefaults) (domain.WizardConfig, error) {
 	skillCfg := loadSkillConfig(extractor)
-	uiLang, docLang, chatLang, codeLang, b, err := promptLanguages(p, skillCfg)
+	uiLang, docLang, chatLang, codeLang, b, err := promptLanguages(p, skillCfg, defaults)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	mode, basePath, err := promptWorkspace(p, b, skillCfg)
+	mode, basePath, err := promptWorkspace(p, b, skillCfg, defaults)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	adrRoot, runbookRoot, err := promptDocumentationRoots(p, b, basePath, workspaceRoot)
+	adrRoot, runbookRoot, err := promptDocumentationRoots(p, b, basePath, workspaceRoot, defaults)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	discovery, refinement, execution, discoveryMode, refinementMode, executionMode, err := promptSlots(p, b, catalog, providerRisk, verbose)
+	discovery, refinement, execution, discoveryMode, refinementMode, executionMode, err := promptSlots(p, b, catalog, providerRisk, verbose, defaults)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}

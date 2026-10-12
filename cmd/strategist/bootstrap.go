@@ -18,13 +18,12 @@ import (
 // status display or a single machine-copyable value (e.g. `version`). They
 // suppress the pipeline startup line and metrics.
 var humanStatusCommands = map[string]bool{
-	"check":          true,
-	"treasure-chest": true,
-	"metrics":        true,
-	"handoff":        true,
-	"provider":       true,
-	"version":        true,
-	"leveling":       true,
+	"check":    true,
+	"metrics":  true,
+	"handoff":  true,
+	"provider": true,
+	"version":  true,
+	"leveling": true,
 }
 
 // missionIDFromFlags reads --mission-id from cmd's already-parsed flag set,
@@ -40,10 +39,8 @@ func missionIDFromFlags(cmd *cobra.Command) string {
 }
 
 // isHumanStatusCommand reports whether cmd or any of its ancestors is a
-// human-status command. Subcommands (e.g. "add" under "treasure-chest")
-// report their own Name(), not their parent's, so the check must walk up
-// the command tree — otherwise only the bare parent command is silenced
-// and every subcommand falls through to the verbose pipeline banner.
+// human-status command. Subcommands report their own Name(), not their
+// parent's, so the check must walk up the command tree.
 func isHumanStatusCommand(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
 		if humanStatusCommands[c.Name()] {
@@ -168,7 +165,7 @@ func rootPreRun(cmd *cobra.Command, _ []string) error {
 	// prints this to stderr when telemetry is disabled, and the otelslog
 	// handler forwards it to the OTel pipeline when enabled. An additional
 	// fmt.Println here duplicated every line verbatim (see the "handshake"
-	// bug where `treasure-chest add` printed this banner twice).
+	// bug where a nested command printed this banner twice).
 	slog.InfoContext(ctx, slogLine,
 		telemetry.AttrComponent, "root",
 		telemetry.AttrRuntimeMode, "cli",

@@ -30,16 +30,16 @@ func ResolveExecutionSnapshot(strategistRoot, basePath, missionID string, explic
 	if err != nil {
 		return domain.ExecutionSnapshot{}, err
 	}
-	sideQuestGroups, err := resolveAcceptedSideQuestGroups(registry, strategistRoot, missionID)
+	sideQuestGroups, deferred, err := resolveAcceptedSideQuestGroups(registry, strategistRoot, missionID)
 	if err != nil {
 		return domain.ExecutionSnapshot{}, err
 	}
 	groups := explicitGroups
 	groups = append(groups, sideQuestGroups...)
 	if len(groups) == 0 {
-		return domain.ExecutionSnapshot{Version: domain.ExecutionSnapshotVersion, MissionID: missionID}, nil
+		return domain.ExecutionSnapshot{Version: domain.ExecutionSnapshotVersion, MissionID: missionID, Deferred: deferred}, nil
 	}
-	snapshot := domain.ExecutionSnapshot{Version: domain.ExecutionSnapshotVersion, MissionID: missionID, Groups: groups}
+	snapshot := domain.ExecutionSnapshot{Version: domain.ExecutionSnapshotVersion, MissionID: missionID, Groups: groups, Deferred: deferred}
 	if err := snapshot.Validate(); err != nil {
 		return domain.ExecutionSnapshot{}, fmt.Errorf("execution_snapshot_invalid: %w", err)
 	}
@@ -80,27 +80,62 @@ func normalizeExplicitExecutionPaths(explicit []string) ([]string, error) {
 	return paths, nil
 }
 
-func resolveAcceptedSideQuestGroups(registry *ResolverRegistry, strategistRoot, missionID string) ([]domain.ExecutionGroup, error) {
+// resolveAcceptedSideQuestGroups resolves every accepted side quest whose kind
+// has a registered resolver. A kind without one (Treasure Chest maintenance is
+// provider-owned through JEWELER, not by Sniper) is returned as an explicit
+// deferred notice instead of failing the snapshot; every other resolution error
+// still fails closed.
+func resolveAcceptedSideQuestGroups(registry *ResolverRegistry, strategistRoot, missionID string) ([]domain.ExecutionGroup, []domain.DeferredIntent, error) {
 	records, err := LoadMissionSideQuests(strategistRoot, missionID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	groups := make([]domain.ExecutionGroup, 0, len(records))
-	for _, record := range records {
-		if record.Decision != SideQuestAccepted {
-			continue
-		}
-		kind := executionKindForSideQuest(record.Kind)
-		resolution, resolveErr := registry.Resolve(context.Background(), ExecutionResolveInput{
-			MissionID: missionID, SideQuestID: record.SideQuestID, Kind: kind,
-			Origin: domain.ExecutionTargetOriginAcceptedSideQuest,
-		})
+	var deferred []domain.DeferredIntent
+	for _, record := range acceptedRecords(records) {
+		resolved, resolveErr := resolveAcceptedRecord(registry, missionID, record)
 		if resolveErr != nil {
-			return nil, resolveErr
+			return nil, nil, resolveErr
 		}
-		groups = append(groups, resolution.Groups...)
+		groups = append(groups, resolved.groups...)
+		deferred = append(deferred, resolved.deferred...)
 	}
-	return groups, nil
+	return groups, deferred, nil
+}
+
+func acceptedRecords(records []AcceptedSideQuest) []AcceptedSideQuest {
+	accepted := make([]AcceptedSideQuest, 0, len(records))
+	for _, record := range records {
+		if record.Decision == SideQuestAccepted {
+			accepted = append(accepted, record)
+		}
+	}
+	return accepted
+}
+
+// acceptedResolution is what one accepted record contributes to the snapshot:
+// resolver groups, or a deferred notice when its kind has no resolver.
+type acceptedResolution struct {
+	groups   []domain.ExecutionGroup
+	deferred []domain.DeferredIntent
+}
+
+func resolveAcceptedRecord(registry *ResolverRegistry, missionID string, record AcceptedSideQuest) (acceptedResolution, error) {
+	kind := executionKindForSideQuest(record.Kind)
+	if !registry.Has(kind, domain.ExecutionTargetOriginAcceptedSideQuest) {
+		return acceptedResolution{deferred: []domain.DeferredIntent{{
+			SideQuestID: record.SideQuestID, Kind: record.Kind,
+			Origin: domain.ExecutionTargetOriginAcceptedSideQuest, Reason: domain.DeferredReasonNoExecutionResolver,
+		}}}, nil
+	}
+	resolution, err := registry.Resolve(context.Background(), ExecutionResolveInput{
+		MissionID: missionID, SideQuestID: record.SideQuestID, Kind: kind,
+		Origin: domain.ExecutionTargetOriginAcceptedSideQuest,
+	})
+	if err != nil {
+		return acceptedResolution{}, err
+	}
+	return acceptedResolution{groups: resolution.Groups}, nil
 }
 
 func executionKindForSideQuest(kind string) string {
@@ -138,4 +173,16 @@ func ExecutionTargetPaths(targets []domain.ExecutionTarget) []string {
 		paths = append(paths, target.Path)
 	}
 	return paths
+}
+
+// hasExecutionResolver reports whether an accepted side quest of the given
+// record kind can be resolved into execution groups. It asks the same builtin
+// registry execution uses, so the analysis-only guard and the resolver cannot
+// disagree.
+func hasExecutionResolver(recordKind string) bool {
+	registry, err := builtinResolverRegistry("", "", time.Time{})
+	if err != nil {
+		return true
+	}
+	return registry.Has(executionKindForSideQuest(recordKind), domain.ExecutionTargetOriginAcceptedSideQuest)
 }

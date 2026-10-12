@@ -77,6 +77,7 @@ lookup by topic fast without moving any file.
 | [0056](0056-jewelcrafter-public-role-and-bau-tesouro-binding.md) | Jewelcrafter public role and BAU/Tesouro binding |
 | [0058](0058-cartographer-atlas-structure-boundary.md) | Cartographer/Atlas structure boundary |
 | [0059](0059-treasure-chest-core-removal-and-external-cutover.md) | Treasure Chest core removal and external cutover |
+| [0070](0070-jeweler-treasure-chest-external-boundary.md) | JEWELER canonical support boundary for external Treasure Chest |
 
 ### Execution (Sniper)
 

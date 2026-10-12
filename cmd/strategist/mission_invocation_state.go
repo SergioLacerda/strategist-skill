@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/catalog"
 	"gopkg.in/yaml.v3"
 )
 

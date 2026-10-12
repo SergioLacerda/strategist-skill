@@ -150,10 +150,11 @@ func sideQuestKind(sideQuestID string) string {
 var ErrGateEventConflictsWithSideQuest = errors.New("gate_event_conflicts_with_accepted_side_quest")
 
 // RequireNoAcceptedSideQuest rejects the analysis-only terminal events when an
-// accepted OA-ADR record exists: the accepted ADR is a documentation target
-// that must reach Sniper through the handoff challenge. Every other event, and
-// every mission without an accepted record, passes. The caller must hold the
-// mission lock.
+// accepted side quest that execution can resolve (an ADR or a runbook) exists:
+// it is a documentation target that must reach Sniper through the handoff
+// challenge. An accepted kind with no execution resolver (a treasure chest) is
+// deferred and never forces gate_approved. Every other event, and every mission
+// without such a record, passes. The caller must hold the mission lock.
 func RequireNoAcceptedSideQuest(strategistRoot, missionID string, event domain.MissionEngineEvent) error {
 	if !domain.MissionEventRequiresNoDocumentationTargets(event) {
 		return nil
@@ -163,7 +164,7 @@ func RequireNoAcceptedSideQuest(strategistRoot, missionID string, event domain.M
 		if err != nil {
 			return err
 		}
-		if found && rec.Decision == SideQuestAccepted {
+		if found && rec.Decision == SideQuestAccepted && hasExecutionResolver(rec.Kind) {
 			return fmt.Errorf("%w: %s is accepted — use gate_approved before %s", ErrGateEventConflictsWithSideQuest, rec.SideQuestID, event)
 		}
 	}

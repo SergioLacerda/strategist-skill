@@ -108,9 +108,13 @@ internal/
   refinement/             OpenSpec refinement normalization and bridge logic
   rolevalidation/         Role/provider mutation and compatibility validation
   runbook/                Typed runbook parsing and bounded selection
-  runtimefs/             Shared filesystem primitives for runtime artifact IO
+  runtime/catalog/        Materialized catalog adapter and ranked-stamp lookup
+  runtime/env/            Hermetic provider subprocess environments and launchers
+  runtime/integrity/      Compiled runtime manifest integrity verification
+  runtime/payload/        Pinned runtime payload verification and materialization
+  filesystem/             Shared filesystem primitives for runtime artifact IO
   treasure/              Treasure Chest, jewel, and potion indexing/loading/mutation logic
-  validate/              Runtime validation entry points
+  runtime/validate/      Runtime validation entry points
 
   testutil/              Shared test helpers
     testutil.go          MinimalRoot, temporary directory fixtures
@@ -126,7 +130,7 @@ membership set is:
 |---------|-----------|
 | `catalog` | YAML catalog adaptation and delegation to domain semantic contracts |
 | `check` | Cobra wiring and preflight orchestration |
-| `filelock` | Cross-platform process-lock mechanism |
+| `filesystem/filelock` | Cross-platform process-lock mechanism |
 | `integrity` | Trusted configuration and compiled-runtime integrity detection |
 | `stale` | Derived-artifact and source-lineage detection |
 | `validate` | Filesystem, YAML, and configuration input validation |

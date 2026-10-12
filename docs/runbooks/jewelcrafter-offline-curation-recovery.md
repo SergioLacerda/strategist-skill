@@ -1,11 +1,12 @@
-# Runbook: JEWELCRAFTER Offline Curation and BAU DO TESOURO Recovery
+# Runbook: JEWELER Offline Curation and BAU DO TESOURO Recovery
 
 ## Scope
 
-JEWELCRAFTER is the public, non-pipeline support Role for the `treasure`
+JEWELER is the canonical public, non-pipeline support Role for the `treasure`
 support slot. It is the only Role allowed to handle the BAU DO TESOURO Weapon.
-Ranger and Archivist consume its offline query boundary; they do not invoke the
-Weapon, inspect provider internals, or select a fallback.
+`JEWELCRAFTER` is a time-bounded compatibility alias. Ranger and Archivist
+consume the JEWELER offline query boundary; they do not invoke the Weapon,
+inspect provider internals, or select a fallback.
 
 The production provider is an external `skill-for-hire` Weapon. The
 `bau-do-tesouro-mock` provider is allowed only when a test or development
@@ -27,7 +28,8 @@ profile explicitly selects it.
 
 1. Record the mission, requester (`ranger` or `archivist`), correlation id,
    query scope, and active support-slot provider.
-2. Confirm that the request went through JEWELCRAFTER. A direct Ranger or
+2. Confirm that the request went through JEWELER (or an explicitly recorded
+   JEWELCRAFTER alias during migration). A direct Ranger or
    Archivist call to the external Weapon is a boundary violation.
 3. Confirm the selected provider mode:
    - `external` is the production path;
@@ -57,7 +59,7 @@ For a Ranger or Archivist query:
 
 1. Validate requester, mission/correlation id, bounded scope, result limit,
    and freshness policy.
-2. Read only the JEWELCRAFTER offline projection. A valid response must carry
+2. Read only the JEWELER offline projection. A valid response must carry
    source identity, digest, provenance, captured-at time, TTL/freshness,
    provider mode, and readiness state.
 3. If the projection is absent or expired, return `unavailable` or `expired`.

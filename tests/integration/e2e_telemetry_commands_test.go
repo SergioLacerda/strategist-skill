@@ -137,23 +137,22 @@ func TestE2E_CLI_MetricsScout_EmptyMemory(t *testing.T) {
 	assert.Contains(t, result.output(), "sample_size: 0")
 }
 
-// TestE2E_CLI_RunbookSelect_NoSidecars covers `runbook select` against a
-// workspace with no docs/runbooks/*.runbook.yaml sidecars — the documented
-// "prints an empty-result message (exit 0)" path.
+// TestE2E_CLI_RunbookSelect_NoSidecars covers the deprecated local staging
+// selector against a workspace with no sidecars. Production selection goes
+// through JEWELER and requires an explicit external provider binding.
 func TestE2E_CLI_RunbookSelect_NoSidecars(t *testing.T) {
 	t.Parallel()
 
 	workspace, _ := installedTelemetryWorkspace(t)
 
-	result := runStrategistCLI(t, workspace, "runbook", "select", "--signal", "timeout")
+	result := runStrategistCLI(t, workspace, "runbook", "select", "--allow-local-staging", "--signal", "timeout")
 	require.Equal(t, 0, result.exitCode, result.output())
 	assert.Contains(t, result.output(), "no docs/runbooks/*.runbook.yaml sidecars found")
 }
 
 // TestE2E_CLI_RunbookSelect_MatchingSidecar seeds one matching runbook
-// sidecar and confirms `runbook select` selects it end to end through the
-// real CLI binary — internal/runbook.Select plus the table-render path,
-// neither of which any prior tests/integration scenario reached.
+// sidecar and exercises the deprecated local staging path end to end. The
+// production path is covered by the JEWELER projection tests.
 func TestE2E_CLI_RunbookSelect_MatchingSidecar(t *testing.T) {
 	t.Parallel()
 
@@ -173,7 +172,7 @@ checks:
     level: mandatory
 `), 0o644))
 
-	result := runStrategistCLI(t, workspace, "runbook", "select", "--signal", "timeout")
+	result := runStrategistCLI(t, workspace, "runbook", "select", "--allow-local-staging", "--signal", "timeout")
 	require.Equal(t, 0, result.exitCode, result.output())
 	assert.Contains(t, result.output(), "fix-timeout")
 }

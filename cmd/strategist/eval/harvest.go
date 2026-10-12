@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	treasure "github.com/SergioLacerda/strategist-skill/treasure-chest"
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +19,8 @@ type HarvestDependencies struct {
 	ResolveRoot     func(*cobra.Command, string, string) (string, string, error)
 	SilenceRun      func(*cobra.Command)
 	ResolveBasePath func(string) (string, string, error)
-	Select          func([]string, HarvestOptions, string) ([]string, []treasure.ScanWarning, error)
-	PrintWarnings   func(*cobra.Command, []treasure.ScanWarning)
+	Select          func([]string, HarvestOptions, string) ([]string, []ScanWarning, error)
+	PrintWarnings   func(*cobra.Command, []ScanWarning)
 	ParseInclude    func(string) ([]string, error)
 	Harvest         func(string, string, []string, []string) (int, error)
 }

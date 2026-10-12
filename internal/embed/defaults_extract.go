@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // extractFS copies files from src under root into targetDir.
@@ -80,7 +80,7 @@ func writeEmbedFile(src fs.FS, path, dst string, force bool) error {
 			return nil // preserve user's version
 		}
 	}
-	if writeErr := runtimefs.WriteFile(dst, data, 0o644); writeErr != nil {
+	if writeErr := filesystem.WriteFile(dst, data, 0o644); writeErr != nil {
 		return fmt.Errorf("embed: write %s: %w", dst, writeErr)
 	}
 	return nil
@@ -90,7 +90,7 @@ func writeEmbedFile(src fs.FS, path, dst string, force bool) error {
 // from the embedded bytes — meaning the user has customized the file.
 func userModified(dst string, embedded []byte) bool {
 	embeddedHash := fmt.Sprintf("%x", sha256Bytes(embedded))
-	existingHash, exists, err := runtimefs.ReadSHA256(dst)
+	existingHash, exists, err := filesystem.ReadSHA256(dst)
 	if err != nil || !exists {
 		return false // file doesn't exist or cannot be read — not user-modified
 	}

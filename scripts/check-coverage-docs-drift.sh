@@ -43,11 +43,11 @@ readme_pct="$(grep -o 'img\.shields\.io/badge/coverage-[0-9.]*%25' "$readme" | g
 check "README coverage badge" "$readme_pct" "$badge_measured"
 
 doc_triplet="$(grep -o 'measure [0-9.]*%/[0-9.]*%/[0-9.]*%*' "$doc_file" | head -1 | grep -o '[0-9.]*%' | tr -d '%' | tr '\n' ' ' || true)"
-read -r d_eval d_integrity d_runtimefs <<<"$doc_triplet"
+read -r d_eval d_integrity d_filesystem <<<"$doc_triplet"
 d_treasure="$(grep -o 'and measures [0-9.]*%' "$doc_file" | head -1 | grep -o '[0-9.]*' | head -1 || true)"
 check "test-styles internal/eval" "${d_eval:-}" "$(pkg_cov internal/eval)"
 check "test-styles internal/integrity" "${d_integrity:-}" "$(pkg_cov internal/integrity)"
-check "test-styles internal/runtimefs" "${d_runtimefs:-}" "$(pkg_cov internal/runtimefs)"
+check "test-styles internal/filesystem" "${d_filesystem:-}" "$(pkg_cov internal/filesystem)"
 check "test-styles treasure-chest" "${d_treasure:-}" "$(pkg_cov treasure-chest)"
 
 if (( fail != 0 )); then

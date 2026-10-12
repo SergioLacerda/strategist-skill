@@ -18,7 +18,7 @@ run_mutation_suite() {
 
 cd "$repo_root"
 echo "role-weapon mutation gate: running critical fixture mutants"
-run_mutation_suite ./internal/rolevalidation TestRoleWeaponCriticalMutants
+run_mutation_suite ./internal/roles/validation TestRoleWeaponCriticalMutants
 run_mutation_suite ./internal/install TestWizardCriticalMutants
 
 summary_count="$(grep -Ec 'critical mutants killed: [0-9]+/[0-9]+' "$report")"

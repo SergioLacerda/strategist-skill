@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 type artifactSources struct {
@@ -93,7 +93,7 @@ func checkLegacySources(result Result, sources map[string]int64) (Result, error)
 }
 
 func sourceSHA256(path string) string {
-	hash, exists, err := runtimefs.ReadSHA256(path)
+	hash, exists, err := filesystem.ReadSHA256(path)
 	if err != nil || !exists {
 		return ""
 	}

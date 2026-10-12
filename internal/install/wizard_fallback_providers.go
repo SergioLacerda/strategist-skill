@@ -39,6 +39,7 @@ var knownProviderRisk = map[string]string{
 	defaultSkillBySlot["refinement"]: "write_analysis",
 	"openspec-apply-change":          "controlled",
 	"openspec-archive-change":        "controlled",
+	"treasure-chest-tmp":             "controlled",
 	nativeExecutionProvider:          "controlled",
 	"archivist":                      "write_analysis",
 }

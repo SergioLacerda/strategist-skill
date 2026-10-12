@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -59,6 +58,12 @@ func (r *ResolverRegistry) Register(resolver ExecutionResolver) error {
 	}
 	r.resolvers[key] = resolver
 	return nil
+}
+
+// Has reports whether a resolver is registered for the domain kind and origin.
+func (r *ResolverRegistry) Has(kind, origin string) bool {
+	_, ok := r.resolvers[domain.ResolverKey{Kind: kind, Origin: origin}]
+	return ok
 }
 
 // Resolve dispatches one provider-neutral intent to its registered resolver.
@@ -156,13 +161,7 @@ func (r runbookExecutionResolver) Resolve(_ context.Context, input ExecutionReso
 	if err != nil {
 		return domain.ExecutionResolution{}, err
 	}
-	sidecar := strings.TrimSuffix(mainPath, filepath.Ext(mainPath)) + ".meta.json"
-	groupID := "runbook-" + input.SideQuestID
-	return domain.ExecutionResolution{Groups: []domain.ExecutionGroup{{
-		ID: groupID, Resolver: r.Key(), SideQuestID: input.SideQuestID, Kind: "runbook", Origin: domain.ExecutionTargetOriginAcceptedSideQuest,
-		CompletionPolicy: domain.ExecutionCompletionAllRequired,
-		Artifacts:        []domain.ExecutionArtifact{{ID: groupID + "-main", Role: domain.ExecutionArtifactRolePrimary, Path: mainPath, Kind: "runbook"}, {ID: groupID + "-sidecar", Role: domain.ExecutionArtifactRoleSidecar, Path: sidecar, Kind: "runbook_metadata"}},
-	}}}, nil
+	return domain.ExecutionResolution{Groups: []domain.ExecutionGroup{runbookGroup(r.Key(), input.SideQuestID, mainPath)}}, nil
 }
 
 func (r runbookExecutionResolver) resolveRunbookMainPath(input ExecutionResolveInput, rec AcceptedSideQuest) (string, error) {
@@ -181,12 +180,4 @@ func (r runbookExecutionResolver) resolveRunbookMainPath(input ExecutionResolveI
 		return "", fmt.Errorf("runbook_target_unreadable: %w", err)
 	}
 	return mainPath, nil
-}
-
-func builtinResolverRegistry(strategistRoot, basePath string, now time.Time) (*ResolverRegistry, error) {
-	return NewResolverRegistry(
-		documentationExecutionResolver{},
-		adrExecutionResolver{strategistRoot: strategistRoot, basePath: basePath, now: fixedTimeProvider{value: now}},
-		runbookExecutionResolver{strategistRoot: strategistRoot, now: fixedTimeProvider{value: now}},
-	)
 }

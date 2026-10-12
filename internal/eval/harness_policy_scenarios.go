@@ -5,7 +5,6 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	criticalhit "github.com/SergioLacerda/strategist-skill/internal/feats/critical_hit"
-	chestdomain "github.com/SergioLacerda/strategist-skill/treasure-chest/domain"
 )
 
 // The scenario runners in this file share a common shape: call a
@@ -49,13 +48,7 @@ func runSlotWriteScopeScenario(s Scenario, res *ScenarioResult) {
 func runChestGradeScenario(s Scenario, res *ScenarioResult) {
 	p := s.Input.Params
 	chestID := paramString(p, "chest_id")
-	grade := chestdomain.ChestGrade{
-		SourceGrade:          paramString(p, "source_grade"),
-		ReuseValue:           paramString(p, "reuse_value"),
-		ImplementationStatus: paramString(p, "implementation_status"),
-	}
-
-	err := chestdomain.ValidateChestGrade(chestID, grade)
+	err := validateChestGrade(chestID, paramString(p, "source_grade"), paramString(p, "reuse_value"), paramString(p, "implementation_status"))
 	actualStatus, actualReason := "allowed", ""
 	if err != nil {
 		actualStatus, actualReason = "blocked", err.Error()
@@ -69,7 +62,7 @@ func runJewelTrustScenario(s Scenario, res *ScenarioResult) {
 	jewelTrust := paramString(p, "jewel_trust")
 	chestTrustTier := paramString(p, "chest_trust_tier")
 
-	err := chestdomain.ValidateJewelTrust(jewelID, jewelTrust, chestTrustTier)
+	err := validateJewelTrust(jewelID, jewelTrust, chestTrustTier)
 	actualStatus, actualReason := "allowed", ""
 	if err != nil {
 		actualStatus, actualReason = "blocked", err.Error()

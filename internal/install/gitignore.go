@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 const gitignoreEntry = ".strategist/.compiled/"
@@ -25,12 +25,12 @@ func ensureGitignore(target string) error {
 
 // ensureGitignoreEntry adds entry to target/.gitignore if not already present.
 func ensureGitignoreEntry(target, entry string) error {
-	path, err := runtimefs.SafeJoin(target, ".gitignore")
+	path, err := filesystem.SafeJoin(target, ".gitignore")
 	if err != nil {
 		return fmt.Errorf("resolve .gitignore path: %w", err)
 	}
 
-	existing, err := os.ReadFile(path) //nolint:gosec // G304: path validated by runtimefs.SafeJoin, confined to target
+	existing, err := os.ReadFile(path) //nolint:gosec // G304: path validated by filesystem.SafeJoin, confined to target
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("read .gitignore: %w", err)
 	}
@@ -39,7 +39,7 @@ func ensureGitignoreEntry(target, entry string) error {
 		return nil
 	}
 
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: path validated by runtimefs.SafeJoin, confined to target
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: path validated by filesystem.SafeJoin, confined to target
 	if err != nil {
 		return fmt.Errorf("open .gitignore: %w", err)
 	}

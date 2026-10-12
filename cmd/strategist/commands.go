@@ -8,8 +8,8 @@ import (
 	metricsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/metrics"
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	pluginsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/plugins"
+	runbookadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/runbook"
 	"github.com/SergioLacerda/strategist-skill/internal/check"
-	"github.com/SergioLacerda/strategist-skill/treasure-chest/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +21,7 @@ func registerCommands(root *cobra.Command) {
 	installadapter.Register(root, installDependencies(), upgradeDependencies())
 	root.AddCommand(compileCmd, validateCmd, syncGovernanceCmd, versionCmd, providerCmd, handoffCmd, mechanismsCmd, integrationsCmd)
 	check.Register(root)
-	treasurecli.Register(root)
+	runbookadapter.Register(root)
 	metricsadapter.Register(root, metricsDependencies(), roleLevelLedger, defaultLedgerMaxRecords)
 	missionadapter.Register(root, missionComposition())
 	pluginsadapter.Register(root)

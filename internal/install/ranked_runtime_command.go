@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/env"
 )
 
 // runRankedRuntimeCommand is injectable so install tests can exercise the
@@ -34,7 +34,7 @@ var runRankedRuntimeCommand = func(ctx context.Context, dir string, name string,
 // rankedRuntimeBootstrapError replaces the opaque exec lookup failure with the
 // cataloged, actionable diagnostic while keeping the cause in the chain.
 func rankedRuntimeBootstrapError(providerID string, err error) error {
-	var missing *runtimeenv.ExecutableNotFoundError
+	var missing *env.ExecutableNotFoundError
 	if errors.As(err, &missing) {
 		return fmt.Errorf("ranked runtime provider %q: reason=%s: %s: %w", providerID, domain.ReasonRankedRuntimeExecutableMissing, domain.RankedRuntimeExecutableMissingMessage(providerID, missing.Name), err)
 	}
@@ -51,7 +51,7 @@ func rankedRuntimeCommand(ctx context.Context, dir, name string, args ...string)
 	if !filepath.IsAbs(name) {
 		return nil, fmt.Errorf("prepare ranked runtime command %q: launcher must be an absolute path resolved by the ranked runtime resolver, not a name resolved from PATH", name)
 	}
-	cmd, err := runtimeenv.PrivateCommand(ctx, dir, name, args...)
+	cmd, err := env.PrivateCommand(ctx, dir, name, args...)
 	if err != nil {
 		return nil, fmt.Errorf("prepare ranked runtime command %q: %w", name, err)
 	}

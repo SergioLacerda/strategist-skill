@@ -87,7 +87,7 @@ func RunObserveUsage(cmd *cobra.Command, deps ReportUsageDependencies, opts Obse
 		return writeObservation(cmd, obs, notes, "dry-run (nothing written)")
 	}
 	res, err := application.RecordHostObservedUsage(strategistRoot, basePath, in, time.Now(), application.MissionUsagePorts{
-		MissionKnown: deps.MissionKnown, Append: usageAppender(deps.TelemetrySink),
+		MissionKnown: deps.MissionKnown, ResolvePhaseRunID: deps.ResolvePhaseRunID, Append: usageAppender(deps.TelemetrySink),
 	})
 	if err != nil {
 		return fmt.Errorf("mission observe-usage: %w", err)

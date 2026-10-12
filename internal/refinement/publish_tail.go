@@ -13,6 +13,7 @@ type publishTailInput struct {
 	Refined, Pending            string
 	Contents                    map[string][]byte
 	RecordConfidence            func() error
+	RecordAdvisories            func(packageDigest string, analysis []byte) error
 	RecordPublication           func(PackagePublication) error
 }
 
@@ -23,6 +24,11 @@ type publishTailInput struct {
 func publishTail(t publishTailInput) error {
 	if err := t.RecordConfidence(); err != nil {
 		return fmt.Errorf("openspec bridge: record Archivist confidence: %w", err)
+	}
+	if t.RecordAdvisories != nil {
+		if err := t.RecordAdvisories(canonicalPackageDigest(t.Contents), t.Contents["analysis.md"]); err != nil {
+			return fmt.Errorf("openspec bridge: record Archivist advisories: %w", err)
+		}
 	}
 	published, err := publishOrPromote(t.Refined, t.Pending, t.Contents)
 	if err != nil {

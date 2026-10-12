@@ -131,6 +131,10 @@ If Archivist identified side quests during refinement:
 5. Unselected side quests are recorded as `sq_backlog` — not discarded; at mission
    close they get a Riposte capture offer (see § Riposte below)
 6. Partial acceptance is valid — Sniper materializes only the accepted items
+7. An accepted `OA-CHEST` is a deferred intent, not a documentation target: it does not force
+   `gate_approved` (the analysis-only events stay available), execution skips it with an explicit
+   notice (`execution_snapshot.deferred`, reported by Sniper), and the chest is registered
+   afterwards with `strategist treasure-chest add`
 
 Gate display format:
 

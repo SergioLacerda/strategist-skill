@@ -187,18 +187,19 @@ stage runs only if the previous stage did not reach `stop_when: sufficient_evide
    filters candidate jewels/potions and produces `relevant_sources_hint`, so a whole
    chest is not paid for when a jewel/potion already summarizes what would be found
    there (see `roles/ranger.yaml#canonical.search`). The **select_runbook** Feat
-   runs alongside Search, at the same point: it scores `docs/runbooks/*.runbook.yaml`
-   sidecars against mission signals via `internal/runbook.Select()` and produces
-   `selected_runbooks_hint` — a bounded, reasoned selection (at most one primary, at
-   most two supporting runbooks, each with a non-empty match reason) distinct from
-   Search's own unstructured jewel/potion relevance matching (see
+   runs alongside Search, at the same point: it queries the admitted external
+   Treasure Chest through JEWELER and produces `selected_runbooks_hint` — a
+   bounded, reasoned selection (at most one primary, at most two supporting
+   runbooks, each with a non-empty match reason) distinct from Search's own
+   unstructured jewel/potion relevance matching (see
    `roles/ranger.yaml#canonical.select_runbook`). **Ranger MUST run `strategist
    runbook select --format json --signal <signal> ...` at this point**, with one
    `--signal` per mission signal (the mission's `task_type`, the Scout
    `discovery_subtype`, and the salient keywords of the request), and record the
-   command, the signals and its result in the analysis artifact. No sidecar or no
-   match is a valid, non-blocking result (an empty list); skipping the command is
-   not, because a runbook that applies would silently never reach the mission
+   command, the signals and its result in the analysis artifact. No provider
+   match is a valid, non-blocking result (an empty list); a missing or unhealthy
+   JEWELER binding is an error, because a runbook that applies would otherwise
+   silently never reach the mission
 7. semantic search, when a semantic provider is configured — optional, last resort
 
 `stop_when: sufficient_evidence` is met when either condition holds:

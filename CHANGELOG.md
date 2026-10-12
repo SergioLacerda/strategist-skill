@@ -17,6 +17,15 @@ corresponding tag and GitHub Release.
 ## [Unreleased]
 
 ### Added
+- `strategist mission start` records the slot bindings the mission started with
+  (`.strategist/missions/bindings/<mission>.json`); `strategist check` adds a
+  `binding_changed` advisory when a slot differs from the most recent mission's baseline and
+  `strategist mission status` prints the same line on stderr (stdout and the exit code are
+  unchanged; an unchanged workspace prints nothing). It never changes readiness.
+- The install wizard starts from the current `active.yaml`: language, mode, base path, ADR and
+  runbook roots and the slots are pre-selected (a Custom binding stays Custom), so entering
+  through every default no longer resets the workspace; the configuration it replaces is
+  backed up first and restored by `strategist upgrade --rollback`.
 - `strategist handoff criteria` ends with a `tokens estimados:` block: the token
   volume per stage (discovery, refining, delivering) and the total, with the
   quality of the numbers on the total line. It is a volume report only, with no
@@ -78,6 +87,26 @@ corresponding tag and GitHub Release.
   itself.
 
 ### Fixed
+- `strategist mission normalize-openspec` no longer resolves the confidence ledger on its own:
+  the critic/mission-quality advisory recorder is an injected dependency, and publishing without
+  it fails closed. Before, running the command package's tests appended `m-1` records to the
+  repository's real `.strategist/memory/confidence-records.jsonl`, which made ledger coverage
+  unmeasurable.
+- The Sniper skill now instructs how to generate a `runbook_sidecar` artifact: from the prepared
+  candidate in the OA manifest (`status: prepared`), with `runbook_id`/`source_doc` taken from the
+  artifact metadata; any other preparation status blocks with `runbook_candidate_unavailable`.
+  The embedded catalog digests of the Sniper Weapon change accordingly (`make install` refreshes
+  the workspace binding).
+- An accepted `OA-CHEST` no longer leaves the mission without a way forward. It is a deferred
+  intent: it does not force `gate_approved` (the analysis-only gate events stay available),
+  execution skips it with an explicit notice (`execution_snapshot.deferred`, carried in the
+  Sniper input and reported), and the chest is registered afterwards with `strategist
+  treasure-chest add`. Accepted ADR and runbook side quests still force the handoff.
+- `strategist check` no longer rejects an embedded Weapon whose role owns a support slot
+  (JEWELER's `treasure`) because `roles/default.yaml` does not map it: that file maps only
+  the three mission checkpoints, so only a pipeline slot is held to the mapping. A fresh
+  `make install` with the `treasure-chest` Weapon failed its final `check --json` with
+  `roles/default.yaml maps slot "treasure" to "", not "jeweler"`.
 - OpenTelemetry export of events: with `OTEL_EXPORTER_OTLP_ENDPOINT` set, only
   traces were configured and the slog bridge wrote to a no-op log provider, so
   no log record or exported mission event ever reached the collector. An
@@ -87,6 +116,41 @@ corresponding tag and GitHub Release.
   the ledger is written. Adds `otlploggrpc` and `sdk/log` (v0.22.0) to go.mod.
 
 ### Changed
+- **Breaking:** `strategist install --force` no longer rewrites `active.yaml`, `plugins.lock`
+  or `.config.lock`; it overwrites the normative runtime files only. The new
+  `--reset-config` rewrites those three files from the epic template, after backing them up
+  under `.strategist/.upgrade-backups/<timestamp>/` (restored by `strategist upgrade
+  --rollback`). Scripts that relied on `--force` to reset configuration must add the flag.
+  A forced install used to reset a customized slot binding (`writing-plans` back to
+  `openspec-propose`) on 2026-10-11.
+- The stale-runtime diagnostics (`runtime_stale`, `runtime_stale_conflict`,
+  `runtime_stale_unknown_manifest`) recommend `strategist upgrade --dry-run` then
+  `strategist upgrade`, and say what `--force` touches.
+- Every install and upgrade appends one record to `.strategist/memory/install-events.jsonl`
+  (`strategist-install-audit/v1`: command, mode, `force`, `reset_config`, slot providers
+  before and after, `config_changed`); no file content, secret or path is recorded.
+- Accepted runbooks are materialized as a markdown plus a typed `<stem>.runbook.yaml` sidecar
+  (kind `runbook_sidecar`) instead of the unspecified `.meta.json`; `runbook_id` is the
+  markdown stem and `source_doc` its path, so no manual rename is needed, and Sniper
+  completion parses the sidecar with the selector's parser and refuses one that would be
+  skipped.
+- The local runbook corpus loader (`strategist runbook select --allow-local-staging`) reads the
+  configured `runbooks.canonical_path` first and the legacy `docs/runbooks/` as a fallback;
+  the configured root wins a duplicate `runbook_id`.
+- `strategist runbook select` no longer fails for the whole corpus when one sidecar is
+  inconsistent. An unreadable or invalid sidecar, a duplicate `runbook_id` and a
+  `source_doc` that does not exist are skipped; a `runbook_id` that differs from the
+  file stem and a `source_doc` that is not markdown are flagged. Every skip is reported
+  on stderr with its path and a stable code, stdout and the exit code are unchanged,
+  and `--strict` exits non-zero after rendering when anything was skipped or flagged.
+  An unreadable `treasure-chests.yaml` degrades to "no trust signal" with a
+  `trust_unavailable` warning instead of failing the selection.
+  Scripts that relied on a non-zero exit for a broken sidecar must pass `--strict`.
+- The runbook preparation tool compares the candidate per inventory entry: an invalid
+  sidecar is counted (`skipped_entries`) instead of making the comparison
+  insufficient, the hidden 32-entry cap became an explicit 256, hint priority is
+  applied before the cap, and a truncated inventory is reported (`truncated`,
+  `not_compared`) and cannot conclude "novel".
 - `mission view` no longer sums the legacy provider-reported records
   (`token_usage.total_tokens_in/out` removed, `semantics: unknown` added): the
   records have no declared semantics and the old protocol asked for cumulative

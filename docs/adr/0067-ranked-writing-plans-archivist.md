@@ -1,34 +1,19 @@
 # ADR-0067 — Ranked embedded Archivist Weapon: `writing-plans`
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-10
 **Mission:** `20261010-writing-plans-ranked-promotion-r2` (refined package `.analysis/refined/20261010-writing-plans-ranked-promotion-r2/`)
 **Related:** [ADR-0030](0030-world-class-strategist-plugin-architecture.md), [ADR-0035](0035-embedded-weapon-fallback-policy.md), [ADR-0043](0043-ranked-pipeline-pilot-implementation-decisions.md), [ADR-0045](0045-ranked-testsuitedigest-shared-pin.md), [ADR-0061](0061-weapon-sidecar-generation-and-versioned-catalog.md)
 
 ## Context
 
-The Archivist can run as a Ranked Weapon only through `openspec-propose`, whose private
-`openspec_root` runtime ships an executable and is published with
-`strategist mission normalize-openspec`. `writing-plans` is a prompt-only skill whose catalog sidecar
-declares `runtime.kind: host` (`strategist-host-skill/v1`).
-
-Three facts keep it from being Ranked today:
-
-- A Ranked binding is rejected when its runtime is `host` or `executable`, an `embedded` runtime
-  cannot declare a HostAPI, and `prompt_bridge` execution requires `embedded`
-  (`internal/domain/compiled_registry_validation_ranked.go`, `internal/domain/ranked_runtime.go`).
-- Certification is an explicit pin map (`rankedCertificationPairs` in
-  `internal/install/embedded_weapon_certification.go`); only `brainstorming`, `openspec-propose` and
-  `sniper` are pinned.
-- `strategist mission complete` registers completion only for `ranger/discovery` and
-  `sniper/execution` (`internal/application/invocation_validation.go`), and
-  `completeMissionInvocation` sends every non-Sniper completion to the discovery normalizer.
-
-Selecting `writing-plans` through the wizard consequently persisted a `custom` binding with an
-unversioned instance id and `source`, `binding` and `certification` digests inherited from the
-previous Ranked `openspec-propose` binding. `strategist check` reported it ready (its Custom branch
-runs only when `providers/<instance>/package.yaml` exists) while `strategist mission invoke` rejected it
-with `custom_binding_invalid`.
+The Archivist supports both the default `openspec-propose` path and the ranked
+embedded `writing-plans` path. The latter is a prompt-only skill carried by the
+embedded prompt bridge: its sidecar declares `runtime.kind: embedded` and
+`execution_mode: prompt_bridge`, and the generated runtime mirrors that source
+contract. Completion enters the shared normalization and publication tail, so
+the same confidence, package, gate and provenance rules apply to either
+Archivist provider.
 
 ## Decision
 
@@ -59,8 +44,8 @@ with `custom_binding_invalid`.
 whose tests exercise the Ranger's outgoing handoff contract, not the Archivist's. This pairing uses the
 same pin, so it adds no role-specific conformance evidence for the Archivist. The certification
 digest for `writing-plans` therefore records identity, role, handoff schema and runtime shape; it does
-not prove behavior. The contract tests required by the plan (certification, completion dispatch,
-publication, containment) are the evidence this pairing relies on, and they must be written first.
+not prove behavior. The embedded completion, publication and containment tests are the behavioral
+evidence for this pairing.
 
 ## Consequences
 
@@ -69,9 +54,7 @@ publication, containment) are the evidence this pairing relies on, and they must
 - Two Archivist publishers (OpenSpec and embedded) share a tail, so idempotence and conflict rules stay
   in one place; the existing `normalize-openspec` tests must pass unchanged.
 - The catalog, generated runtime and docs gates are regenerated through `prepare-embedded` and
-  `compile`; no installation changes until `writing-plans` is selected.
-- Implementation is outside Strategist and is tracked as the `implementation_handoff` tasks of the
-  refined package (2.1 to 6.2).
+  `compile`; installation still changes only when `writing-plans` is selected.
 
 ## Rejected Alternatives
 
@@ -87,7 +70,5 @@ publication, containment) are the evidence this pairing relies on, and they must
 
 - Pin key spelling: `writing-plans@1.0.0` (catalog version) versus a shortened form like
   `openspec-propose@1.0`. Does not change the approach.
-- Whether ADR-0045's caveat is enough for a second Archivist pairing or needs its own evidence
-  statement before this ADR moves to Accepted.
 - Related, not decided here: `strategist check` should not report ready for a Custom binding that
   `mission invoke` rejects, and non-Ranked wizard selections are persisted as `custom` with a bare id.

@@ -6,7 +6,64 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
+
+// ResolveOpenPhaseRun returns the only currently open run for a phase. It is
+// intentionally read-only: usage attribution must use a durable lifecycle
+// marker, never reconstruct a run id from a regenerated history or from the
+// phase name alone.
+func ResolveOpenPhaseRun(path, missionID, phase string) (string, error) {
+	records, err := ReadMissionLifecycleFor(path, missionID)
+	if err != nil {
+		return "", fmt.Errorf("read lifecycle for phase-run attribution: %w", err)
+	}
+	if len(records) == 0 {
+		// A legacy mission may predate the lifecycle ledger. Preserve its
+		// readable usage record; there is no historical authority from which
+		// to infer a run.
+		return "", nil
+	}
+	open, err := openPhaseRun(records, phase)
+	if err != nil {
+		return "", err
+	}
+	if open == "" {
+		return "", fmt.Errorf("phase %q has no open lifecycle run", phase)
+	}
+	return open, nil
+}
+
+func openPhaseRun(records []MissionLifecycleRecord, phase string) (string, error) {
+	open := ""
+	for _, record := range records {
+		if record.Phase != phase {
+			continue
+		}
+		var err error
+		open, err = foldOpenPhaseRun(open, phase, record)
+		if err != nil {
+			return "", err
+		}
+	}
+	return open, nil
+}
+
+func foldOpenPhaseRun(open, phase string, record MissionLifecycleRecord) (string, error) {
+	switch record.MarkerKind {
+	case string(domain.MarkerPhaseStarted):
+		if open != "" && open != record.PhaseRunID {
+			return "", fmt.Errorf("phase %q has ambiguous open runs %q and %q", phase, open, record.PhaseRunID)
+		}
+		return record.PhaseRunID, nil
+	case string(domain.MarkerPhaseEnded):
+		if record.PhaseRunID == open {
+			return "", nil
+		}
+	}
+	return open, nil
+}
 
 // AppendMissionLifecycleRecords appends recs to the ledger under an exclusive
 // lock and skips every record whose marker_id already exists, so a replayed

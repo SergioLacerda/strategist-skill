@@ -36,6 +36,7 @@ type Dependencies struct {
 type options struct {
 	Target, ShimPath                                     string
 	Silent, Wizard, Global, Force, StrictCompile, NoShim bool
+	ResetConfig                                          bool
 	AllowDowngrade                                       bool
 	Verbose                                              bool
 	Integration                                          string
@@ -46,6 +47,7 @@ type options struct {
 type TestOptions struct {
 	Target, ShimPath                                     string
 	Silent, Wizard, Global, Force, StrictCompile, NoShim bool
+	ResetConfig                                          bool
 	AllowDowngrade                                       bool
 	Verbose                                              bool
 	Integration                                          string
@@ -81,7 +83,8 @@ without a writable home directory), or --shim-path to redirect it.`,
 	flags.BoolVar(&opts.Silent, "silent", false, "silent install with epic defaults (default)")
 	flags.BoolVar(&opts.Wizard, "wizard", false, "interactive wizard for configuration")
 	flags.BoolVar(&opts.Global, "global", false, "install into global root (default: local project)")
-	flags.BoolVar(&opts.Force, "force", false, "overwrite all files, including user-modified ones (default: preserve customizations)")
+	flags.BoolVar(&opts.Force, "force", false, "overwrite the normative runtime files, including user-modified ones; never rewrites active.yaml, plugins.lock or .config.lock (see --reset-config)")
+	flags.BoolVar(&opts.ResetConfig, "reset-config", false, "rewrite active.yaml, plugins.lock and .config.lock from the epic template (slots, language and documentation roots return to the defaults); the previous files are backed up under .strategist/.upgrade-backups/ and restored by `strategist upgrade --rollback`")
 	flags.BoolVar(&opts.AllowDowngrade, "allow-downgrade", false, "let this binary replace normative runtime files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)")
 	flags.BoolVar(&opts.StrictCompile, "strict-compile", false, "fail install (and roll back) on a CompileAll error, instead of warning-only (default: warning-only)")
 	flags.BoolVar(&opts.Verbose, "verbose", false, "show the INFO log lines, the wizard section headers and the role/provider migration preview that install hides by default")
@@ -137,7 +140,7 @@ func execute(ctx context.Context, cmd *cobra.Command, deps Dependencies, target 
 	if deps.ServiceFactory == nil {
 		return fmt.Errorf("install: service factory is not configured")
 	}
-	report, err := deps.ServiceFactory(shimHome).InstallWithReport(ctx, domain.InstallConfig{Target: target, Silent: opts.Silent, Wizard: opts.Wizard, Global: opts.Global, Force: opts.Force, AllowDowngrade: opts.AllowDowngrade, StrictCompile: opts.StrictCompile, NoShim: opts.NoShim, ShimPath: opts.ShimPath, Verbose: opts.Verbose, Integration: opts.Integration})
+	report, err := deps.ServiceFactory(shimHome).InstallWithReport(ctx, domain.InstallConfig{Target: target, Silent: opts.Silent, Wizard: opts.Wizard, Global: opts.Global, Force: opts.Force, ResetConfig: opts.ResetConfig, AllowDowngrade: opts.AllowDowngrade, StrictCompile: opts.StrictCompile, NoShim: opts.NoShim, ShimPath: opts.ShimPath, Verbose: opts.Verbose, Integration: opts.Integration})
 	if err != nil {
 		return fmt.Errorf("install: %w", err)
 	}

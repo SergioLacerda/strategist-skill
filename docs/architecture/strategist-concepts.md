@@ -36,7 +36,7 @@ reports readiness, but it is not a generic domain validator. `catalog` remains
 the catalog adapter: it decodes catalog data and delegates semantic validation
 to domain contracts; it does not become the validator implementation.
 
-`filelock` remains the lowest-level cross-platform process-lock mechanism, and
+`filesystem/filelock` remains the lowest-level cross-platform process-lock mechanism, and
 `validate` remains the filesystem/YAML/configuration input boundary. No package
 may acquire sibling dependencies solely because these packages share a future
 namespace. Physical import-path relocation requires a separate approved
@@ -143,7 +143,15 @@ Opportunity Attack is an **Archivist Feat** that evaluates ADR and Runbook neces
 
 Beyond the write-side candidate flow above, every accepted runbook under `docs/runbooks/*.md` also carries a co-located, typed `docs/runbooks/<slug>.runbook.yaml` sidecar (schema documented in `docs/runbooks/README.md`) — `applies_when`, `objective`, `preconditions`, `analysis`/`decision_gates` (analytical runbooks) or `verification` (operational runbooks), and leveled `checks` (`mandatory`/`recommended`/`conditional`/`informational`). The `internal/runbook` Go package (`Runbook`, `Select()`, `EvaluateStep()`, `ValidateCompletion()`) parses and operates on these sidecars, with `Select()` enforcing a reasoned, bounded choice (`max_primary`/`max_supporting`/`require_reason`) rather than silent auto-application.
 
-`Select()` has a concrete caller: `strategist runbook select` scores the sidecars against mission signals. `roles/ranger.yaml#canonical.select_runbook` makes it a required step of Ranger's Retrieval Cascade stage 6 (`contracts/narrative/03-discovery.md`): Ranger runs the command with one `--signal` per mission signal and records the result in `selected_runbooks_hint` (an empty list means it ran and nothing matched; `null` means it was not run). The invocation is agent-executed — nothing in Go runs it on Ranger's behalf — and unstructured runbook content still also reaches Ranger through the generic `runbooks` Treasure Chest (Potion/jewel relevance matching, § Abilities table below).
+`strategist runbook select` is the concrete caller for the `select_runbook` Feat, but
+its production lookup is mediated by JEWELER: the external Treasure Chest Weapon
+returns the bounded Potion-backed runbook index, and JEWELER normalizes and filters
+that projection before it reaches the role. `roles/ranger.yaml#canonical.select_runbook`
+makes it a required step of Ranger's Retrieval Cascade stage 6
+(`contracts/narrative/03-discovery.md`); Archivist may rerun it only for a declared
+fresh-context reason. Both roles record the result in `selected_runbooks_hint` (an
+empty list means it ran and nothing matched; `null` means it was not run). No local
+selector or direct provider access is a production fallback.
 
 ---
 

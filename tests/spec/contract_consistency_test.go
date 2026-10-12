@@ -62,7 +62,7 @@ func TestArchitectureDocumentsCurrentInternalPackages(t *testing.T) {
 
 	path := filepath.Join(repoRoot(t), "docs", "architecture", "overview.md")
 	content := readFile(t, path)
-	for _, pkg := range []string{"dojo", "governance", "integrity", "i18n", "runtimefs", "treasure", "validate"} {
+	for _, pkg := range []string{"dojo", "governance", "integrity", "i18n", "filesystem", "treasure", "validate"} {
 		if !strings.Contains(content, "  "+pkg+"/") {
 			t.Fatalf("%s missing internal package map entry for %s", path, pkg)
 		}

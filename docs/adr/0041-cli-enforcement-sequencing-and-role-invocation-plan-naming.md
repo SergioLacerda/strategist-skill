@@ -25,7 +25,7 @@ already decided or already shipped:
   resolution and mission-lifetime-pinned weapon bindings.
 - **`internal/check/check_slots.go`** already implements the two-branch
   exists?/valid?/matches? slot resolver the draft's preflight proposal called for.
-- **`internal/rolevalidation/role_weapon.go`**, verified by
+- **`internal/roles/validation/role_weapon.go`**, verified by
   `.analysis/done/20260915-pending-role-weapon-readiness-review/` and
   `.analysis/done/20260914-role-weapon-structure-review/`, already implements and
   test-verifies most of the role/weapon-readiness preflight slice.
@@ -59,7 +59,7 @@ the same target packages (`internal/domain`, `internal/plugins`, `internal/insta
    1. A Role→Weapon resolver/composer producing a mission-scoped binding descriptor, built on
       ADR-0035/0037's existing fail-closed/pinned-binding rules.
    2. A typed `PreflightResult` object aggregating the existing outputs of
-      `internal/check/check_slots.go` and `internal/rolevalidation/role_weapon.go` into one
+      `internal/check/check_slots.go` and `internal/roles/validation/role_weapon.go` into one
       versioned envelope.
    3. A phase-transition authority extending `internal/domain/state_machine.go` to cover only
       bootstrap/intake/discovery/refinement — the gap already named in

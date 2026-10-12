@@ -12,15 +12,16 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"golang.org/x/term"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // applyConfig writes active.yaml either from the epic template (silent) or
 // from wizard input.
 //
 // In silent mode, active.yaml is only written when it does not already exist
-// (first install) or when cfg.Force is true. This preserves any customizations
-// the user has made after the initial install.
+// (first install) or when cfg.ResetConfig is true. This preserves any
+// customizations the user has made after the initial install, including under
+// --force, which repairs the runtime only. A reset backs the configuration up.
 func (s Service) applyConfig(ctx context.Context, strategistDir string, cfg domain.InstallConfig) (retErr error) {
 	ctx, span := telemetry.Tracer().Start(ctx, "install.apply_config")
 	defer func() {
@@ -42,11 +43,15 @@ func (s Service) applyConfig(ctx context.Context, strategistDir string, cfg doma
 
 func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg domain.InstallConfig) error {
 	activeYAMLPath := filepath.Join(strategistDir, activeYAMLName)
-	if !cfg.Force && runtimefs.Exists(activeYAMLPath) {
-		return nil // preserve user customizations
+	exists := filesystem.Exists(activeYAMLPath)
+	if exists && !cfg.ResetConfig {
+		return nil // preserve user customizations; --force only repairs the runtime
 	}
-	if cfg.Force && runtimefs.Exists(activeYAMLPath) {
-		slog.Warn("[Strategist] install force-overwriting user-owned config",
+	if exists {
+		if err := s.backUpConfiguration(strategistDir); err != nil {
+			return err
+		}
+		slog.Warn("[Strategist] install resetting user-owned configuration (--reset-config); previous files backed up",
 			telemetry.AttrComponent, "install",
 			"path", activeYAMLPath,
 		)
@@ -61,6 +66,19 @@ func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg 
 		return fmt.Errorf("install: %w", err)
 	}
 	return s.activateSilentBindings(strategistDir, data)
+}
+
+// configurationFiles are the user-owned files a reset rewrites.
+var configurationFiles = []string{activeYAMLName, pluginLockFileName, ".config.lock"}
+
+// backUpConfiguration copies the configuration files to a new timestamped
+// directory of the upgrade backup area, where `strategist upgrade --rollback`
+// restores them byte for byte.
+func (s Service) backUpConfiguration(strategistDir string) error {
+	if _, err := s.snapshotBeforeUpgrade(strategistDir, configurationFiles); err != nil {
+		return fmt.Errorf("install: back up configuration: %w", err)
+	}
+	return nil
 }
 
 func (s Service) readNormalizedSilentConfig() ([]byte, error) {
@@ -100,6 +118,13 @@ func (s Service) applyWizardConfig(ctx context.Context, strategistDir string, ve
 	wc, err := runWizard(ctx, p, s.Extractor, strategistDir, verbose)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
+	}
+	// The wizard replaces active.yaml from its answers; what it replaces is
+	// backed up first so `strategist upgrade --rollback` can restore it.
+	if filesystem.Exists(filepath.Join(strategistDir, activeYAMLName)) {
+		if err := s.backUpConfiguration(strategistDir); err != nil {
+			return err
+		}
 	}
 	if err := writeActiveYAML(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write active.yaml: %w", err)

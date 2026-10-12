@@ -102,7 +102,10 @@ func TestActiveRoleManifestsExcludeProposedTaxonomyNames(t *testing.T) {
 	t.Parallel()
 
 	root := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "roles")
-	for _, roleID := range []string{"pathfinder", "cartographer", "jeweler", "jewelcrafter"} {
+	// JEWELER is now the admitted external-provider support Role. JEWELCRAFTER
+	// remains only as a compatibility alias and must not acquire an active role
+	// manifest of its own.
+	for _, roleID := range []string{"pathfinder", "cartographer", "jewelcrafter"} {
 		if _, err := os.Stat(filepath.Join(root, roleID+".yaml")); err == nil {
 			t.Errorf("proposed role %q must not have an active role manifest", roleID)
 		} else if !os.IsNotExist(err) {

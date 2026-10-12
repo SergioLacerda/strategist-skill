@@ -8,7 +8,7 @@ import (
 
 	mission "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/filelock"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem/filelock"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func newTestCmd(t *testing.T) *cobra.Command {
 }
 
 // lockedLifecycleDeps mirrors lifecycleDeps but wires Lock to the same
-// internal/filelock mechanism cmd/strategist/mission_persistence.go's
+// internal/filesystem/filelock mechanism cmd/strategist/mission_persistence.go's
 // production lockMission uses, keyed identically (missions/<id>.json), so
 // this test exercises the real serialization path rather than a test double.
 func lockedLifecycleDeps(t *testing.T) mission.LifecycleDependencies {

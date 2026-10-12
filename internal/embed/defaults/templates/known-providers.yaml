@@ -24,3 +24,4 @@ providers:
   openspec-archive-change: controlled
   writing-plans: write_analysis
   archivist: write_analysis
+  treasure-chest-tmp: controlled

@@ -387,7 +387,7 @@ func TestWriteLock_AtomicWriteFailureLeavesNoTempFileAndNoPartialLock(t *testing
 func TestWriteLock_HashFileErrorWhenConfigIsDirectory(t *testing.T) {
 	dir := t.TempDir()
 	// configPath is a directory, not a file: os.Stat succeeds (directories
-	// exist), but the internal hashFile/runtimefs.ReadSHA256 call's
+	// exist), but the internal hashFile/filesystem.ReadSHA256 call's
 	// os.ReadFile fails with a real (EISDIR) error, distinct from
 	// os.ErrNotExist.
 	configPath := filepath.Join(dir, "active.yaml")

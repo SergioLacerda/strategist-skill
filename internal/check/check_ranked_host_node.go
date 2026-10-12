@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/env"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/payload"
 )
 
 // runHostNodeRankedRuntimeHealthcheck uses the absolute Node path recorded at
@@ -33,7 +33,7 @@ func runHostNodeRankedRuntimeHealthcheck(root, runtimeRoot, provider string, con
 	if !versionCheck.Ready() {
 		return versionCheck
 	}
-	cmd, err := runtimeenv.PrivateCommand(ctx, runtimeRoot, state.Node, script, "context", "--json")
+	cmd, err := env.PrivateCommand(ctx, runtimeRoot, state.Node, script, "context", "--json")
 	if err != nil {
 		return hostNodeCommandFailure(provider, runtimeRoot, err)
 	}
@@ -71,11 +71,11 @@ func rankedBundleCheck(root, provider, script, digest string) domain.ReadinessCh
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeBundleMissing, Detail: fmt.Sprintf("provider=%s OpenSpec launcher %s is missing; %s", provider, script, remedy)}
 	}
 	dir, _ := rankedRuntimeDir(provider)
-	err := runtimepayload.VerifyMaterializedOpenSpec(filepath.Join(root, filepath.FromSlash(dir)), digest)
+	err := payload.VerifyMaterializedOpenSpec(filepath.Join(root, filepath.FromSlash(dir)), digest)
 	switch {
 	case err == nil:
 		return domain.ReadinessCheck{Status: domain.ReadinessReady}
-	case errors.Is(err, runtimepayload.ErrPayloadMissing):
+	case errors.Is(err, payload.ErrPayloadMissing):
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeBundleMissing, Detail: fmt.Sprintf("provider=%s %v; %s", provider, err, remedy)}
 	default:
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeBundleAltered, Detail: fmt.Sprintf("provider=%s OpenSpec bundle does not match the digest recorded at install (%v); %s", provider, err, remedy)}
@@ -92,7 +92,7 @@ func rankedStateInvalid(provider, reason string) domain.ReadinessCheck {
 // into "unsupported version" would report a corrupt or wrong-architecture Node
 // as an old one.
 func hostNodeVersionCheck(ctx context.Context, runtimeRoot, provider, node string) (observed string, check domain.ReadinessCheck) {
-	cmd, err := runtimeenv.PrivateCommand(ctx, runtimeRoot, node, "--version")
+	cmd, err := env.PrivateCommand(ctx, runtimeRoot, node, "--version")
 	if err != nil {
 		return "", hostNodeCommandFailure(provider, runtimeRoot, err)
 	}
@@ -116,7 +116,7 @@ func hostNodeVersionCheck(ctx context.Context, runtimeRoot, provider, node strin
 }
 
 func hostNodeCommandFailure(provider, runtimeRoot string, err error) domain.ReadinessCheck {
-	var missing *runtimeenv.ExecutableNotFoundError
+	var missing *env.ExecutableNotFoundError
 	if errors.As(err, &missing) {
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeExecutableMissing, Detail: domain.RankedRuntimeExecutableMissingMessage(provider, "node")}
 	}

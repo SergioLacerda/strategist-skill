@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 // migrationStateFiles lists the workspace state a migrating upgrade rewrites
@@ -28,7 +28,7 @@ func migrationStateFiles(strategistDir string, plan UpgradePlan, removesFiles bo
 func existingRelPaths(strategistDir string, rels []string) []string {
 	var existing []string
 	for _, rel := range rels {
-		if runtimefs.Exists(filepath.Join(strategistDir, filepath.FromSlash(rel))) {
+		if filesystem.Exists(filepath.Join(strategistDir, filepath.FromSlash(rel))) {
 			existing = append(existing, rel)
 		}
 	}
@@ -39,7 +39,7 @@ func existingRelPaths(strategistDir string, rels []string) []string {
 // snapshotted, and prunes the directories that became empty.
 func removeLegacyLayoutFiles(strategistDir string, rels []string) error {
 	for _, rel := range rels {
-		path, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(rel))
+		path, err := filesystem.SafeJoin(strategistDir, filepath.FromSlash(rel))
 		if err != nil {
 			return fmt.Errorf("upgrade: resolve %s: %w", rel, err)
 		}

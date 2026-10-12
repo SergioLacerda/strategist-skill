@@ -69,6 +69,12 @@ func affinitySlot(role string) string {
 	if role == "auxiliary" {
 		return "auxiliary"
 	}
+	// JEWELER is a support Role, deliberately outside the pipeline registry.
+	// Keep this exception here so package-contract validation does not force a
+	// fourth mission phase or make the support provider look pipeline-bound.
+	if role == "jeweler" {
+		return string(SlotTreasure)
+	}
 	if r, ok := DefaultRoleRegistry().Get(role); ok && r.ID == role {
 		return r.Slot
 	}
@@ -86,7 +92,7 @@ func invalidRole(roles []string) bool {
 
 func invalidSlot(slots []string) bool {
 	for _, slot := range slots {
-		if slot != "discovery" && slot != "refinement" && slot != "execution" && slot != "auxiliary" {
+		if slot != "discovery" && slot != "refinement" && slot != "execution" && slot != "auxiliary" && slot != string(SlotTreasure) {
 			return true
 		}
 	}

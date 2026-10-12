@@ -35,6 +35,7 @@ type NormalizeOpenSpecPublication struct {
 // root. Confidence is required; publication is optional for library callers.
 type NormalizeOpenSpecPorts struct {
 	RecordConfidence  func(domain.ConfidenceClaim, []domain.Evidence) error
+	RecordAdvisories  func(refinement.AdvisoryInput) error
 	RecordPublication func(NormalizeOpenSpecPublication) error
 }
 
@@ -56,6 +57,7 @@ func PublishOpenSpec(request NormalizeOpenSpecRequest, ports NormalizeOpenSpecPo
 		MissionID: request.MissionID, BasePath: request.BasePath, RuntimeRoot: request.RuntimeRoot,
 		ChangeID: request.ChangeID, PendingAnalysisPath: request.PendingAnalysisPath,
 		HandoffFacts: request.HandoffFacts, RecordConfidence: ports.RecordConfidence,
+		RecordAdvisories: ports.RecordAdvisories,
 		RecordPublication: func(publication refinement.PackagePublication) error {
 			if ports.RecordPublication == nil {
 				return nil

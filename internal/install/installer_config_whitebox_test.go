@@ -29,7 +29,7 @@ func TestApplyConfig_PreservesExistingActiveYAML(t *testing.T) {
 	assert.Equal(t, customContent, string(got), "re-install must not overwrite user-customized active.yaml")
 }
 
-func TestApplyConfig_ForceOverwritesActiveYAML(t *testing.T) {
+func TestApplyConfig_ResetConfigOverwritesActiveYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
@@ -37,7 +37,7 @@ func TestApplyConfig_ForceOverwritesActiveYAML(t *testing.T) {
 
 	activeYAMLPath := filepath.Join(dir, ".strategist", "active.yaml")
 	require.NoError(t, os.WriteFile(activeYAMLPath, []byte("mode: epic\nbase_path: .custom\n"), 0o644))
-	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true, Force: true}))
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true, ResetConfig: true}))
 
 	got, err := os.ReadFile(activeYAMLPath)
 	require.NoError(t, err)

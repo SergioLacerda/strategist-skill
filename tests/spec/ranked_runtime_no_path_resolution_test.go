@@ -22,8 +22,8 @@ func rankedRuntimePackages() []string {
 
 // TestRankedRuntimeNeverResolvesOpenSpecFromPath fails when production code in
 // the ranked runtime packages reintroduces PATH resolution for the provider
-// executable. `runtimeenv.Command` is the PATH-resolving builder;
-// `runtimeenv.PrivateCommand` is the contained one that requires an absolute,
+// executable. `env.Command` is the PATH-resolving builder;
+// `env.PrivateCommand` is the contained one that requires an absolute,
 // Strategist-resolved launcher.
 //
 // Resolving the *host Node* through exec.LookPath stays legal: host_node mode
@@ -49,9 +49,9 @@ func TestRankedRuntimeNeverResolvesOpenSpecFromPath(t *testing.T) {
 			}
 			body := string(raw)
 			rel := filepath.ToSlash(filepath.Join(pkg, name))
-			if strings.Contains(body, "runtimeenv.Command") {
-				t.Errorf("%s calls runtimeenv.Command, which resolves the executable from PATH; "+
-					"a Ranked runtime must launch through runtimeenv.PrivateCommand with an absolute path", rel)
+			if strings.Contains(body, "env.Command") {
+				t.Errorf("%s calls env.Command, which resolves the executable from PATH; "+
+					"a Ranked runtime must launch through env.PrivateCommand with an absolute path", rel)
 			}
 			if strings.Contains(body, `LookPath("openspec")`) || strings.Contains(body, `exec.LookPath("openspec")`) {
 				t.Errorf("%s resolves the openspec executable from PATH; the embedded bundle is the only sanctioned source", rel)

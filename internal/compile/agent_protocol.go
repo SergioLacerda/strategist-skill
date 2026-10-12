@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem"
 )
 
 type agentProtocolData struct {
@@ -102,7 +102,7 @@ func upsertAgentProtocol(path, rendered, version, generatedAt string) error {
 // errPrefix is prepended to the error message so each call site can keep its own
 // wrapped-error text (e.g. "agent protocol", "upsert section", "codex seed").
 func writeFile(path string, content []byte, errPrefix string) error {
-	if err := runtimefs.WriteFile(path, content, 0o644); err != nil {
+	if err := filesystem.WriteFile(path, content, 0o644); err != nil {
 		return fmt.Errorf("%s: write %s: %w", errPrefix, path, err)
 	}
 	return nil

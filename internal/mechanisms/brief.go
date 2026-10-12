@@ -45,10 +45,10 @@ func (r Registry) render(role string, full bool) string {
 }
 
 func briefLine(row Row, full bool) string {
-	line := fmt.Sprintf("- %s (%s): %s -> %s\n", row.ID, row.Family, row.Summary, row.HowToInvoke)
 	if !full {
-		return line
+		return fmt.Sprintf("- %s [%s] %s: %s\n", row.ID, row.Family, row.Summary, row.HowToInvoke)
 	}
+	line := fmt.Sprintf("- %s (%s): %s -> %s\n", row.ID, row.Family, row.Summary, row.HowToInvoke)
 	detail := "  [" + enforcement(row) + "]"
 	if row.WhenToUse != "" {
 		detail += " use: " + row.WhenToUse

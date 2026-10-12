@@ -10,14 +10,21 @@ taxonomy explicitly so the gap is visible instead of implicit.
 
 | Style | `make` target | Validates | Coverage today |
 |---|---|---|---|
-| unit | `test` | package-level Go logic (`go test -race ./...`, excludes `/testutil`) | none gated at this target; see `cover`/`cover-gate` below |
-| unit (gated subset) | `cover` / `cover-gate` | line coverage for the packages listed in `scripts/coverage-packages.tsv` (widened to the full `./internal/...` tree + `cmd/strategist`) | line coverage %, 90% minimum baseline; `internal/eval`, `internal/integrity`, `internal/runtimefs` are gated at the 90% baseline and currently measure 94.6%/96.7%/97.2%, and `treasure-chest` is gated at a stricter 95% threshold and measures 96.1% — see `scripts/coverage-packages.tsv` for per-package provenance |
+| unit | `test` | package-level Go logic (`make test` runs `go test -race` over host-owned Go packages) | none gated at this target; see `cover`/`cover-gate` below |
+| unit (gated subset) | `cover` / `cover-gate` | line coverage for the packages listed in `scripts/coverage-packages.tsv` (widened to the full `./internal/...` tree + `cmd/strategist`) | line coverage %, 90% minimum baseline; `internal/eval`, `internal/integrity`, `internal/filesystem` are gated at the 90% baseline and currently measure 94.6%/96.7%/97.2%, and `treasure-chest` is gated at a stricter 95% threshold and measures 96.1% — see `scripts/coverage-packages.tsv` for per-package provenance |
 | spec (Gherkin) | `spec` | governance/contract behavior, driven by 15 `.feature` files under `tests/spec/specs/` (Given/When/Then scenarios; 15 are checked by Go test helpers in `tests/spec/*_test.go`, `e2e-critical-hit-closure.feature` is documentation-only — not a Cucumber/Godog runner) | none |
 | integration | `integration` | cross-component Go behavior (`go test -race -tags=integration ./tests/integration/...`) | none as its own view (it is folded in as a coverage *source* for `cover-html`, but not reported as its own number) |
 | eval | `eval` | prompt/artifact scenario correctness (`go test -race -tags=eval ./tests/evals/...`, 9 files across `contracts/` and `scenarios/`; not part of `test-all`/`ci-test`, run on demand with `make eval`) | none |
 | eval-promptfoo | `eval-promptfoo` | LLM-judged artifact quality (`npx promptfoo eval`) | none — deliberately standalone, not wired into `eval`/`test`/`test-all`/`ci-test`/`ci`; requires a local LM Studio endpoint. See `.analysis/archived/20260804-promptfoo-ci-adapter-adr.md`. |
 
 ## Why coverage isn't uniform across styles
+
+The unit target intentionally excludes `external-skills-source/` and the
+versioned `internal/embed/defaults/skills/<id>@<version>/` payload mirrors.
+Those trees can contain Go source for an external provider module; they are
+embedded artifacts, not Strategist host packages. Provider build/test evidence
+is collected in the external repository and the host validates ingestion and
+generated parity separately.
 
 Line-coverage percentage is the right metric for `unit` and
 `integration` — they exercise code paths directly. It is the wrong metric for
@@ -39,7 +46,7 @@ suites rather than clarify them.
 ## Known gaps (not covered by this document alone)
 
 - The two gaps previously tracked here (`internal/eval`/`internal/integrity`/
-  `internal/runtimefs`/`internal/treasure` gated below the 90% baseline, and
+  `internal/filesystem`/`internal/treasure` gated below the 90% baseline, and
   no pure Go `Target` modeling Critical Hit's trigger/closure logic) are
   closed: `scripts/coverage-packages.tsv` now gates all four packages at or
   above baseline (see the `cover` row above), and

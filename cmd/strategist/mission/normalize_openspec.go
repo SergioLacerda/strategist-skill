@@ -26,10 +26,13 @@ type NormalizeOptions struct {
 
 // NormalizeDependencies injects mission-id validation and path resolution.
 type NormalizeDependencies struct {
-	RootFlag          string
-	RequireMissionID  func(string) error
-	ResolvePaths      func(NormalizeOptions) (string, string, string, error)
-	RecordConfidence  func(NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error
+	RootFlag         string
+	RequireMissionID func(string) error
+	ResolvePaths     func(NormalizeOptions) (string, string, string, error)
+	RecordConfidence func(NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error
+	// RecordAdvisories persists the critic and mission-quality advisory
+	// boundaries of a freshly published package.
+	RecordAdvisories  func(NormalizeOptions, refinement.AdvisoryInput) error
 	RecordPublication func(NormalizeOptions, refinement.PackagePublication) error
 	// GateLabel returns the mission's gate outcome label ("" when none); it is
 	// consulted only by --amend. Nil means no label is known.
@@ -105,12 +108,18 @@ func runPublish(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOp
 	if deps.RecordConfidence == nil {
 		return fmt.Errorf("mission normalize-openspec: Archivist confidence recorder is unavailable")
 	}
+	if deps.RecordAdvisories == nil {
+		return fmt.Errorf("mission normalize-openspec: Archivist advisory recorder is unavailable")
+	}
 	result, err := application.PublishOpenSpec(application.NormalizeOpenSpecRequest{
 		MissionID: opts.MissionID, BasePath: basePath, RuntimeRoot: runtimeRoot,
 		ChangeID: opts.ChangeID, PendingAnalysisPath: pending, HandoffFacts: facts,
 	}, application.NormalizeOpenSpecPorts{
 		RecordConfidence: func(claim domain.ConfidenceClaim, evidence []domain.Evidence) error {
 			return deps.RecordConfidence(opts, claim, evidence)
+		},
+		RecordAdvisories: func(input refinement.AdvisoryInput) error {
+			return deps.RecordAdvisories(opts, input)
 		},
 		RecordPublication: func(publication application.NormalizeOpenSpecPublication) error {
 			if deps.RecordPublication == nil {

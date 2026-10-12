@@ -12,7 +12,7 @@ import (
 	mission "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/missionview"
+	missionview "github.com/SergioLacerda/strategist-skill/internal/mission/view"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"

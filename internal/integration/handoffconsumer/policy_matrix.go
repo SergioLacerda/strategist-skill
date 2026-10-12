@@ -46,12 +46,12 @@ func approvalRows() []PolicyRow {
 	approves := func(r integration.Result) bool { return Evaluate(at, r, threshold).Approved }
 	noAggregate := integration.Result{Answers: map[string]integration.Answer{"scope_bounded": {Kind: integration.KindNoul, Noul: 1}}}
 	return []PolicyRow{
-		row("policy approves above the threshold", approves(scripted(OptionAccept, 0.70, 0.86)), "accept with P(accept) 0.86 over %.2f", threshold),
+		row("policy approves above the threshold", approves(scripted(OptionAccept, 0.70, 0.96)), "accept with P(accept) 0.96 over %.2f", threshold),
 		row("policy never approves at exactly the threshold", !approves(scripted(OptionAccept, 0.9, threshold)), "strictly above is the rule"),
 		row("policy never approves below the threshold", !approves(scripted(OptionAccept, 0.9, 0.79)), "P(accept) 0.79"),
 		row("policy never approves a reject however confident", !approves(scripted(OptionReject, 0.99, 0.01)), "reject at 99%% is 1%% confidence of acceptance"),
 		row("policy never approves a missing aggregate", !approves(noAggregate), "a noul answer has no confidence"),
-		row("policy reads P(accept) before the documented confidence", approves(scripted(OptionAccept, 0.30, 0.86)), "confidence 0.30 but P(accept) 0.86"),
+		row("policy reads P(accept) before the documented confidence", approves(scripted(OptionAccept, 0.30, 0.96)), "confidence 0.30 but P(accept) 0.96"),
 	}
 }
 

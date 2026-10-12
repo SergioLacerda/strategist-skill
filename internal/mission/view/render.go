@@ -1,0 +1,178 @@
+package view
+
+import (
+	"fmt"
+	"io"
+
+	"github.com/SergioLacerda/strategist-skill/internal/feats/opportunity_attack"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+)
+
+// RenderHuman writes a deterministic concise representation of a View.
+func RenderHuman(w io.Writer, v View) error {
+	if err := renderMission(w, v); err != nil {
+		return err
+	}
+	if err := renderJourney(w, v.Journey); err != nil {
+		return err
+	}
+	if err := renderConfidenceAndGate(w, v); err != nil {
+		return err
+	}
+	if err := renderCriteria(w, v.Criteria); err != nil {
+		return err
+	}
+	if err := renderLevels(w, v.Leveling); err != nil {
+		return err
+	}
+	if err := renderTokenUsage(w, v.TokenUsage); err != nil {
+		return err
+	}
+	if err := RenderPhaseTimeline(w, v.PhaseTimeline, false); err != nil {
+		return err
+	}
+	return renderDiagnostics(w, v.Diagnostics)
+}
+
+func renderMission(w io.Writer, v View) error {
+	return writef(w, "Mission\n  id: %s\n  phase: %s\n  state: %s\nJourney\n", v.MissionID, v.Lifecycle.Phase, v.Lifecycle.State)
+}
+
+func renderJourney(w io.Writer, journey []JourneyEntry) error {
+	for _, step := range journey {
+		provider := ""
+		if step.Provider != "" {
+			provider = fmt.Sprintf(" provider=%s", step.Provider)
+		}
+		if err := writef(w, "  %d: %s (%s)%s\n", step.Phase, step.ID, step.Kind, provider); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderConfidenceAndGate(w io.Writer, v View) error {
+	if err := writef(w, "Confidence (advisory)\n  availability: %s\nApproval Gate\n  availability: %s\n", v.Confidence.Availability, v.ApprovalGate.Availability); err != nil {
+		return err
+	}
+	if err := renderGateOutcome(w, v.ApprovalGate.Outcome); err != nil {
+		return err
+	}
+	return renderOpportunities(w, v.ApprovalGate.Opportunities)
+}
+
+func renderGateOutcome(w io.Writer, outcome string) error {
+	if outcome == "" {
+		return nil
+	}
+	return writef(w, "  outcome: %s\n", outcome)
+}
+
+func renderOpportunities(w io.Writer, opportunities []opportunity_attack.Candidate) error {
+	if len(opportunities) == 0 {
+		return nil
+	}
+	if err := writef(w, "Opportunity Attack\n"); err != nil {
+		return err
+	}
+	for _, candidate := range opportunities {
+		if err := writef(w, "  %s: kind=%s warranted=%t status=%s strategy=%s\n", candidate.ID, candidate.Kind, candidate.Warranted, candidate.Status, candidate.Strategy); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderLevels(w io.Writer, levels LevelingSection) error {
+	if err := writef(w, "LEVELING\n  availability: %s\n  selection: %s\n", levels.Availability, levels.Selection); err != nil {
+		return err
+	}
+	for _, role := range levels.Roles {
+		if err := renderLevelRole(w, role); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderLevelRole(w io.Writer, role LevelingRole) error {
+	if role.Effective == nil {
+		return writef(w, "  %s: unknown\n", role.Role)
+	}
+	level := role.Effective
+	return writef(w, "  %s: %s source=%s model_source=%s effort_source=%s provider=%s capability=%s fallback_used=%t fallback_reason=%s policy_version=%d policy_digest=%s\n", level.Role, level.Label(), level.Source, level.ModelSource, level.EffortSource, level.Provider, level.Capability, level.FallbackUsed, level.FallbackReason, level.PolicyVersion, level.PolicyDigest)
+}
+
+// renderTokenUsage prints the reported token-usage section (F-T2, ADR-0057 §
+// design.md task 3.3). The declared budget tier is shown next to the totals
+// without a numeric verdict — see TokenUsageSection's doc comment for why no
+// pass/fail comparison is made.
+func renderTokenUsage(w io.Writer, usage TokenUsageSection) error {
+	if err := renderTokenUsageHeader(w, usage); err != nil {
+		return err
+	}
+	if usage.Availability != Available {
+		return nil
+	}
+	return renderAvailableTokenUsage(w, usage)
+}
+
+func renderTokenUsageHeader(w io.Writer, usage TokenUsageSection) error {
+	if err := writef(w, "Token Usage\n  availability: %s\n", usage.Availability); err != nil {
+		return err
+	}
+	if usage.DeclaredTokenBudget == "" {
+		return nil
+	}
+	return writef(w, "  declared_token_budget: %s\n", usage.DeclaredTokenBudget)
+}
+
+func renderAvailableTokenUsage(w io.Writer, usage TokenUsageSection) error {
+	if err := writef(w, "  semantics: %s (not summed: use the phase timeline for usage)\n", usage.Semantics); err != nil {
+		return err
+	}
+	if err := writef(w, "  ledger_comparison: %s reported_records=%d handoff_records=%d\n", usage.LedgerComparison.Status, usage.LedgerComparison.ReportedRecordCount, usage.LedgerComparison.HandoffRecordCount); err != nil {
+		return err
+	}
+	if err := renderLedgerInconsistencies(w, usage.LedgerComparison.Inconsistencies); err != nil {
+		return err
+	}
+	return renderTokenRecords(w, usage.Records)
+}
+
+func renderLedgerInconsistencies(w io.Writer, inconsistencies []string) error {
+	for _, inconsistency := range inconsistencies {
+		if err := writef(w, "  ledger_inconsistency: %s\n", inconsistency); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderTokenRecords(w io.Writer, records []telemetry.MissionTokenUsageRecord) error {
+	for _, rec := range records {
+		if err := writef(w, "  %s: tokens_in=%d tokens_out=%d source=%s\n", rec.ReportedAt, rec.TokensIn, rec.TokensOut, rec.Source); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderDiagnostics(w io.Writer, diagnostics []Diagnostic) error {
+	if err := writef(w, "Diagnostics\n"); err != nil {
+		return err
+	}
+	for _, diagnostic := range diagnostics {
+		if err := writef(w, "  %s: %s\n", diagnostic.Reason, diagnostic.Action); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writef(w io.Writer, format string, args ...any) error {
+	if _, err := fmt.Fprintf(w, format, args...); err != nil {
+		return fmt.Errorf("render mission view: %w", err)
+	}
+	return nil
+}

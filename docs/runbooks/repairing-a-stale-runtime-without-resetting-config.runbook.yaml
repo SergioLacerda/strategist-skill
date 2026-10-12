@@ -1,0 +1,41 @@
+schema_version: "1"
+runbook_id: repairing-a-stale-runtime-without-resetting-config
+runbook_type: operational
+source_doc: docs/runbooks/repairing-a-stale-runtime-without-resetting-config.md
+
+applies_when:
+  - "strategist check or an install reports runtime_stale, runtime_stale_conflict, runtime_stale_unknown_manifest or runtime_newer_than_binary"
+  - "After a reinstall a slot binding differs from the one that was chosen and strategist check still reports ready"
+  - "A running mission fails at mission complete because the refinement binding changed to a Ranked openspec_root provider"
+  - "active.yaml was regenerated from the epic template and the slots, language or documentation roots were lost"
+
+objective: Repair a stale Strategist runtime without resetting the user's configuration, and recover the bindings and running missions when a reset already happened.
+
+preconditions:
+  - "The installed binary is the one built from the current checkout"
+  - "A directory outside .strategist exists for a copy of the configuration files"
+
+verification:
+  - "strategist check --json reports the expected provider for every slot"
+  - "grep -n 'refinement:' .strategist/active.yaml shows the chosen Weapon"
+  - "strategist upgrade --dry-run lists no unexpected customized file"
+  - "A mission request issued before the reset completes with strategist mission complete"
+
+checks:
+  - id: dry-run-before-writing
+    level: mandatory
+  - id: configuration-copied-before-force
+    level: mandatory
+  - id: bindings-verified-after-every-reinstall
+    level: mandatory
+  - id: wizard-used-to-restore-a-reset-binding
+    level: recommended
+  - id: copy-back-of-saved-files-is-unverified
+    level: informational
+  - id: allow-downgrade-only-for-a-deliberate-rollback
+    level: conditional
+    when: "the diagnostic is runtime_newer_than_binary"
+
+metadata:
+  version: 1
+  reviewed_at: "2026-10-11"

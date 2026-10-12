@@ -9,7 +9,7 @@ import (
 	"regexp"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/filelock"
+	"github.com/SergioLacerda/strategist-skill/internal/filesystem/filelock"
 )
 
 // missionIDPattern protects filesystem lookups keyed by an operator-supplied

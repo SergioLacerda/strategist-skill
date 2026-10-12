@@ -362,7 +362,7 @@ entities:
   - .strategist/contracts/machine/mechanisms.yaml
 - family: mechanism
   id: weapon_binding
-  owner: internal/plugins;internal/provider;internal/rolevalidation
+  owner: internal/plugins;internal/provider;internal/roles/validation
   lifecycle: active
   provenance: embedded
   source_paths:
@@ -543,6 +543,17 @@ entities:
 - family: weapon
   id: sniper
   version: 0.0.0
+  owner: internal/plugins
+  lifecycle: active
+  provenance: embedded
+  source_paths:
+  - internal/embed/defaults/plugins/catalog.yaml
+  generated_paths:
+  - .strategist/plugins.lock
+  - .strategist/plugins/catalog.yaml
+- family: weapon
+  id: treasure-chest-tmp
+  version: 0.1.0
   owner: internal/plugins
   lifecycle: active
   provenance: embedded

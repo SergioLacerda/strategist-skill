@@ -9,7 +9,7 @@ import (
 // TestCmdThinness verifies that the cmd/strategist files thinned out by the
 // architecture-refactoring extraction (governance sync and validate) do not
 // reintroduce direct YAML/JSON parsing — that logic now lives in
-// internal/governance and internal/validate. A cmd file that starts importing
+// internal/governance and internal/runtime/validate. A cmd file that starts importing
 // these again is a sign business logic is creeping back into the CLI adapter
 // layer. The treasure-chest index/add pipelines' equivalent of this check
 // moved with them to internal/treasurecli (see its own cmd_isolation_test.go)

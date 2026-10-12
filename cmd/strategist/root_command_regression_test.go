@@ -15,7 +15,7 @@ import (
 
 func TestRootHelpers_HumanStatusAndPreRun(t *testing.T) {
 	assert.False(t, isHumanStatusCommand(nil))
-	parent := &cobra.Command{Use: "treasure-chest"}
+	parent := &cobra.Command{Use: "check"}
 	child := &cobra.Command{Use: "jewel"}
 	parent.AddCommand(child)
 	assert.True(t, isHumanStatusCommand(child))

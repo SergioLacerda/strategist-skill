@@ -55,18 +55,3 @@ func runParityProcess(t *testing.T, bin string, args ...string) parityProcessRes
 	}
 	return parityProcessResult{stdout: stdout.String(), stderr: stderr.String(), exitCode: exitCode}
 }
-
-func assertParitySuccess(t *testing.T, result parityProcessResult) {
-	t.Helper()
-	require.Equal(t, 0, result.exitCode, "stderr: %s", result.stderr)
-	if result.stderr != "" {
-		t.Errorf("unexpected stderr: %s", result.stderr)
-	}
-}
-
-func readParityFile(t *testing.T, root, name string) string {
-	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(root, name))
-	require.NoError(t, err)
-	return string(raw)
-}

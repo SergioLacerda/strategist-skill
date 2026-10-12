@@ -12,7 +12,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/payload"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -282,7 +282,7 @@ func writeHostRuntime(t *testing.T, strategist, nodeBody string) domain.RankedRu
 	runtimeDir := filepath.Join(strategist, "weapon-runtime", "openspec-propose")
 	require.NoError(t, os.MkdirAll(filepath.Join(runtimeDir, "openspec"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(runtimeDir, "openspec", "openspec.mjs"), []byte("// bundle\n"), 0o644))
-	digest, _, err := runtimepayload.TreeDigest(os.DirFS(runtimeDir), "openspec")
+	digest, _, err := payload.TreeDigest(os.DirFS(runtimeDir), "openspec")
 	require.NoError(t, err)
 	return domain.RankedRuntimeStateRuntime{
 		Node:       node,
@@ -402,7 +402,7 @@ func materializedHostRuntime(t *testing.T) (repo, strategist string, state domai
 	strategist = filepath.Join(repo, ".strategist")
 	require.NoError(t, os.MkdirAll(filepath.Join(strategist, "openspec"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(strategist, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
-	script, evidence, err := runtimepayload.MaterializeOpenSpec(embed.DefaultsFS(), filepath.Join(strategist, "weapon-runtime", "openspec-propose"), "")
+	script, evidence, err := payload.MaterializeOpenSpec(embed.DefaultsFS(), filepath.Join(strategist, "weapon-runtime", "openspec-propose"), "")
 	require.NoError(t, err)
 	rel, err := filepath.Rel(strategist, script)
 	require.NoError(t, err)
@@ -569,7 +569,7 @@ func TestRankedHealthcheckTimeoutIsConfigurableAndBounded(t *testing.T) {
 func TestRankedHealthcheckReportsATimeoutDistinctFromAFailure(t *testing.T) {
 	sleep := absoluteTool(t, "sleep")
 	// 1s, not the timeout being tested (300ms): the process-group kill in
-	// runtimeenv.PrivateCommand (see command_unix.go) now reaps this
+	// env.PrivateCommand (see command_unix.go) now reaps this
 	// grandchild on cancellation, so the exact duration no longer dominates
 	// the test's wall time — kept short only as a margin against a platform
 	// where that fix is a no-op (command_windows.go).

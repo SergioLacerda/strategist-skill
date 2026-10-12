@@ -11,20 +11,21 @@ type missionRunKey struct{}
 
 // MissionRun tracks end-to-end mission timing and visible output volume.
 type MissionRun struct {
-	mu            sync.Mutex
-	MissionID     string
-	startedAt     time.Time
-	intakeAt      time.Time
-	scoutAt       time.Time
-	rangerAt      time.Time
-	archivistAt   time.Time
-	gateAt        time.Time
-	gateRespondAt time.Time
-	sniperAt      time.Time
-	linesOut      int64
-	tokensIn      int64
-	tokensOut     int64
-	silent        bool // when true, Finish skips EmitMissionMetrics
+	mu             sync.Mutex
+	MissionID      string
+	startedAt      time.Time
+	intakeAt       time.Time
+	scoutAt        time.Time
+	rangerAt       time.Time
+	archivistAt    time.Time
+	gateAt         time.Time
+	gateRespondAt  time.Time
+	sniperAt       time.Time
+	linesOut       int64
+	tokensIn       int64
+	tokensOut      int64
+	tokensObserved bool
+	silent         bool // when true, Finish skips EmitMissionMetrics
 }
 
 // NewMissionRun initializes a mission tracker.
@@ -87,6 +88,7 @@ func (m *MissionRun) SetTokens(in, out int64) {
 	m.mu.Lock()
 	m.tokensIn = in
 	m.tokensOut = out
+	m.tokensObserved = true
 	m.mu.Unlock()
 }
 
@@ -118,6 +120,7 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 		TotalWallTimeMS:      now.Sub(m.startedAt).Milliseconds(),
 		TokensIn:             m.tokensIn,
 		TokensOut:            m.tokensOut,
+		TokensObserved:       m.tokensObserved,
 		LinesEmitted:         m.linesOut,
 	}
 }

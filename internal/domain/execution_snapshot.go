@@ -126,6 +126,9 @@ type ExecutionSnapshot struct {
 	Version   int              `json:"version"`
 	MissionID string           `json:"mission_id"`
 	Groups    []ExecutionGroup `json:"groups"`
+	// Deferred lists accepted intents that have no execution resolver and were
+	// skipped explicitly (never silently).
+	Deferred []DeferredIntent `json:"deferred,omitempty"`
 }
 
 // Validate checks snapshot version, mission identity, and group uniqueness.
@@ -138,6 +141,9 @@ func (s ExecutionSnapshot) Validate() error {
 	}
 	if len(s.Groups) == 0 {
 		return fmt.Errorf("execution_snapshot_invalid: at least one group is required")
+	}
+	if err := validateDeferredIntents(s.Deferred); err != nil {
+		return err
 	}
 	return validateExecutionGroups(s.Groups)
 }

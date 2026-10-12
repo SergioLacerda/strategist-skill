@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,6 +126,23 @@ func TestReadMissionLifecycleForFiltersByMission(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Equal(t, "b", got[0].MarkerID)
+}
+
+func TestResolveOpenPhaseRunRequiresOneOpenRun(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lifecycle.jsonl")
+	recs := []MissionLifecycleRecord{
+		lifecycleRecord("m-1", string(domain.MarkerPhaseStarted), string(domain.PhaseRefinement), "r1", ""),
+	}
+	_, err := AppendMissionLifecycleRecords(path, recs)
+	require.NoError(t, err)
+	got, err := ResolveOpenPhaseRun(path, "m-1", string(domain.PhaseRefinement))
+	require.NoError(t, err)
+	assert.Equal(t, "r1", got)
+
+	_, err = AppendMissionLifecycleRecords(path, []MissionLifecycleRecord{lifecycleRecord("m-1|REFINEMENT|r1|phase_ended", string(domain.MarkerPhaseEnded), string(domain.PhaseRefinement), "r1", string(domain.EndCompleted))})
+	require.NoError(t, err)
+	_, err = ResolveOpenPhaseRun(path, "m-1", string(domain.PhaseRefinement))
+	assert.Error(t, err)
 }
 
 func appendWorker(path string, w, count int) error {

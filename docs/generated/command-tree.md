@@ -102,23 +102,9 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
 - `provider` — Validate and onboard local Strategist providers
   - `add` — Stage and bind a validated local provider
   - `validate` — Validate a local provider package without changing workspace state
-- `runbook` — Operate on the typed docs/runbooks/*.runbook.yaml corpus
-  - `select` — Select applicable runbooks for the given mission signals
+- `runbook` — Query provider-backed runbooks for mission signals
+  - `select` — Select applicable runbooks for mission signals
 - `sync-governance` — Sync .strategist/skill.yaml with explicitly provisioned governance
-- `treasure-chest` — Show treasure chest runtime status and index health
-  - `add` — Register a new treasure chest across active/governed/indexed layers
-  - `doctor` — Detect consistency drift across active.yaml, treasure-chests.yaml, and knowledge.index.yaml
-  - `index` — Rebuild the offline knowledge substrate (scan, propose jewels, refresh compiled index)
-  - `items` — Inspect and curate jewels and potions regardless of curation status
-    - `accept` — Promote item ids to status: accepted
-    - `check-evidence` — Advisory scan for expired, duplicate, or conflicting jewels in a chest
-    - `deprecate` — Mark item ids as status: deprecated
-    - `list` — List items (jewels and/or potions), optionally filtered by kind, status, or chest
-    - `migrate-status` — One-time migration: rewrite legacy status: active jewels to status: accepted
-    - `show` — Show a single item's (jewel or potion) full content
-    - `verify` — Promote item ids to status: verified (requires --evidence)
-  - `list` — Show treasure chest runtime status (explicit name for the default view)
-  - `remove` — Tombstone a treasure chest (mark inactive, do not hard-delete)
 - `upgrade` — Reconcile an installed .strategist/ runtime against the current embedded defaults
 - `validate` — Validate the .strategist/ configuration tree
 - `version` — Print the strategist version

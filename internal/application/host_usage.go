@@ -13,12 +13,12 @@ import (
 // own session files, already projected to numbers by an observer. The values
 // are counters the host wrote, not numbers an agent declared.
 type HostObservedUsageInput struct {
-	MissionID, Phase, Role, InvocationID string
-	Host, SessionID, Provider            string
-	Models                               []string
-	WindowStart, WindowEnd               time.Time
-	Calls                                int
-	Input, Output, Cache, Reasoning      *int64
+	MissionID, Phase, Role, InvocationID, PhaseRunID string
+	Host, SessionID, Provider                        string
+	Models                                           []string
+	WindowStart, WindowEnd                           time.Time
+	Calls                                            int
+	Input, Output, Cache, Reasoning                  *int64
 }
 
 // RecordHostObservedUsage persists one observed window as an incremental
@@ -28,14 +28,10 @@ type HostObservedUsageInput struct {
 // that sees different counts in the same window is a conflict, because the
 // host file can lag the live conversation. The artifact requirement applies.
 func RecordHostObservedUsage(root, basePath string, in HostObservedUsageInput, now time.Time, ports MissionUsagePorts) (MissionUsageResult, error) {
-	if ports.MissionKnown == nil || ports.Append == nil {
-		return MissionUsageResult{}, errors.New("mission observe-usage: usage ports are required")
-	}
-	rec, err := hostObservationRecord(in, now)
-	if err != nil {
-		return MissionUsageResult{}, err
-	}
-	return persistMissionUsage(root, basePath, rec, ports)
+	return recordMissionUsage(root, basePath, in.MissionID, in.Phase, in.PhaseRunID, ports, "mission observe-usage: usage ports are required", func(resolved string) (MissionUsageRecord, error) {
+		in.PhaseRunID = resolved
+		return hostObservationRecord(in, now)
+	})
 }
 
 func hostObservationRecord(in HostObservedUsageInput, now time.Time) (MissionUsageRecord, error) {
@@ -48,7 +44,7 @@ func hostObservationRecord(in HostObservedUsageInput, now time.Time) (MissionUsa
 	}
 	rec := MissionUsageRecord{
 		EventID:   fmt.Sprintf("host|%s|%s|%s|%s", in.Host, in.SessionID, in.WindowStart.UTC().Format(time.RFC3339), in.WindowEnd.UTC().Format(time.RFC3339)),
-		MissionID: in.MissionID, Phase: phase, Role: in.Role, InvocationID: in.InvocationID,
+		MissionID: in.MissionID, Phase: phase, Role: in.Role, InvocationID: in.InvocationID, PhaseRunID: in.PhaseRunID,
 		Attempt: 1, UsageScope: "window", RecordKind: string(domain.UsageKindIncremental),
 		Provider: defaultString(in.Provider, "unknown"), Model: modelLabel(in.Models),
 		MeasurementSource: string(domain.UsageSourceHostCounter), MeasurementQuality: string(domain.UsageHostMeasured),

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/rolevalidation"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/validation"
 )
 
 func collectCheckDiagnostics(root string, cfg domain.ActiveConfig, providers map[string]string, resolutions map[string]slotResolution, language *domain.PreflightLanguage) ([]string, []weaponBinding) {

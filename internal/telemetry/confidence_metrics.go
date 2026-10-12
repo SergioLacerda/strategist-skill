@@ -15,6 +15,8 @@ type ConfidenceRecord struct {
 	MissionID          string   `json:"mission_id,omitempty"`
 	Run                string   `json:"run,omitempty"`
 	ClaimID            string   `json:"claim_id"`
+	Statement          string   `json:"statement,omitempty"`
+	Result             string   `json:"result,omitempty"`
 	Agent              string   `json:"agent"`
 	CorrelationKey     string   `json:"correlation_key,omitempty"`
 	ClaimKind          string   `json:"claim_kind"`

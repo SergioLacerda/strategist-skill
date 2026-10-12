@@ -49,6 +49,7 @@ var allowedGroundTruthOutcomes = stringSet(GroundTruthCorrect, GroundTruthIncorr
 type ConfidenceClaim struct {
 	ID                 string   `yaml:"id" json:"id"`
 	Statement          string   `yaml:"statement" json:"statement"`
+	Result             string   `yaml:"result,omitempty" json:"result,omitempty"`
 	Agent              string   `yaml:"agent,omitempty" json:"agent,omitempty"`
 	CorrelationKey     string   `yaml:"correlation_key,omitempty" json:"correlation_key,omitempty"`
 	ClaimKind          string   `yaml:"claim_kind" json:"claim_kind"`

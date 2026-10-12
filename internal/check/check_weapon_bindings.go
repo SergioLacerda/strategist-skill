@@ -72,13 +72,14 @@ func verifyOneWeaponBinding(root, skillID, canonicalRole string, weaponContract 
 	}
 	b.Slot = roleCfg.Slot
 
-	if roleSlotMapErr != nil {
-		b.Reason = fmt.Sprintf("roles/default.yaml unreadable: %v", roleSlotMapErr)
-		return b
-	}
-	if roleSlotMap[roleCfg.Slot] != canonicalRole {
-		b.Reason = fmt.Sprintf("roles/default.yaml maps slot %q to %q, not %q", roleCfg.Slot, roleSlotMap[roleCfg.Slot], canonicalRole)
-		return b
+	// A support slot (JEWELER's `treasure`) is intentionally outside the three
+	// mission checkpoints that roles/default.yaml maps (docs/adr/0070); only a
+	// pipeline slot is held to that mapping.
+	if !isSupportSlot(roleCfg.Slot) {
+		if reason := pipelineSlotMapReason(roleCfg.Slot, canonicalRole, roleSlotMap, roleSlotMapErr); reason != "" {
+			b.Reason = reason
+			return b
+		}
 	}
 	if err := validateWeaponBoundary(roleCfg.Slot, canonicalRole, weaponContract); err != nil {
 		b.Reason = err.Error()
@@ -120,4 +121,30 @@ func requireSkillPayload(root string, b weaponBinding) weaponBinding {
 		b.Reason = fmt.Sprintf("embedded weapon payload missing or empty: %s", path)
 	}
 	return b
+}
+
+// isSupportSlot reports a known slot that is not one of the three required
+// pipeline slots.
+func isSupportSlot(slot string) bool {
+	if !domain.IsValidSlot(slot) {
+		return false
+	}
+	for _, required := range domain.RequiredSlots() {
+		if string(required) == slot {
+			return false
+		}
+	}
+	return true
+}
+
+// pipelineSlotMapReason returns why roles/default.yaml does not map slot to
+// canonicalRole, or "" when it does.
+func pipelineSlotMapReason(slot, canonicalRole string, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) string {
+	if roleSlotMapErr != nil {
+		return fmt.Sprintf("roles/default.yaml unreadable: %v", roleSlotMapErr)
+	}
+	if roleSlotMap[slot] != canonicalRole {
+		return fmt.Sprintf("roles/default.yaml maps slot %q to %q, not %q", slot, roleSlotMap[slot], canonicalRole)
+	}
+	return ""
 }

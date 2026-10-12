@@ -6,7 +6,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/SergioLacerda/strategist-skill/internal/telemetryverify"
+	telemetryverify "github.com/SergioLacerda/strategist-skill/internal/telemetry/verify"
 	"github.com/spf13/cobra"
 )
 

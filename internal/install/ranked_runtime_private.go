@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/env"
+	"github.com/SergioLacerda/strategist-skill/internal/runtime/payload"
 )
 
 // rankedExecutable is how a Ranked provider command is launched: a bare name
@@ -22,7 +22,7 @@ type rankedExecutable struct {
 var findHostNode = exec.LookPath
 
 var hostNodeVersion = func(ctx context.Context, root, node string) ([]byte, error) {
-	cmd, err := runtimeenv.PrivateCommand(ctx, root, node, "--version")
+	cmd, err := env.PrivateCommand(ctx, root, node, "--version")
 	if err != nil {
 		return nil, fmt.Errorf("prepare host Node version command: %w", err)
 	}
@@ -53,11 +53,11 @@ func resolveHostNodeRuntime(ctx context.Context, strategistDir, providerID, weap
 	// its certificate to match. Installation also preserves user-modified files
 	// unless --force, so a stale or tampered tree survives a reinstall. The
 	// embedded copy is the authority; the extracted one is not.
-	defaults, ok := runtimepayload.DefaultOpenSpec()
+	defaults, ok := payload.DefaultOpenSpec()
 	if !ok {
 		return rankedExecutable{}, nil, fmt.Errorf("embedded OpenSpec defaults are unavailable; rebuild Strategist with the embedded skill bundle")
 	}
-	script, evidence, err := runtimepayload.MaterializeOpenSpec(defaults, dest, weaponVersion)
+	script, evidence, err := payload.MaterializeOpenSpec(defaults, dest, weaponVersion)
 	if err != nil {
 		return rankedExecutable{}, nil, fmt.Errorf("embedded OpenSpec runtime: %w", err)
 	}
@@ -76,7 +76,7 @@ func resolveHostNodeRuntime(ctx context.Context, strategistDir, providerID, weap
 func resolveHostNode(ctx context.Context, strategistDir string) (string, error) {
 	node, err := findHostNode("node")
 	if err != nil {
-		return "", &runtimeenv.ExecutableNotFoundError{Name: "node", Err: err}
+		return "", &env.ExecutableNotFoundError{Name: "node", Err: err}
 	}
 	versionOut, err := hostNodeVersion(ctx, strategistDir, node)
 	if err != nil {

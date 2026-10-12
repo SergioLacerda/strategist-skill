@@ -50,7 +50,7 @@ require_absent_regex docs/onboarding/readme-en.md 'CI-passing|version-1\.0'
 require_contains docs/onboarding/readme-en.md 'actions/workflows/test.yml/badge.svg'
 require_contains docs/onboarding/readme-en.md 'img.shields.io/github/v/release/SergioLacerda/strategist-skill'
 
-for pkg in dojo governance integrity i18n runtimefs treasure validate; do
+for pkg in dojo governance integrity i18n filesystem treasure runtime/validate; do
   require_contains docs/architecture/overview.md "  ${pkg}/"
 done
 

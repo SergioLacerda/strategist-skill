@@ -170,6 +170,11 @@ func DecideRuntimeDefaultUpdate(in RuntimeDefaultDecisionInput) RuntimeDefaultDe
 	return RuntimeDecisionConflict
 }
 
+// staleRepairHint is the repair every stale-runtime diagnostic recommends:
+// plan, then upgrade without --force. It states what --force touches because a
+// forced install used to be recommended without that warning.
+const staleRepairHint = "run strategist upgrade --dry-run, then strategist upgrade; strategist install --force overwrites normative runtime files only and never rewrites active.yaml, plugins.lock or .config.lock (use --reset-config for that)"
+
 // FormatRuntimeStaleDiagnostic formats the user-facing check/install diagnostic for a stale file.
 func FormatRuntimeStaleDiagnostic(path string, decision RuntimeDefaultDecision) string {
 	switch decision {
@@ -178,12 +183,12 @@ func FormatRuntimeStaleDiagnostic(path string, decision RuntimeDefaultDecision) 
 	case RuntimeDecisionDowngrade:
 		return fmt.Sprintf("runtime_newer_than_binary: normative file %q was installed by a newer strategist binary than the one running — update the binary (make install) instead of reinstalling, or pass --allow-downgrade to roll back deliberately", path)
 	case RuntimeDecisionConflict:
-		return fmt.Sprintf("runtime_stale_conflict: normative file %q differs from embedded default and previous installed default — inspect the file or run strategist install --force", path)
+		return fmt.Sprintf("runtime_stale_conflict: normative file %q differs from embedded default and previous installed default — inspect the file, or %s", path, staleRepairHint)
 	case RuntimeDecisionUnknownManifest:
-		return fmt.Sprintf("runtime_stale_unknown_manifest: normative file %q differs from embedded default and no install manifest entry exists — run strategist install --force once unless local edits must be preserved manually", path)
+		return fmt.Sprintf("runtime_stale_unknown_manifest: normative file %q differs from embedded default and no install manifest entry exists — %s", path, staleRepairHint)
 	case RuntimeDecisionWriteMissing, RuntimeDecisionKeepCurrent, RuntimeDecisionForceOverwrite:
-		return fmt.Sprintf("runtime_stale: normative file %q differs from embedded default — run strategist install --force", path)
+		return fmt.Sprintf("runtime_stale: normative file %q differs from embedded default — %s", path, staleRepairHint)
 	default:
-		return fmt.Sprintf("runtime_stale: normative file %q differs from embedded default — run strategist install --force", path)
+		return fmt.Sprintf("runtime_stale: normative file %q differs from embedded default — %s", path, staleRepairHint)
 	}
 }
