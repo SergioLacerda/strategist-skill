@@ -22,6 +22,28 @@ provider never mutates `Makefile` or creates shell scripts itself).
 | `make/quality.mk` | lint, complexity/file-size reports, coverage, `test-report` |
 | `make/governance.mk` | convergence/governance/docs/contract/analysis-structure gates |
 | `make/release.mk` | goreleaser targets, install, clean |
+| `make/workflows.mk` | workflow and shell static-analysis targets |
+| `make/docs.mk` | generated documentation targets |
+
+## Target and .PHONY Ownership
+
+Each recipe target has one owning Makefile or make/*.mk file, and each
+.PHONY target is declared once beside that ownership. The root Makefile
+declares only the cross-domain composites ci-lint, ci-test, and ci.
+treasure-chest-tmp is owned by make/go.mk.
+
+The live provider targets live-jev and live-calibration, plus the manual
+eval-promptfoo target, intentionally remain outside .PHONY and all automatic
+build and CI chains. The embed-skills and embed-skills-check targets remain
+public compatibility aliases for the canonical embedded generation targets.
+
+The docs-generate target owns one explicit, ordered DOC_GENERATOR_SCRIPTS list.
+The list is reused by the recipe without filename globbing, and remains
+sequential because the generators have not been proven independent. The
+recursive sub-makes in lint, lint-fix, validate-all, and
+docs-generated-gate are retained where they preserve ordering, environment
+inheritance, or a reusable phony target boundary; they are not replaced by
+textual recipe duplication.
 
 ## Scripts
 

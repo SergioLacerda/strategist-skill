@@ -1,5 +1,15 @@
 .PHONY: docs-generate
 
+DOC_GENERATOR_SCRIPTS := \
+	scripts/generate-command-tree.sh \
+	scripts/generate-schema-index.sh \
+	scripts/generate-contract-index.sh \
+	scripts/generate-event-catalog.sh \
+	scripts/generate-taxonomy-inventory.sh \
+	scripts/generate-quality-budgets.sh \
+	scripts/generate-coverage-policy.sh \
+	scripts/generate-eval-scenarios.sh
+
 # docs-generate regenerates every file under docs/generated/ from its
 # deterministic source. Running it twice with no source changes must produce
 # zero diff — that determinism is what docs-generated-gate (make/governance.mk)
@@ -9,11 +19,4 @@
 # up to date with the current source — run `make build` first if it is stale.
 docs-generate:
 	@mkdir -p docs/generated
-	bash scripts/generate-command-tree.sh
-	bash scripts/generate-schema-index.sh
-	bash scripts/generate-contract-index.sh
-	bash scripts/generate-event-catalog.sh
-	bash scripts/generate-taxonomy-inventory.sh
-	bash scripts/generate-quality-budgets.sh
-	bash scripts/generate-coverage-policy.sh
-	bash scripts/generate-eval-scenarios.sh
+	@set -e; for generator in $(DOC_GENERATOR_SCRIPTS); do bash "$$generator"; done
