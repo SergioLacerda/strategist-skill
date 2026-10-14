@@ -192,8 +192,9 @@ stage runs only if the previous stage did not reach `stop_when: sufficient_evide
    bounded, reasoned selection (at most one primary, at most two supporting
    runbooks, each with a non-empty match reason) distinct from Search's own
    unstructured jewel/potion relevance matching (see
-   `roles/ranger.yaml#canonical.select_runbook`). **Ranger MUST run `strategist
-   runbook select --format json --signal <signal> ...` at this point**, with one
+   `roles/ranger.yaml#canonical.select_runbook`). **Ranger MUST run
+   `strategist runbook select --mission <mission_id> --format json --signal <signal> ...`
+   at this point**, with one
    `--signal` per mission signal (the mission's `task_type`, the Scout
    `discovery_subtype`, and the salient keywords of the request), and record the
    command, the signals and its result in the analysis artifact. No provider

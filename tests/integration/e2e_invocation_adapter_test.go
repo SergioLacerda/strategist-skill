@@ -21,11 +21,13 @@ func startDiscoveryMission(t *testing.T, workspace, missionID string) {
 	for _, args := range [][]string{
 		{"mission", "start", "--mission-id", missionID},
 		{"mission", "submit", "--mission-id", missionID, "--event", "bootstrap_done"},
-		{"mission", "submit", "--mission-id", missionID, "--event", "intake_done"},
 	} {
 		res := runStrategistCLI(t, workspace, args...)
 		require.Equal(t, 0, res.exitCode, res.output())
 	}
+	recordE2ERoute(t, workspace, missionID)
+	res := runStrategistCLI(t, workspace, "mission", "submit", "--mission-id", missionID, "--event", "intake_done")
+	require.Equal(t, 0, res.exitCode, res.output())
 }
 
 func artifactText(t *testing.T, workspace, missionID string) string {

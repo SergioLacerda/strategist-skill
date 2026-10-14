@@ -68,6 +68,14 @@ func runCheck(t *testing.T, root string) (map[string]any, error) {
 	t.Helper()
 	reader, writer, err := os.Pipe()
 	require.NoError(t, err)
+	// Drain the pipe while the command runs: a report larger than the OS pipe
+	// buffer would otherwise block the write and deadlock the test.
+	var out bytes.Buffer
+	drained := make(chan error, 1)
+	go func() {
+		_, readErr := out.ReadFrom(reader)
+		drained <- readErr
+	}()
 	original := os.Stdout
 	os.Stdout = writer
 	cmd := &cobra.Command{Use: "strategist", SilenceUsage: true, SilenceErrors: true}
@@ -78,9 +86,7 @@ func runCheck(t *testing.T, root string) (map[string]any, error) {
 	runErr := cmd.Execute()
 	os.Stdout = original
 	require.NoError(t, writer.Close())
-	var out bytes.Buffer
-	_, err = out.ReadFrom(reader)
-	require.NoError(t, err)
+	require.NoError(t, <-drained)
 	var report map[string]any
 	if start := bytes.IndexByte(out.Bytes(), '{'); start >= 0 {
 		require.NoError(t, json.NewDecoder(bytes.NewReader(out.Bytes()[start:])).Decode(&report), out.String())

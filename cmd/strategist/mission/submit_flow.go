@@ -49,6 +49,7 @@ func preflightSubmit(deps LifecycleDependencies, root, basePath, missionID strin
 	result, err := application.PreflightSubmit(application.SubmitPreflightRequest{
 		Root: root, BasePath: basePath, MissionID: missionID, Status: status, Event: evt,
 	}, application.SubmitPreflightPorts{
+		RequireRecordedRoute:         requireRecordedRoute,
 		RequireNoAcceptedSideQuest:   preflightSideQuestGuard,
 		RequireAuthoredPackageRepair: preflightRepairGuard,
 		ValidateArtifacts:            preflightArtifactGuard,

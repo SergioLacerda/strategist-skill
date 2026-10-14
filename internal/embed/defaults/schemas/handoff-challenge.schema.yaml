@@ -1,0 +1,91 @@
+schema_version: "1"
+description: >
+  On-disk shape of the YAML files passed to `strategist handoff evaluate-ranger`,
+  `strategist handoff evaluate` and the diagnostic `strategist handoff verify` through
+  --challenges and --ack. The receiver of a handoff (Archivist for ranger_to_archivist,
+  Sniper for archivist_to_sniper) answers the challenges in the acknowledgment; the
+  command compares them deterministically. A cmd/strategist test keeps these fields
+  equal to the decoded Go types. UTF-8 is required; a leading byte order mark is
+  tolerated.
+
+challenges_file:
+  top_level_key: challenges
+  type: list
+  item_fields:
+    id:
+      type: string
+      required: true
+      description: Stable challenge id, cited by the acknowledgment's challenge_refs.
+    type:
+      type: string
+      required: true
+      allowed_values_by_transition:
+        ranger_to_archivist: [recall, boundary, classification, verdict]
+        archivist_to_sniper: [objective, boundary, classification, gate, counterfactual]
+        sniper_to_validation: [boundary, classification, counterfactual]
+    source_refs:
+      type: list
+      required: true
+      description: >
+        Ids the receiver must restate in understood_refs: known_facts / side quest /
+        uncertainty ids for ranger_to_archivist; task ids, scope globs and question ids
+        for archivist_to_sniper.
+    critical:
+      type: boolean
+      required: false
+      description: A failed critical challenge fails the outcome.
+    expected_classification:
+      type: map
+      required: false
+      description: >
+        For type classification: ref id to expected class. ranger_to_archivist uses the
+        receiver's own labels for known facts versus uncertainties (for example known_fact,
+        uncertainty); archivist_to_sniper uses approved_decision or unresolved_question.
+    expected_gate_allowed:
+      type: boolean
+      required: false
+      description: For type gate, whether the accepted gate allows materialization.
+    expected_counterfactual:
+      type: boolean
+      required: false
+      description: For type counterfactual, the correct yes/no answer.
+
+ack_file:
+  fields:
+    challenge_refs:
+      type: list
+      required: true
+      description: Every challenge id being answered.
+    understood_refs:
+      type: list
+      required: true
+      description: Every source_ref the receiver restates; a missing ref fails its challenge.
+    classifications:
+      type: map
+      required: false
+      description: Ref id to the class the receiver assigns; compared with expected_classification.
+    gate_allowed:
+      type: boolean
+      required: false
+      description: The receiver's reading of the gate state; compared with expected_gate_allowed.
+    counterfactual_answers:
+      type: map
+      required: false
+      description: Counterfactual challenge id to the boolean answer given.
+
+example:
+  challenges: |
+    challenges:
+      - id: C-RECALL
+        type: recall
+        critical: true
+        source_refs: [KF-01, KF-03]
+      - id: C-CLASS
+        type: classification
+        critical: true
+        source_refs: [KF-01, U-01]
+        expected_classification: {KF-01: known_fact, U-01: uncertainty}
+  ack: |
+    challenge_refs: [C-RECALL, C-CLASS]
+    understood_refs: [KF-01, KF-03, U-01]
+    classifications: {KF-01: known_fact, U-01: uncertainty}

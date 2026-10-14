@@ -61,10 +61,14 @@ They are guidance (`enforced_by: agent_only`), not a gate.
 - Do not discard stderr of `strategist` commands, and read the returned status or JSON. A
   `mission submit` that printed an error was not applied; check with `strategist mission status`
   before repeating it. Quote arguments so the shell does not word-split them.
+- Payloads piped to `strategist` (`mission route`, `mission complete`, confidence claims,
+  `--challenges`/`--ack` files) are UTF-8. A leading UTF-8 byte order mark, such as the one Windows
+  PowerShell 5.1 writes, is tolerated; any other encoding (UTF-16 from PowerShell `>`) is not.
 - Start each mission with `strategist mission start --mission-id <id>`, then
-  submit `bootstrap_done` before recording a route. After `mission route`,
-  submit `intake_done`; only then may a discovery Weapon be invoked. A missing
-  mission reported by `mission status` is not an initialized mission.
+  submit `bootstrap_done` before recording a route. `mission submit --mission-id <id> --event intake_done`
+  is rejected with `error=route_decision_missing` until `mission route` has recorded Scout's
+  decision (`machine_enforced`); only after `intake_done` may a discovery Weapon be invoked. A
+  missing mission reported by `mission status` is not an initialized mission.
 - Drive missions with the installed `strategist` binary. A binary built from a dirty working
   tree (version `...-dirty`) is acceptable only when the mission itself changes the CLI; record the
   version header in that case.
@@ -95,7 +99,7 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   Per-run reports must use the explicit lifecycle run identity. Never infer a run from a phase
   name, timestamps alone, or regenerated history.
 - No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
-  `intake_done`; submit it after `strategist mission route`.
+  `intake_done`; the recorded route is (see above).
 - When `strategist handoff evaluate` or `evaluate-ranger` prints a `delegation:` line, an enabled provider pre-checked
   the handoff's input/output conformance. `approved` means that check is satisfied and recorded: skip your own
   conformance self-check, but still supply the challenges and acknowledgment, which are never delegated. `signal`
@@ -113,7 +117,7 @@ They are guidance (`enforced_by: agent_only`), not a gate.
 - When asked to run a DOJO calibration case, read `contracts/machine/dojo-calibration.yaml` first: the agent
   generates skeletons, audits a sample, writes lessons and proposes operators, and never promotes a case,
   changes a label, pins a calibration or sends real content without the author's explicit consent flag.
-- Write the output of `strategist mission invoke --json` to a file and read fields from it with `jq`;
+- Write the output of `strategist mission invoke --mission-id <id> --role <role> --slot <slot> --json` to a file and read fields from it with `jq`;
   do not pipe it through `head` or `cut`. Each call issues a new request, so truncating the output and
   running the command again leaves the first request unfinished. Run it once per phase, then complete
   that `request_id`.
@@ -140,10 +144,10 @@ acceptance criteria. The Pipeline's explicit Approval Gate remains the only
 mandatory conversational pause.
 
 The compiled catalog is the authority for a Ranked Weapon. For
-`runtime.kind: embedded`, `strategist mission invoke --json` emits the canonical
+`runtime.kind: embedded`, `strategist mission invoke --mission-id <id> --role <role> --slot <slot> --json` emits the canonical
 payload. The current host executes that exact payload once under the emitted
 `input.execution_contract` and `input.output_contract`, then returns exactly one
-raw JSON completion to `strategist mission complete --request-id <id> --json`.
+raw JSON completion to `strategist mission complete --mission-id <id> --request-id <id> --json`.
 That bounded host-adapter execution is the configured Weapon invocation, not
 `direct_execution`; bypassing the emitted payload or adding the parent's own
 workflow, provider, or conclusions is `direct_execution`.

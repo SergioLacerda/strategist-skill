@@ -40,5 +40,5 @@ invariants:
     stays advisory, and no decisions plus no evidence reports not_evaluated, which is not a
     failure. internal/domain's EvaluateMissionQuality remains the only evaluator
   - the Critic and Mission Quality boundaries persist their confidence through
-    `strategist metrics record --agent response_critic|mission_quality` (or an explicit
+    `strategist metrics record --mission <id> --agent response_critic|mission_quality` (or an explicit
     missing-record); see confidence-governance.yaml#producers

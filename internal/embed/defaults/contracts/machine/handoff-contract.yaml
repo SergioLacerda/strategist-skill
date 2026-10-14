@@ -199,7 +199,7 @@ sniper_to_validation_policy:
     authorized. internal/mission/handoff already implements this transition in full —
     TransitionSniperToValidation, its own challenge-type set, SniperToValidationPolicy()
     (Enabled: false by default, matching ranger_to_archivist's own advisory-first
-    posture), and `strategist handoff verify --transition sniper_to_validation` invokes
+    posture), and `strategist handoff verify --mission-id <id> --transition sniper_to_validation --challenges <f> --ack <f>` invokes
     it — but this file, until now, named only the other two transitions, and
     Strategist's pipeline has no dedicated "Validator" role to consume the result.
     This entry documents existing, already-invocable code (ADR-0057 § design.md task

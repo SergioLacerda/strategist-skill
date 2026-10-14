@@ -75,8 +75,9 @@ func ValidateBudgetLedgerPath(path string) error {
 	if path == "" {
 		return nil
 	}
+	normalized := strings.ReplaceAll(path, "\\", "/")
 	clean := filepath.Clean(filepath.FromSlash(path))
-	if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+	if isAbsoluteReference(path) || strings.HasPrefix(normalized, "/") || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("%s: leveling.budget_ledger_path must stay below the Strategist root", ReasonLevelingBudgetLedgerPathInvalid)
 	}
 	return nil

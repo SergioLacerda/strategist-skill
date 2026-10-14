@@ -140,6 +140,38 @@ contract:
           "[Strategist] phase=preflight status=warn reason=directives_missing"
         Continue without behavioral directives.
       enforced_by: machine_enforced
+    # Added 2026-10-13 (20261013-drift-agente-cli, tasks 3.1/3.2): the
+    # invocation handshake. Readiness above says the mission can start; this
+    # says the command lines agents copy from runtime texts will be accepted.
+    - code: invocation_nonconformant
+      trigger: >
+        A `strategist …` command line in SKILL.md, agent-protocol.md, protocol.md,
+        contracts/ or roles/ names an unknown command or flag, or omits a flag the
+        running binary marks required (MarkFlagRequired or "(required)" in its usage).
+        A line with no flag is a mention, not an invocation, and is not checked for
+        required flags; alternatives (`a|b`) are illustrative and skipped.
+      behavior: >
+        Non-blocking advisory in PreflightResult.Warnings. Emit:
+          "[Strategist] phase=preflight status=warn reason=invocation_nonconformant file=<rel> line=<n> command=`<line>` detail=<problem>"
+        Continue; status and exit code are unchanged.
+      enforced_by: machine_enforced
+    # Added 2026-10-13 (20261013-drift-agente-cli, task 4.1). Every Role is
+    # expected in every workspace; providers are invoked only inside a mission.
+    - code: support_binding_unready
+      trigger: >
+        A role under roles/ declares select_runbook with must_invoke: true and the
+        JEWELER binding is not ready: STRATEGIST_TREASURE_CHEST_EXECUTABLE unset
+        (executable_not_configured), pointing to no file (executable_not_found),
+        plugins/catalog.yaml unreadable or invalid (catalog_unreadable,
+        catalog_invalid), the admitted treasure-chest-tmp Weapon absent
+        (weapon_not_admitted), or the binding rejected (binding_invalid).
+      behavior: >
+        Non-blocking advisory in PreflightResult.Warnings, one per dependent role. Emit:
+          "[Strategist] phase=preflight status=warn reason=support_binding_unready role=<role> feat=select_runbook binding=jeweler detail=<detail>"
+        The check inspects the binding only and never runs the provider; invoking
+        `strategist runbook select` still requires --mission and still fails inside a
+        mission when the binding is missing.
+      enforced_by: machine_enforced
 
   write_scope: read-only
 

@@ -12,7 +12,19 @@ import (
 // NewComplete builds `mission complete`, which consumes one raw host response
 // from stdin and delegates normalization to the production runtime.
 func NewComplete(deps InvocationDependencies) *cobra.Command {
-	cmd := &cobra.Command{Use: "complete", Short: "Complete one embedded Weapon invocation"}
+	cmd := &cobra.Command{
+		Use:   "complete",
+		Short: "Complete one embedded Weapon invocation",
+		Long: `Complete one embedded Weapon invocation issued by ` + "`mission invoke`" + `. Exactly one
+JSON object is read from stdin:
+
+  {"request_id": "<id printed by mission invoke>", "result": "<raw Weapon output>"}
+
+No other field is accepted; authority-bearing metadata comes from the durable
+request, never from the completion.
+
+Input is UTF-8; a leading UTF-8 byte order mark is tolerated.`,
+	}
 	f := bindInvocationFlags(cmd, deps)
 	cmd.Flags().StringVar(&f.requestID, "request-id", "", "pending invocation request identifier (required)")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {

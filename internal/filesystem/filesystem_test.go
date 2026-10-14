@@ -31,6 +31,7 @@ func TestIsMissingPathDistinguishesMissingAncestorsFromFileAncestors(t *testing.
 	blocker := filepath.Join(dir, "blocker")
 	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
 	assert.False(t, filesystem.IsMissingPath(filepath.Join(blocker, "file"), os.ErrNotExist))
+	assert.False(t, filesystem.IsMissingPath(blocker, os.ErrNotExist))
 	assert.False(t, filesystem.IsMissingPath(filepath.Join(dir, "file"), os.ErrPermission))
 }
 

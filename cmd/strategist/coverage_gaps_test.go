@@ -288,8 +288,10 @@ func TestCoverageAdditionalProviderAndCompletionBranches(t *testing.T) {
 	failingAfterFirst := &failAfterFirstWriter{}
 	require.Error(t, printProviderReport(failingAfterFirst, providerpkg.Report{Reasons: []providerpkg.Reason{{Code: "bad", Detail: "reason"}}}))
 
-	assert.Equal(t, filepath.Join(os.Getenv("HOME"), ".codex"), codexHomeDir(nil))
-	_, err := loadCompletableInvocation(missionruntime.InvocationStore{}, missionadapter.InvocationCompleteInput{RequestID: "missing-request"})
+	userHome, err := os.UserHomeDir()
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(userHome, ".codex"), codexHomeDir(nil))
+	_, err = loadCompletableInvocation(missionruntime.InvocationStore{}, missionadapter.InvocationCompleteInput{RequestID: "missing-request"})
 	require.Error(t, err)
 
 	criticalRoot := filepath.Join(t.TempDir(), ".strategist")

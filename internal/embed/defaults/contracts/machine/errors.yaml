@@ -385,6 +385,13 @@ errors:
     action: "stop; complete the missing phase and resume through the pipeline"
     enforced_by: machine_enforced
 
+  - token: route_decision_missing
+    emit: "error=route_decision_missing"
+    scope: intake
+    reason: "intake_done was submitted before Scout's route_decision was recorded for the mission"
+    action: "record the decision with `strategist mission route --mission-id <id>`, then submit intake_done again"
+    enforced_by: machine_enforced
+
   - token: already_claimed
     emit: "blocked reason=already_claimed"
     scope: claim

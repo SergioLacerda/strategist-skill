@@ -106,6 +106,14 @@ func IsMissingPath(path string, err error) bool {
 	if !errors.Is(err, os.ErrNotExist) {
 		return false
 	}
+	// Some platforms report directory operations on an existing regular file
+	// with a not-found-style error. The target itself takes precedence over the
+	// parent walk: an existing file is not an absent optional path.
+	if _, statErr := os.Stat(path); statErr == nil {
+		return false
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return false
+	}
 	return existingAncestorIsDirectory(filepath.Dir(path))
 }
 

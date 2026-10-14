@@ -242,6 +242,11 @@ long: |
   intake label and can only make the result stricter. The Approval Gate must
   already be accepted. Entering execution (mission submit --event
   handoff_challenge_satisfied) verifies and consumes this outcome.
+  
+  --challenges and --ack are YAML files shaped by
+  schemas/handoff-challenge.schema.yaml (challenge types objective, boundary,
+  classification, gate and counterfactual).
+  Input is UTF-8; a leading UTF-8 byte order mark is tolerated.
 flag: --ack (string) default="" usage="path to an acknowledgment YAML file (needed when the package requires the challenge)"
 flag: --challenges (string) default="" usage="path to a challenges YAML file (needed when the package requires the challenge)"
 flag: --confidence-summary (string) default="" usage="optional YAML file with the declared handoff confidence_summary; without it a missing-record is written"
@@ -252,6 +257,13 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 == strategist handoff evaluate-ranger
 use: evaluate-ranger
 short: Evaluate and persist the Ranger-to-Archivist lifecycle outcome
+long: |
+  Evaluate and persist the Ranger-to-Archivist lifecycle outcome. When the
+  analysis artifact's typed facts require a challenge, pass --challenges and
+  --ack: YAML files shaped by schemas/handoff-challenge.schema.yaml (challenge
+  types recall, boundary, classification, and verdict for evaluation missions).
+  
+  Input is UTF-8; a leading UTF-8 byte order mark is tolerated.
 flag: --ack (string) default="" usage="path to an acknowledgment YAML file when the typed facts require a challenge"
 flag: --challenges (string) default="" usage="path to a challenges YAML file when the typed facts require a challenge"
 flag: --mission-id (string) default="" usage="mission whose Ranger-to-Archivist handoff is evaluated (required)"
@@ -277,7 +289,9 @@ short: Verify a Handoff Challenge acknowledgment and record the result
 long: |
   Runs internal/mission/handoff.Verify deterministically against a challenges file and
   an acknowledgment file, prints the result, and appends a ChallengeRecord to
-  .strategist/memory/handoff-challenges.jsonl.
+  .strategist/memory/handoff-challenges.jsonl. Both files are YAML shaped by
+  schemas/handoff-challenge.schema.yaml.
+  Input is UTF-8; a leading UTF-8 byte order mark is tolerated.
   
   This gives the LLM agent embodying a Strategist role (Ranger, Archivist,
   Sniper) a scriptable, deterministic tool to invoke instead of reasoning
@@ -550,6 +564,15 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 == strategist metrics record
 use: record
 short: Record a confidence claim or an explicit missing-record for a boundary
+long: |
+  Record a confidence claim or an explicit missing-record for a boundary.
+  Pipe the claim document with --claim-file - (or name a file outside the
+  workspace base_path). The YAML document has the top-level keys claim: (one
+  claim mapping) or claims: (a list of claim mappings), plus an optional
+  evidence: list; see machine/confidence-governance.yaml#producers. Use
+  --missing --correlation-key <key> --reason <why> when no claim exists.
+  
+  Input is UTF-8; a leading UTF-8 byte order mark is tolerated.
 flag: --agent (string) default="" usage="producing agent (required)"
 flag: --claim-file (string) default="" usage="YAML document holding one claim: or a claims: list, with its evidence: list; \"-\" reads it from standard input (preferred: no file is created), and a file inside the workspace base_path is rejected"
 flag: --correlation-key (string) default="" usage="boundary correlation key (with --missing)"
@@ -593,6 +616,16 @@ flag: --slug (string) default="" usage="title slug used when the canonical ADR d
 == strategist mission complete
 use: complete
 short: Complete one embedded Weapon invocation
+long: |
+  Complete one embedded Weapon invocation issued by `mission invoke`. Exactly one
+  JSON object is read from stdin:
+  
+    {"request_id": "<id printed by mission invoke>", "result": "<raw Weapon output>"}
+  
+  No other field is accepted; authority-bearing metadata comes from the durable
+  request, never from the completion.
+  
+  Input is UTF-8; a leading UTF-8 byte order mark is tolerated.
 flag: --json (bool) default="false" usage="emit machine-readable JSON"
 flag: --mission-id (string) default="" usage="mission identifier (required)"
 flag: --request-id (string) default="" usage="pending invocation request identifier (required)"
@@ -737,6 +770,16 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 == strategist mission route
 use: route
 short: Record Scout's route decision for a mission (JSON on stdin)
+long: |
+  Record Scout's route decision for a mission. The decision is one JSON object
+  read from stdin, shaped by schemas/scout-route-decision.schema.yaml (mission_id,
+  role, component, request_category, selected_route, route_reason,
+  route_confidence, evidence_state, discovery_subtype when full_pipeline needs
+  discovery, fallback_route, gate_required). The first recorded decision wins;
+  a replay is reported as already_recorded. intake_done is rejected until a
+  decision is recorded.
+  
+  Input is UTF-8; a leading UTF-8 byte order mark is tolerated.
 flag: --json (bool) default="false" usage="emit machine-readable JSON"
 flag: --mission-id (string) default="" usage="mission identifier (required)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
@@ -948,7 +991,7 @@ use: select
 short: Select applicable runbooks for mission signals
 flag: --correlation (string) default="" usage="correlation identifier"
 flag: --format (string) default="table" usage="output format: table or json"
-flag: --mission (string) default="" usage="mission identifier"
+flag: --mission (string) default="" usage="mission identifier (required) — runbooks are selected only inside a mission"
 flag: --provider-executable (string) default="" usage="explicit TREASURE-CHEST-TMP executable"
 flag: --requester (string) default="ranger" usage="authorized consumer role: ranger or archivist"
 flag: --signal (stringArray) default="[]" usage="mission signal to match (repeatable; at least one required)"

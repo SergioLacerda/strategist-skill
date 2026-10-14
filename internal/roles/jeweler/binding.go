@@ -18,6 +18,10 @@ const (
 	BindingEntrypoint  = "invoke"
 )
 
+// ExecutableEnv names the host binding that supplies the admitted provider
+// executable. It is never discovered from PATH.
+const ExecutableEnv = "STRATEGIST_TREASURE_CHEST_EXECUTABLE"
+
 // ProviderBinding is the explicit runtime handoff from ROSTER to JEWELER.
 //
 // ROSTER remains responsible for selecting and pinning the Weapon. The

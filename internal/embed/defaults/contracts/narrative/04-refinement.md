@@ -128,7 +128,7 @@ Archivist (`refinement`)
   `unresolved_questions` and `forbidden_scope` as lists, `destructive_operation_possible`,
   `security_sensitive_task` and `informational_only` as booleans. Every field is required and
   nothing is inferred from prose; `informational_only: true` is rejected when any require fact
-  holds. Publish it with `strategist mission normalize-openspec --handoff-facts <file>` (a YAML
+  holds. Publish it with `strategist mission normalize-openspec --mission-id <id> --change-id <change_id> --handoff-facts <file>` (a YAML
   mapping of those fields); without the flag the command warns, and a package without the block
   has no evaluable handoff policy and cannot enter execution. An amendment keeps `analysis.md`
   byte-identical, so the facts are declared at publication, not by `--amend`.

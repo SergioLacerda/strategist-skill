@@ -39,7 +39,12 @@ blocks it. A passed or skipped outcome does not enter execution by itself.
 The policy is never chosen by the caller. --risk-level is the optional coarse
 intake label and can only make the result stricter. The Approval Gate must
 already be accepted. Entering execution (mission submit --event
-handoff_challenge_satisfied) verifies and consumes this outcome.`,
+handoff_challenge_satisfied) verifies and consumes this outcome.
+
+--challenges and --ack are YAML files shaped by
+schemas/handoff-challenge.schema.yaml (challenge types objective, boundary,
+classification, gate and counterfactual).
+Input is UTF-8; a leading UTF-8 byte order mark is tolerated.`,
 	SilenceUsage: true,
 }
 

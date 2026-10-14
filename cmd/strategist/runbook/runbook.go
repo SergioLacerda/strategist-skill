@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const providerExecutableEnv = "STRATEGIST_TREASURE_CHEST_EXECUTABLE"
+const providerExecutableEnv = jeweler.ExecutableEnv
 
 type options struct {
 	root, executable, requester, mission, correlation, format string
@@ -42,7 +42,7 @@ func Register(root *cobra.Command) {
 	selectCmd.Flags().StringVar(&opts.format, "format", opts.format, "output format: table or json")
 	selectCmd.Flags().StringVar(&opts.executable, "provider-executable", "", "explicit TREASURE-CHEST-TMP executable")
 	selectCmd.Flags().StringVar(&opts.requester, "requester", opts.requester, "authorized consumer role: ranger or archivist")
-	selectCmd.Flags().StringVar(&opts.mission, "mission", "", "mission identifier")
+	selectCmd.Flags().StringVar(&opts.mission, "mission", "", "mission identifier (required) — runbooks are selected only inside a mission")
 	selectCmd.Flags().StringVar(&opts.correlation, "correlation", "", "correlation identifier")
 	parent.AddCommand(selectCmd)
 	root.AddCommand(parent)

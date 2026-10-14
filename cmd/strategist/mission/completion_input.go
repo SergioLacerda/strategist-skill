@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -15,8 +16,12 @@ import (
 // transport parser belongs to the Cobra adapter; semantic completion checks
 // remain owned by internal/application.
 func ReadCompletion(cmd *cobra.Command) (domain.MissionInvocationCompletion, error) {
+	input, err := cliutil.ReadInput(cmd.InOrStdin())
+	if err != nil {
+		return domain.MissionInvocationCompletion{}, fmt.Errorf("read completion JSON: %w", err)
+	}
 	var raw json.RawMessage
-	decoder := json.NewDecoder(cmd.InOrStdin())
+	decoder := json.NewDecoder(bytes.NewReader(input))
 	if err := decoder.Decode(&raw); err != nil {
 		return domain.MissionInvocationCompletion{}, fmt.Errorf("read completion JSON: %w", err)
 	}

@@ -30,7 +30,7 @@ canonical:
   - select_runbook:                   # Feat: rerun the provider-backed lookup only when reuse is insufficient
       when: a declared refinement reason requires fresh runbook context
       must_invoke: true
-      invoke: "strategist runbook select --format json --requester archivist --signal <signal> [--signal <signal> ...]"
+      invoke: "strategist runbook select --mission {mission_id} --format json --requester archivist --signal <signal> [--signal <signal> ...]"
       reads: JEWELER -> external Treasure Chest runbook index
       policy: provider-bounded (max_primary=1, max_supporting=2, require_reason=true)
       output: selected_runbooks_hint    # replace the reused hint only after the rerun succeeds

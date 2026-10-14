@@ -40,7 +40,7 @@ binding, it MUST NOT load a same-named skill from `.strategist/skills/`, a globa
 skill directory, `external-skills-source`, or a host loader. It MUST create the
 mission state with `strategist mission start --mission-id <id>`, then submit `bootstrap_done`,
 record the Scout route, and then submit `intake_done`. For a Ranked binding with
-`runtime.kind: embedded`, it obtains the resolved slot envelope with `strategist mission invoke --mission-id <id> --role <role> --slot <slot> --json`, executes the exact `payload` once as the current-host adapter under `input.execution_contract` and `input.output_contract`, and returns exactly one raw completion object to `strategist mission complete --request-id <id> --json`. This bounded adapter execution is the configured Weapon invocation; the parent MUST NOT add its own workflow, provider, or conclusions. A Ranked `runtime.kind: openspec_root` instead runs
+`runtime.kind: embedded`, it obtains the resolved slot envelope with `strategist mission invoke --mission-id <id> --role <role> --slot <slot> --json`, executes the exact `payload` once as the current-host adapter under `input.execution_contract` and `input.output_contract`, and returns exactly one raw completion object to `strategist mission complete --mission-id <id> --request-id <id> --json`. This bounded adapter execution is the configured Weapon invocation; the parent MUST NOT add its own workflow, provider, or conclusions. A Ranked `runtime.kind: openspec_root` instead runs
 its compiled private OpenSpec runtime and publishes the completed change through
 `strategist mission normalize-openspec`; `mission invoke` is not its executor.
 `--host codex|claude --context "<original user request>"` is a standalone-shell

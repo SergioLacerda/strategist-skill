@@ -20,7 +20,7 @@ providers:
       certification_digest: sha256:68367bd3fae882af6651556aef84faf803b48dbaa72e47a4379ffe5622f2750b
       ranked_binding_generation: 1
       ranked_binding_status: active
-      host_api_digest: sha256:edc0db21fd16b401d34e9407cc1f31a1e2e2fb6aa3732287dd1a00e6dbebfee5
+      host_api_digest: sha256:12fa95ff9a7b70fb8e9338be88bf610cbd43e25ebe3a5e27f1da3292a1575dce
       connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
       test_suite_digest: sha256:c6bd21f739d92ad4add573d014f0bab8aaad7d0b4993394dceb6a55c159c26f3
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
@@ -117,7 +117,7 @@ providers:
       certification_digest: sha256:3347d054cb8ca2ae7c311ee2dd872b5f1bbb958eb8c5c35b2e5bf8606caf2816
       ranked_binding_generation: 1
       ranked_binding_status: active
-      host_api_digest: sha256:6c596cd6838c2092cbd52b0cb661f47084a794e048fd9345744e9f802bc328ae
+      host_api_digest: sha256:e4d407c4601e6fc568ef2de5667ae5dc061fd3fe026c49a3537fb353be15ea14
       connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
       test_suite_digest: sha256:fb4c688600ee41728bc118fd2f0df79bcfaa2c53c90bc95a1b5eb2de250c7f57
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
@@ -209,7 +209,7 @@ providers:
       certification_digest: sha256:cfeb1f48975cef414eaf2b7e4664fbec6e6d988ccea49145ed18ff719930b782
       ranked_binding_generation: 1
       ranked_binding_status: active
-      host_api_digest: sha256:6c596cd6838c2092cbd52b0cb661f47084a794e048fd9345744e9f802bc328ae
+      host_api_digest: sha256:e4d407c4601e6fc568ef2de5667ae5dc061fd3fe026c49a3537fb353be15ea14
       connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
       test_suite_digest: sha256:fb4c688600ee41728bc118fd2f0df79bcfaa2c53c90bc95a1b5eb2de250c7f57
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
@@ -312,7 +312,7 @@ weapons:
     - id: ranger
       version: 0.0.0
       digest: sha256:ef43bd9c3c2f2b1d0a33897b77b1628c7f87fa56baf31e0f2200b17810414ade
-      source_digest: sha256:2b05969bd9ddf89509dc12f7459e316a95d0a43577ec1a2835fcd9103a63baf9
+      source_digest: sha256:91a2b69e7d5e5ae4b5c5fddd528f3a4bf628869a5475de82820088df51aa9695
       origin: embedded
       runtime:
         kind: embedded

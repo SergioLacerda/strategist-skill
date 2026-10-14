@@ -20,14 +20,28 @@ import (
 // the main Approval Gate, before the package is accepted.
 func startAtApprovalGate(t *testing.T, root, id string) {
 	t.Helper()
+	startAtApprovalGateWithRoute(t, root, id, "full_pipeline")
+}
+
+// startAtApprovalGateWithRoute records Scout's route at intake, as the
+// intake_done guard requires, then drives the mission to the Approval Gate.
+func startAtApprovalGateWithRoute(t *testing.T, root, id, route string) {
+	t.Helper()
 	_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", id)
 	require.NoError(t, err)
 	writeDiscoveryArtifact(t, root, id)
 	writeRefinedPackage(t, root, id)
-	for _, event := range []domain.MissionEngineEvent{
-		domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone,
-		domain.MissionEventRefinementDone,
-	} {
+	submitEarlyEvents(t, root, id, route, domain.MissionEventRefinementDone)
+}
+
+// submitEarlyEvents submits bootstrap_done, records the route, then submits
+// intake_done, discovery_done and the given final event.
+func submitEarlyEvents(t *testing.T, root, id, route string, last domain.MissionEngineEvent) {
+	t.Helper()
+	_, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", id, "--event", string(domain.MissionEventBootstrapDone))
+	require.NoError(t, err)
+	recordTestRoute(t, root, id, route)
+	for _, event := range []domain.MissionEngineEvent{domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone, last} {
 		_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", id, "--event", string(event))
 		require.NoError(t, err, event)
 	}
@@ -209,16 +223,13 @@ func TestSubmit_HandoffPassedWithNoDocumentationTargetRecordsNoClaim(t *testing.
 
 func TestSubmit_ScoutRouteDecisionNarrowsTheEvidenceRegime(t *testing.T) {
 	root := setupViewRoot(t, domain.MissionEngineStatus{})
-	advanceToHandoffChallenge(t, root, "m-short")
-	decision := `{"mission_id":"m-short","request_category":"general","selected_route":"implementation_short_route","route_reason":"refined","route_confidence":0.9,"evidence_state":"explicit","fallback_route":"full_pipeline"}`
-
-	cmd := mission.NewRoute(lifecycleDeps(t))
-	cmd.SetIn(strings.NewReader(decision))
-	cmd.SetArgs([]string{"--root", root, "--mission-id", "m-short"})
-	require.NoError(t, cmd.Execute())
+	startAtApprovalGateWithRoute(t, root, "m-short", "implementation_short_route")
+	writeRefinedPackage(t, root, "m-short")
+	_, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-short", "--event", string(domain.MissionEventGateApproved))
+	require.NoError(t, err)
 
 	writeRefinedPackage(t, root, "m-short")
-	_, err := evaluateHandoff(t, root, "m-short", livemission.ArchivistHandoffInput{})
+	_, err = evaluateHandoff(t, root, "m-short", livemission.ArchivistHandoffInput{})
 	require.NoError(t, err)
 	out, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-short", "--event", string(domain.MissionEventHandoffSatisfied))
 	require.NoError(t, err, "the short route needs the approved gate and a recorded handoff outcome")
@@ -257,6 +268,40 @@ func TestCriticalHitRoutePersistsGateBeforeExecution(t *testing.T) {
 	require.Equal(t, domain.StateExecution, status.State)
 	require.Equal(t, domain.PhaseExecution, status.Phase)
 	require.True(t, status.StageGateApproved)
+}
+
+func TestSubmit_IntakeDoneRequiresRecordedRoute(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{})
+	_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", "m-no-route")
+	require.NoError(t, err)
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-no-route", "--event", string(domain.MissionEventBootstrapDone))
+	require.NoError(t, err)
+
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-no-route", "--event", string(domain.MissionEventIntakeDone))
+	require.ErrorContains(t, err, "error=route_decision_missing")
+
+	out, err := runLifecycle(t, mission.NewStatus, "--root", root, "--mission-id", "m-no-route")
+	require.NoError(t, err)
+	assert.Equal(t, domain.PhaseIntake, decodeStatus(t, out).Phase)
+
+	recordTestRoute(t, root, "m-no-route", "full_pipeline")
+	out, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-no-route", "--event", string(domain.MissionEventIntakeDone))
+	require.NoError(t, err)
+	assert.Equal(t, domain.PhaseDiscovery, decodeStatus(t, out).Phase)
+}
+
+// recordTestRoute records Scout's route decision through the real route command.
+func recordTestRoute(t *testing.T, root, id, route string) {
+	t.Helper()
+	evidence := `"evidence_state":"explicit"`
+	if route == "full_pipeline" {
+		evidence = `"evidence_state":"requires_discovery","discovery_subtype":"diagnostic"`
+	}
+	decision := `{"mission_id":"` + id + `","request_category":"general","selected_route":"` + route + `","route_reason":"test","route_confidence":0.9,` + evidence + `,"fallback_route":"full_pipeline"}`
+	cmd := mission.NewRoute(lifecycleDeps(t))
+	cmd.SetIn(strings.NewReader(decision))
+	cmd.SetArgs([]string{"--root", root, "--mission-id", id})
+	require.NoError(t, cmd.Execute())
 }
 
 func TestRoute_RejectsDecisionForAnotherMission(t *testing.T) {

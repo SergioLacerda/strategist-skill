@@ -1,6 +1,7 @@
 package application
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -39,6 +40,40 @@ func TestPreflightSubmitPreservesGuardOrderAndEvidence(t *testing.T) {
 	require.Equal(t, "sha256:gate", result.GateDigest)
 	require.Equal(t, "sha256:package", result.PackageDigest)
 	require.Equal(t, []string{"docs/adr/a.md"}, result.ClaimTargets)
+}
+
+func TestPreflightSubmitRequiresRecordedRouteBeforeOtherGuards(t *testing.T) {
+	var order []string
+	ports := minimalPreflightPorts(&order)
+	ports.RequireRecordedRoute = func(root, missionID string, event domain.MissionEngineEvent) error {
+		order = append(order, "route")
+		require.Equal(t, "root", root)
+		require.Equal(t, "m-1", missionID)
+		require.Equal(t, domain.MissionEventIntakeDone, event)
+		return errors.New("error=route_decision_missing")
+	}
+
+	_, err := PreflightSubmit(SubmitPreflightRequest{Root: "root", BasePath: "base", MissionID: "m-1", Event: domain.MissionEventIntakeDone}, ports)
+
+	require.ErrorContains(t, err, "route_decision_missing")
+	require.Equal(t, []string{"route"}, order)
+}
+
+func minimalPreflightPorts(order *[]string) SubmitPreflightPorts {
+	return SubmitPreflightPorts{
+		RequireNoAcceptedSideQuest: func(string, string, domain.MissionEngineEvent) error {
+			*order = append(*order, "side-quest")
+			return nil
+		},
+		RequireAuthoredPackageRepair: func(string, string, domain.MissionEngineEvent) error { return nil },
+		ValidateArtifacts:            func(string, string, domain.MissionEngineEvent) error { return nil },
+		ApprovalGatePackageDigest:    func(string, domain.MissionEngineStatus, domain.MissionEngineEvent) (string, error) { return "", nil },
+		RequireExecutionEvidence: func(string, string, domain.MissionEngineStatus, domain.MissionEngineEvent) (*handoff.Outcome, error) {
+			return nil, nil
+		},
+		RepairPackageDigest:   func(string, string, domain.MissionEngineEvent) (string, error) { return "", nil },
+		PreflightSniperClaims: func(string, string, domain.MissionEngineEvent) ([]string, error) { return nil, nil },
+	}
 }
 
 func TestPreflightSubmitRunsOpportunityAttackAfterArtifactValidation(t *testing.T) {

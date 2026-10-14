@@ -17,7 +17,18 @@ type RecordOptions struct {
 // NewRecord builds the `metrics record` command.
 func NewRecord(deps Dependencies) *cobra.Command {
 	opts := RecordOptions{}
-	cmd := &cobra.Command{Use: "record", Short: "Record a confidence claim or an explicit missing-record for a boundary"}
+	cmd := &cobra.Command{
+		Use:   "record",
+		Short: "Record a confidence claim or an explicit missing-record for a boundary",
+		Long: `Record a confidence claim or an explicit missing-record for a boundary.
+Pipe the claim document with --claim-file - (or name a file outside the
+workspace base_path). The YAML document has the top-level keys claim: (one
+claim mapping) or claims: (a list of claim mappings), plus an optional
+evidence: list; see machine/confidence-governance.yaml#producers. Use
+--missing --correlation-key <key> --reason <why> when no claim exists.
+
+Input is UTF-8; a leading UTF-8 byte order mark is tolerated.`,
+	}
 	f := cmd.Flags()
 	f.StringVar(&opts.Root, deps.RootFlag, "", "path to .strategist/ root (default: auto-discovered from CWD)")
 	f.StringVar(&opts.Mission, "mission", "", "mission id (required)")

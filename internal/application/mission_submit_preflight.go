@@ -28,6 +28,9 @@ type SubmitPreflightResult struct {
 // SubmitPreflightPorts keep filesystem, handoff, and artifact validators at
 // the composition root while the application service owns their ordering.
 type SubmitPreflightPorts struct {
+	// RequireRecordedRoute, when set, runs before every other guard so an
+	// intake completion without Scout's recorded route is rejected first.
+	RequireRecordedRoute         func(root, missionID string, event domain.MissionEngineEvent) error
 	RequireNoAcceptedSideQuest   func(root, missionID string, event domain.MissionEngineEvent) error
 	RequireAuthoredPackageRepair func(basePath, missionID string, event domain.MissionEngineEvent) error
 	ValidateArtifacts            func(basePath, missionID string, event domain.MissionEngineEvent) error
@@ -52,6 +55,12 @@ func PreflightSubmit(request SubmitPreflightRequest, ports SubmitPreflightPorts)
 
 func runSubmitPreflightGuards(request SubmitPreflightRequest, ports SubmitPreflightPorts) error {
 	guards := []func() error{
+		func() error {
+			if ports.RequireRecordedRoute == nil {
+				return nil
+			}
+			return ports.RequireRecordedRoute(request.Root, request.MissionID, request.Event)
+		},
 		func() error { return ports.RequireNoAcceptedSideQuest(request.Root, request.MissionID, request.Event) },
 		func() error {
 			return ports.RequireAuthoredPackageRepair(request.BasePath, request.MissionID, request.Event)

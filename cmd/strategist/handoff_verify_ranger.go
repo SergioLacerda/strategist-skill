@@ -17,8 +17,14 @@ type rangerHandoffEvaluateOptions struct {
 }
 
 var rangerHandoffEvaluateCmd = &cobra.Command{
-	Use:          "evaluate-ranger",
-	Short:        "Evaluate and persist the Ranger-to-Archivist lifecycle outcome",
+	Use:   "evaluate-ranger",
+	Short: "Evaluate and persist the Ranger-to-Archivist lifecycle outcome",
+	Long: `Evaluate and persist the Ranger-to-Archivist lifecycle outcome. When the
+analysis artifact's typed facts require a challenge, pass --challenges and
+--ack: YAML files shaped by schemas/handoff-challenge.schema.yaml (challenge
+types recall, boundary, classification, and verdict for evaluation missions).
+
+Input is UTF-8; a leading UTF-8 byte order mark is tolerated.`,
 	SilenceUsage: true,
 }
 

@@ -3,9 +3,9 @@ package mission
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	criticalhit "github.com/SergioLacerda/strategist-skill/internal/feats/critical_hit"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
@@ -21,6 +21,15 @@ func NewRoute(deps LifecycleDependencies) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "route",
 		Short: "Record Scout's route decision for a mission (JSON on stdin)",
+		Long: `Record Scout's route decision for a mission. The decision is one JSON object
+read from stdin, shaped by schemas/scout-route-decision.schema.yaml (mission_id,
+role, component, request_category, selected_route, route_reason,
+route_confidence, evidence_state, discovery_subtype when full_pipeline needs
+discovery, fallback_route, gate_required). The first recorded decision wins;
+a replay is reported as already_recorded. intake_done is rejected until a
+decision is recorded.
+
+Input is UTF-8; a leading UTF-8 byte order mark is tolerated.`,
 	}
 	f := bindLifecycleFlags(cmd, deps)
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
@@ -39,7 +48,7 @@ func RunRoute(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 	if err != nil {
 		return fmt.Errorf("mission route: %w", err)
 	}
-	raw, err := io.ReadAll(cmd.InOrStdin())
+	raw, err := cliutil.ReadInput(cmd.InOrStdin())
 	if err != nil {
 		return fmt.Errorf("mission route: read route decision: %w", err)
 	}

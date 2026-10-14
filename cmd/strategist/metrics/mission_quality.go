@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -56,7 +57,7 @@ func RunMissionQuality(cmd *cobra.Command, deps Dependencies, explicitRoot, miss
 }
 
 func readMissionQualityDocument(in io.Reader) (missionQualityDocument, error) {
-	raw, err := io.ReadAll(in)
+	raw, err := cliutil.ReadInput(in)
 	if err != nil {
 		return missionQualityDocument{}, fmt.Errorf("metrics mission-quality: read standard input: %w", err)
 	}

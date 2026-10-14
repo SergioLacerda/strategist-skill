@@ -39,6 +39,8 @@ func preflightAdvisories(root string) []string {
 	advisories = append(advisories, layoutSkewAdvisories(root)...)
 	advisories = append(advisories, compatViewResidualAdvisories(root)...)
 	advisories = append(advisories, bindingDriftAdvisories(root)...)
+	advisories = append(advisories, invocationConformanceAdvisories(root, conformanceTree)...)
+	advisories = append(advisories, supportBindingReadiness(root)...)
 	return append(advisories, codexBootstrapAdvisories(root)...)
 }
 

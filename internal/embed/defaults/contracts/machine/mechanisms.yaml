@@ -131,7 +131,7 @@ mechanisms:
     summary: "a Weapon must be trusted and hold grants for what it requests."
     when_to_use: binding or reviewing a custom Weapon
     invoked_by: [ranger, archivist, sniper]
-    how_to_invoke: "strategist provider validate <src> --slot <s>; strategist check"
+    how_to_invoke: "strategist provider validate <src>; strategist check"
     phase_scope: [bootstrap]
 
   - id: handoff_contract
@@ -157,7 +157,7 @@ mechanisms:
     summary: "the receiver proves it kept the objective, boundary, classification, gate."
     when_to_use: the handoff declares handoff_verification.required
     invoked_by: [archivist, sniper]
-    how_to_invoke: "strategist handoff verify --transition <t> --challenges <f> --ack <f> --mission-id <id>"
+    how_to_invoke: "strategist handoff verify|evaluate[-ranger] --mission-id <id> --challenges <f> --ack <f> [--transition]"
     phase_scope: [refinement, execution]
 
   - id: confidence_governance
@@ -329,7 +329,7 @@ mechanisms:
     summary: JEWELER runbooks; 1 primary, 2 supporting; reasons.
     when_to_use: Retrieval Cascade stage 6, alongside Search
     invoked_by: [ranger, archivist]
-    how_to_invoke: "strategist runbook select --format json --signal <signal>"
+    how_to_invoke: "strategist runbook select --mission <id> --format json --signal <sig>"
     phase_scope: [discovery]
 
   - id: riposte

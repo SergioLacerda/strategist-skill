@@ -174,6 +174,15 @@ func runStrategistCLI(t *testing.T, workspace string, args ...string) cliResult 
 	return runStrategistCLIWithEnv(t, workspace, nil, args...)
 }
 
+// recordE2ERoute records Scout's full_pipeline route through the installed
+// binary, which intake_done requires before discovery may start.
+func recordE2ERoute(t *testing.T, workspace, missionID string) {
+	t.Helper()
+	decision := `{"mission_id":"` + missionID + `","request_category":"general","selected_route":"full_pipeline","route_reason":"e2e","route_confidence":0.9,"evidence_state":"requires_discovery","discovery_subtype":"diagnostic","fallback_route":"full_pipeline"}`
+	res := runStrategistCLIWithInput(t, workspace, nil, decision, "mission", "route", "--mission-id", missionID)
+	require.Equal(t, 0, res.exitCode, res.output())
+}
+
 func runStrategistCLIWithEnv(t *testing.T, workspace string, extraEnv map[string]string, args ...string) cliResult {
 	return runStrategistCLIWithInput(t, workspace, extraEnv, "", args...)
 }

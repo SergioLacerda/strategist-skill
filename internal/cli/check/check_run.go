@@ -18,6 +18,7 @@ import (
 )
 
 func runCheck(cmd *cobra.Command) error {
+	conformanceTree = cmd.Root()
 	root, err := resolveCheckRoot()
 	if err != nil {
 		return err

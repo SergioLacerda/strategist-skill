@@ -14,7 +14,7 @@ redundant procedural instructions once equivalence is proven).
 
 Onda 2 shipped earlier this thread: `domain.PreflightResult`
 (`internal/domain/preflight_result.go`) plus a tested `strategist check
---json` surface (`internal/check/check_preflight_json.go`). Onda 1 shipped
+--json` surface (`internal/cli/check/check_preflight_json.go`). Onda 1 shipped
 today (`20260916-preflight-cli-enforcement-wave3`): all 7 conditions in
 `contracts/machine/preflight.yaml` are now `enforced_by: machine_enforced`,
 surfaced in `PreflightResult.Warnings`.
@@ -137,3 +137,12 @@ it).
   mechanism DEC-004 is a normative-practice response to.
 - `.analysis/pending/cli_refactor/v2/03-preflight-cli-enforcement.md` — the
   original 4-wave draft this ADR closes Onda 3 of.
+
+## Notes
+
+- **2026-10-13 — path correction** (mission `20261013-drift-agente-cli`, task 1.1).
+  The Onda 2 surface lives under `internal/cli/check/`: `buildPreflightResult` is
+  in `internal/cli/check/check_preflight_json.go` and the advisories in
+  `internal/cli/check/check_preflight_advisories.go`. Earlier text cited
+  the same files directly under `internal/` without the `cli/` segment, a path that does not exist; that citation propagated into
+  a later analysis note. No decision in this ADR changes.

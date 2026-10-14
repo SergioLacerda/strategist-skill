@@ -341,7 +341,7 @@ func TestShippedRegistryNamesTheDecidedItems(t *testing.T) {
 	for _, id := range []string{"initiative", "critical_hit", "opportunity_attack", "side_quest", "search", "select_runbook", "riposte", "keen_senses"} {
 		assert.Equal(t, FamilyFeat, byID[id].Family, id)
 	}
-	assert.Equal(t, "strategist runbook select --format json --signal <signal>", byID["select_runbook"].HowToInvoke)
+	assert.Equal(t, "strategist runbook select --mission <id> --format json --signal <sig>", byID["select_runbook"].HowToInvoke)
 }
 
 // skill.yaml names the items the prose talks about; every one must be a registry row

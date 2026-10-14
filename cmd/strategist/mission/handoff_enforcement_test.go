@@ -429,10 +429,7 @@ func TestApprovalGateIsIndependentOfTheHandoffOutcome(t *testing.T) {
 		require.NoError(t, err)
 		writeDiscoveryArtifact(t, root, "m-nogate")
 		writeRefinedPackage(t, root, "m-nogate")
-		for _, event := range []domain.MissionEngineEvent{domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone, domain.MissionEventRefinementDone} {
-			_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-nogate", "--event", string(event))
-			require.NoError(t, err)
-		}
+		submitEarlyEvents(t, root, "m-nogate", "full_pipeline", domain.MissionEventRefinementDone)
 		writeTypedPackage(t, root, "m-nogate", informationalFacts, analysisOnlyTasks)
 
 		_, err = evaluateHandoff(t, root, "m-nogate", livemission.ArchivistHandoffInput{})
@@ -451,10 +448,7 @@ func TestApprovalGateIsIndependentOfTheHandoffOutcome(t *testing.T) {
 		require.NoError(t, err)
 		writeDiscoveryArtifact(t, root, "m-analysis")
 		writeRefinedPackage(t, root, "m-analysis")
-		for _, event := range []domain.MissionEngineEvent{domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone, domain.MissionEventRefinementDone} {
-			_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-analysis", "--event", string(event))
-			require.NoError(t, err)
-		}
+		submitEarlyEvents(t, root, "m-analysis", "full_pipeline", domain.MissionEventRefinementDone)
 		writeRefinedPackage(t, root, "m-analysis")
 
 		_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-analysis", "--event", string(domain.MissionEventGateApprovedAnalysisOnly))

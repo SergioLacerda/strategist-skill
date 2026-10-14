@@ -13,13 +13,12 @@ const PreflightResultSchemaVersion = "strategist-preflight-result/v1"
 // does not re-derive readiness independently, to avoid two implementations
 // of the same check drifting apart (see D2's regression-test rationale).
 //
-// This shape is explicitly interim (D6): once
-// skills_plugaveis/02-external-skills-adapters/20260820-world-class-skill-plugin-refinement's
-// P4 (RuntimeConnector SPI + its own 10-dimension readiness vector, see that
-// plan's design.md § "Readiness and conformance") ships, PreflightResult's
-// Bindings/Warnings fields must be re-derived from that richer vector instead
-// of check_slots.go/role_weapon.go directly — this type does not attempt to
-// anticipate that shape today.
+// The interim note of D6 is resolved: P4's RuntimeConnector SPI and its
+// readiness vector (domain.PluginReadinessVector) are wired into
+// check_slots.go/check_readiness.go, and buildPreflightResult derives each
+// Bindings[].Status from that vector (internal/cli/check/check_preflight_json.go).
+// Warnings stays the full diagnostic aggregate plus the non-blocking
+// advisories; the shape itself is unchanged.
 type PreflightResult struct {
 	SchemaVersion   string             `json:"schema_version"`
 	TaxonomyVersion string             `json:"taxonomy_version,omitempty"`

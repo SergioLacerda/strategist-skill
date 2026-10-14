@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -38,7 +39,7 @@ type declaredDocument struct {
 // readDeclaredSummary decodes and validates the summary on in. An invalid summary
 // fails here, before any output.
 func readDeclaredSummary(in io.Reader) (domain.ConfidenceSummary, error) {
-	raw, err := io.ReadAll(in)
+	raw, err := cliutil.ReadInput(in)
 	if err != nil {
 		return domain.ConfidenceSummary{}, fmt.Errorf("metrics confidence: read declared summary: %w", err)
 	}

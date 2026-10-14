@@ -54,6 +54,9 @@ func startMissionAtHandoff(t *testing.T, workspace, missionID, facts, tasks stri
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644))
 	}
 	for _, event := range []string{"bootstrap_done", "intake_done", "discovery_done", "refinement_done"} {
+		if event == "intake_done" {
+			recordE2ERoute(t, workspace, missionID)
+		}
 		res := runStrategistCLI(t, workspace, "mission", "submit", "--mission-id", missionID, "--event", event)
 		require.Equal(t, 0, res.exitCode, event+": "+res.output())
 	}

@@ -53,7 +53,7 @@ Before writing the artifact:
 
 ## Runbook Selection
 
-At Retrieval Cascade stage 6, run `strategist runbook select --format json --signal <signal> ...`
+At Retrieval Cascade stage 6, run `strategist runbook select --mission <mission_id> --format json --signal <signal> ...`
 (one `--signal` per mission signal: `task_type`, `discovery_subtype`, and the salient keywords
 of the request) and record its result in `selected_runbooks_hint`. The command consults the
 admitted external Treasure Chest through JEWELER; it never falls back to the local sidecar

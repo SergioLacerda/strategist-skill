@@ -70,7 +70,9 @@ func registrySectionsBody(registry domain.CompiledRegistry) (string, error) {
 }
 
 // TestMain points the embedded-catalog seam at the fixture registry so the
-// suite's workspaces are not flagged as drifted from the shipped registry.
+// suite's workspaces are not flagged as drifted from the shipped registry, and
+// turns off the JEWELER readiness seam so fixture workspaces do not depend on
+// the operator's STRATEGIST_TREASURE_CHEST_EXECUTABLE.
 func TestMain(m *testing.M) {
 	body, err := registrySectionsBody(fixtureRegistry())
 	if err != nil {
@@ -79,6 +81,7 @@ func TestMain(m *testing.M) {
 	embeddedCatalogReader = func() ([]byte, error) {
 		return []byte("schema_version: strategist-plugin-catalog/v2\n" + body), nil
 	}
+	supportBindingReadiness = func(string) []string { return nil }
 	os.Exit(m.Run())
 }
 

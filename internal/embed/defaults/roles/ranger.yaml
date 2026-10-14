@@ -31,7 +31,7 @@ canonical:
   - select_runbook:              # Feat: selects provider-indexed runbooks against mission signals
       when: same point as search — before consult_treasure_chests opens the runbooks chest (Retrieval Cascade stage 6)
       must_invoke: true              # the pipeline runs it; skipping it leaves selected_runbooks_hint null (a reported gap)
-      invoke: "strategist runbook select --format json --signal <signal> [--signal <signal> ...]"
+      invoke: "strategist runbook select --mission {mission_id} --format json --signal <signal> [--signal <signal> ...]"
       signals: [mission_contract.task_type, route_decision.discovery_subtype, salient keywords of the request]
       reads: JEWELER -> external Treasure Chest runbook index
       policy: provider-bounded (max_primary=1, max_supporting=2, require_reason=true)

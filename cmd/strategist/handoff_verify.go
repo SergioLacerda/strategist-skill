@@ -31,7 +31,9 @@ var handoffVerifyCmd = &cobra.Command{
 	Short: "Verify a Handoff Challenge acknowledgment and record the result",
 	Long: `Runs internal/mission/handoff.Verify deterministically against a challenges file and
 an acknowledgment file, prints the result, and appends a ChallengeRecord to
-.strategist/memory/handoff-challenges.jsonl.
+.strategist/memory/handoff-challenges.jsonl. Both files are YAML shaped by
+schemas/handoff-challenge.schema.yaml.
+Input is UTF-8; a leading UTF-8 byte order mark is tolerated.
 
 This gives the LLM agent embodying a Strategist role (Ranger, Archivist,
 Sniper) a scriptable, deterministic tool to invoke instead of reasoning

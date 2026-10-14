@@ -88,7 +88,7 @@ emit:
       discipline as AppendOutcomeLine). This is the durable record that Scout
       routing metrics (route_accuracy, fallback_rate, unnecessary_pipeline_rate,
       etc.) aggregate over, and the input the execution boundary reads:
-      `strategist mission submit --event handoff_challenge_satisfied` applies the
+      `strategist mission submit --mission-id <id> --event handoff_challenge_satisfied` applies the
       pipeline-bypass evidence regime of the recorded route (full_pipeline needs
       discovery, refinement, tasks and the approved gate; the narrow routes need
       the approved gate). A mission with no recorded decision is held to the
@@ -96,7 +96,8 @@ emit:
       .analysis/refined/20260803-scout-routing-metrics/ for the full design
       and phased metric rollout.
     write_scope: append-only, .strategist/memory/route-decisions.jsonl
-    non_blocking: true   # a persistence failure here must never block routing; an unrecorded decision only means execution entry is held to the strictest (full_pipeline) evidence
+    non_blocking: true   # a persistence failure never blocks Scout's routing itself, but intake_done is rejected (error=route_decision_missing) until a decision is recorded; execution entry still applies the recorded route's evidence regime
+    intake_gate: "strategist mission submit --mission-id <id> --event intake_done rejects a mission with no recorded decision (machine_enforced)"
   on_fallback_to_full_pipeline:
     format: >
       "[Strategist] phase=intake status=fallback component=scout

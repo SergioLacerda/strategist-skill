@@ -30,6 +30,19 @@ func requireAnalysisOnlyPackage(basePath, missionID string, event domain.Mission
 	return nil
 }
 
+// requireRecordedRoute rejects intake_done until Scout's route decision is
+// recorded with `mission route`: an invoked mission always passes through the
+// initial route. Every other event is unguarded here.
+func requireRecordedRoute(root, missionID string, event domain.MissionEngineEvent) error {
+	if event != domain.MissionEventIntakeDone {
+		return nil
+	}
+	if err := livemission.RequireRecordedRoute(root, missionID); err != nil {
+		return fmt.Errorf("mission submit: rejected: %w", err)
+	}
+	return nil
+}
+
 func requireAuthoredPackageRepair(basePath, missionID string, event domain.MissionEngineEvent) error {
 	if event != domain.MissionEventRefinementArtifactInvalid {
 		return nil

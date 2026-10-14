@@ -272,7 +272,7 @@ func TestEmbeddedSkillRankedInvocationProtocol(t *testing.T) {
 
 	assert.Contains(t, text, "strategist mission start --mission-id <id>")
 	assert.Contains(t, text, "strategist mission invoke --mission-id <id> --role <role>")
-	assert.Contains(t, text, "strategist mission complete --request-id <id> --json")
+	assert.Contains(t, text, "strategist mission complete --mission-id <id> --request-id <id> --json")
 	assert.Contains(t, text, "submit `bootstrap_done`")
 	assert.Contains(t, text, "Ranked `runtime.kind: openspec_root`")
 	assert.Contains(t, text, "`mission invoke` is not its executor")

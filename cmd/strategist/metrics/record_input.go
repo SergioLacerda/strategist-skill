@@ -2,11 +2,11 @@ package metrics
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cli/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -34,7 +34,7 @@ const claimFromStdin = "-"
 // transient CLI input and must not become a workspace artifact.
 func readClaimInput(cmd *cobra.Command, deps Dependencies, root, path string) (confidenceClaimFile, error) {
 	if path == claimFromStdin {
-		raw, err := io.ReadAll(cmd.InOrStdin())
+		raw, err := cliutil.ReadInput(cmd.InOrStdin())
 		if err != nil {
 			return confidenceClaimFile{}, fmt.Errorf("metrics record: read standard input: %w", err)
 		}

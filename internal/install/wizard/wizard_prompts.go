@@ -49,9 +49,21 @@ func PromptDocumentationRootWithin(p Prompter, prompt, defaultPath, field, works
 // NormalizeDocumentationRoot returns value cleaned as a project-relative documentation directory.
 func NormalizeDocumentationRoot(value, field, workspaceRoot string) (string, error) {
 	value = strings.TrimSpace(value)
-	if !filepath.IsAbs(value) {
+	if !isRootedPath(value) {
 		return value, nil
 	}
+	workspace, err := documentationWorkspace(field, workspaceRoot)
+	if err != nil {
+		return "", err
+	}
+	relative, err := documentationRootRelativePath(value, field, workspace)
+	if err != nil || !isWorkspaceRelative(relative) {
+		return "", fmt.Errorf("wizard: %s must stay inside the selected project workspace", field)
+	}
+	return filepath.ToSlash(relative), nil
+}
+
+func documentationWorkspace(field, workspaceRoot string) (string, error) {
 	if strings.TrimSpace(workspaceRoot) == "" {
 		return "", fmt.Errorf("wizard: %s: absolute path cannot be verified without a workspace root", field)
 	}
@@ -59,15 +71,34 @@ func NormalizeDocumentationRoot(value, field, workspaceRoot string) (string, err
 	if err != nil {
 		return "", fmt.Errorf("wizard: %s: resolve workspace root: %w", field, err)
 	}
-	candidate, err := filepath.Abs(value)
+	return workspace, nil
+}
+
+func documentationRootRelativePath(value, field, workspace string) (string, error) {
+	candidateValue := filepath.FromSlash(value)
+	// On Windows, a slash-rooted path such as /workspace has no volume and
+	// filepath.IsAbs reports false. Attach the selected workspace volume so
+	// cross-platform input is resolved on the same drive as the workspace.
+	if usesWorkspaceVolume(candidateValue, workspace) {
+		candidateValue = filepath.VolumeName(workspace) + candidateValue
+	}
+	candidate, err := filepath.Abs(candidateValue)
 	if err != nil {
 		return "", fmt.Errorf("wizard: %s: resolve documentation root: %w", field, err)
 	}
 	relative, err := filepath.Rel(filepath.Clean(workspace), filepath.Clean(candidate))
-	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("wizard: %s must stay inside the selected project workspace", field)
+	if err != nil {
+		return "", fmt.Errorf("wizard: %s: resolve relative documentation root: %w", field, err)
 	}
-	return filepath.ToSlash(relative), nil
+	return relative, nil
+}
+
+func usesWorkspaceVolume(candidate, workspace string) bool {
+	return filepath.VolumeName(candidate) == "" && filepath.VolumeName(workspace) != "" && strings.HasPrefix(candidate, string(filepath.Separator))
+}
+
+func isWorkspaceRelative(relative string) bool {
+	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func documentationRootDefault(basePath, workspaceRoot, child string) string {
@@ -78,7 +109,7 @@ func documentationRootDefault(basePath, workspaceRoot, child string) string {
 		return "docs/runbooks"
 	}
 	root := filepath.Join(basePath, child)
-	if !filepath.IsAbs(root) {
+	if !isRootedPath(root) {
 		return filepath.ToSlash(root)
 	}
 	if workspaceRoot != "" {
@@ -89,6 +120,14 @@ func documentationRootDefault(basePath, workspaceRoot, child string) string {
 	// Tests and callers without an installation target cannot resolve an absolute
 	// workspace root. The base directory itself is the workspace in that case.
 	return child
+}
+
+// isRootedPath treats both native absolute paths and slash-rooted paths as
+// rooted. The latter commonly appear in portable scripted wizard input and
+// are considered rooted by Unix while Windows' filepath.IsAbs requires a
+// volume for some of the same spellings.
+func isRootedPath(value string) bool {
+	return filepath.IsAbs(value) || strings.HasPrefix(filepath.ToSlash(value), "/")
 }
 
 func promptLanguages(p Prompter, skillCfg SkillConfig, defaults Defaults) (uiLang, docLang, chatLang, codeLang string, b i18n.WizardStrings, err error) {
