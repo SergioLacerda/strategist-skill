@@ -80,23 +80,27 @@ func rolesRequiringRunbookFeat(root string) []string {
 	}
 	var roles []string
 	for _, path := range paths {
-		raw, err := os.ReadFile(path) //nolint:gosec // G304: role files under the runtime root
-		if err != nil {
-			continue
-		}
-		var role struct {
-			Role      string      `yaml:"role"`
-			Canonical []yaml.Node `yaml:"canonical"`
-		}
-		if yaml.Unmarshal(raw, &role) != nil || role.Role == "" {
-			continue
-		}
-		if declaresMandatoryRunbookFeat(role.Canonical) {
-			roles = append(roles, role.Role)
+		if role, ok := roleRequiringRunbookFeat(path); ok {
+			roles = append(roles, role)
 		}
 	}
 	sort.Strings(roles)
 	return roles
+}
+
+func roleRequiringRunbookFeat(path string) (string, bool) {
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: role files under the runtime root
+	if err != nil {
+		return "", false
+	}
+	var role struct {
+		Role      string      `yaml:"role"`
+		Canonical []yaml.Node `yaml:"canonical"`
+	}
+	if yaml.Unmarshal(raw, &role) != nil || role.Role == "" {
+		return "", false
+	}
+	return role.Role, declaresMandatoryRunbookFeat(role.Canonical)
 }
 
 func declaresMandatoryRunbookFeat(canonical []yaml.Node) bool {

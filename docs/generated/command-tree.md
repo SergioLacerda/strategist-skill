@@ -21,90 +21,52 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `powershell` — Generate the autocompletion script for powershell
   - `zsh` — Generate the autocompletion script for zsh
 - `dojo` — Health-check scenarios for the Strategist skill
-  - `audit` — Sample generated negatives for review, or record an audit verdict
-  - `calibrate` — Run a judge calibration case against labeled cases
-  - `candidate` — Record a regression candidate from a mission where the provider and the gate disagreed
   - `check` — Run offline checks for a dojo scenario
-  - `compare` — Compare the latest observations of two cases, offline (a laboratory reading)
-  - `corpus` — List the packages of a case's corpus with an offline screen (no call)
-  - `demote` — Withdraw a package from the golden set (a human act)
-  - `generate` — Write the skeleton of a judge calibration case
   - `list` — List available dojo scenarios
-  - `promote` — Promote a reviewed package to golden (a human act)
-  - `propose` — Record an operator proposal pending a reviewed change
 - `eval` — Strategist eval harness utilities
   - `harvest` — Copy real mission artifacts into tests/evals/regression/ as fixtures
   - `run` — Run the internal/eval scenario battery via go test
 - `handoff` — Run and record Handoff Challenge verification
-  - `criteria` — Report the quality criteria already computed for a mission (read-only)
-  - `evaluate` — Evaluate the Archivist-to-Sniper handoff and record its outcome
-  - `evaluate-ranger` — Evaluate and persist the Ranger-to-Archivist lifecycle outcome
-  - `precheck` — Read the refined package with the provider before the Approval Gate (advisory)
   - `verify` — Verify a Handoff Challenge acknowledgment and record the result
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository
-- `integrations` — Inspect and change the optional external provider integration
-  - `calibration` — List, show, pin and unpin the calibration the pre-check threshold follows
-    - `list` — List the published calibrations
-    - `pin` — Pin a calibration after showing its numbers; --confirm writes the pin
-    - `show` — Show a calibration with its numbers and risk policy (default: the pinned one)
-    - `unpin` — Remove the pin; the configured threshold applies
-  - `disable` — Record the decision not to use the provider; recorded outcomes and settings are kept
-  - `doctor` — Report declared, bound, enabled, compatible and available state without calling the provider
-  - `enable` — Record the decision to use the provider (documented defaults, credential stays a reference)
-  - `probe` — Send one synthetic, non-mission message to record availability
-  - `shadow` — Keep the provider reading without letting it decide (on, off, report)
-    - `off` — Turn shadow mode off (the provider decides again)
-    - `on` — Turn shadow mode on
-    - `report` — Summarize the recorded shadow readings
-- `leveling` — Suggest model and effort by role
-  - `label` — Resolve and record the model/effort label shown on a role's log lines
-  - `suggest` — Suggest a model and effort for a role
-  - `validate` — Validate the customer LEVELING policy
-- `mechanisms` — Inspect the Mechanisms registry
-  - `brief` — Print the Tools, Mechanisms, and Feats available to one role
 - `metrics` — Report metrics computed from Strategist's own runtime memory
   - `confidence` — Report cross-agent confidence metrics
+  - `fallback` — Report provider-fallback (ADR-0028) metrics
   - `gate-outcome` — Record the human Approval Gate outcome as ground truth
   - `handoff` — Report Handoff Challenge governance metrics
-  - `handoff-record` — Record the Archivist's handoff metrics line for a mission
   - `label` — Record a reviewed ground-truth label for a mission
-  - `levels` — Report the model x effort levels recorded per role
-  - `mission-quality` — Evaluate the mission_quality predicates over a decisions/evidence document
   - `record` — Record a confidence claim or an explicit missing-record for a boundary
   - `rollout-check` — Check whether a confidence enforcement mode is admissible
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly
-  - `accept-side-quest` — Record the user's acceptance of the mission's OA-ADR side quest at the Approval Gate
-  - `adr-target` — Resolve and reserve the accepted OA-ADR destination at materialization time
-  - `complete` — Complete one embedded Weapon invocation
   - `context` — Materialize declared mission context
-  - `decline-side-quest` — Record the user's decline of the mission's OA-ADR side quest at the Approval Gate
-  - `invoke` — Invoke one embedded Weapon through a host bridge
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
-  - `observe-usage` — Record the usage a host wrote in its own session file for one time window (opt-in, numbers only)
-  - `report-usage` — Record one token usage observation for a mission phase, declared by the invoking agent
-  - `requests` — List embedded invocation requests (read-only; never prints payload or nonce)
-  - `route` — Record Scout's route decision for a mission (JSON on stdin)
+  - `report-usage` — Record real token usage for a mission, reported by the invoking agent
   - `start` — Start a mission
   - `status` — Inspect a mission status
   - `submit` — Submit one authoritative mission event
-  - `usage` — Show per-phase lifecycle and token usage for one mission (read-only)
-  - `verify-telemetry` — Check the integrity of a mission's lifecycle and usage evidence (read-only)
-  - `view` — Render a read-only mission experience view
 - `plugins` — Inspect and evaluate Strategist plugin enforcement
-  - `acquire-remote` — Acquire a pinned Git Skill-for-Hire package into quarantine
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
   - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog
-  - `resolved-digest` — Report whether a resolved Weapon file matches its catalog pin
-  - `scaffold-sidecar` — Generate a package's strategist.yaml sidecar deterministically
-- `provider` — Validate and onboard local Strategist providers
-  - `add` — Stage and bind a validated local provider
-  - `validate` — Validate a local provider package without changing workspace state
-- `runbook` — Query provider-backed runbooks for mission signals
-  - `select` — Select applicable runbooks for mission signals
-- `sync-governance` — Sync .strategist/skill.yaml with explicitly provisioned governance
+- `runbook` — Operate on the typed docs/runbooks/*.runbook.yaml corpus
+  - `select` — Select applicable runbooks for the given mission signals
+- `sync-governance` — Sync .strategist/skill.yaml with active SDD governance mandates
+- `treasure-chest` — Show treasure chest runtime status and index health
+  - `add` — Register a new treasure chest across active/governed/indexed layers
+  - `doctor` — Detect consistency drift across active.yaml, treasure-chests.yaml, and knowledge.index.yaml
+  - `index` — Rebuild the offline knowledge substrate (scan, propose jewels, refresh compiled index)
+  - `items` — Inspect and curate jewels and potions regardless of curation status
+    - `accept` — Promote item ids to status: accepted
+    - `check-evidence` — Advisory scan for expired, duplicate, or conflicting jewels in a chest
+    - `deprecate` — Mark item ids as status: deprecated
+    - `list` — List items (jewels and/or potions), optionally filtered by kind, status, or chest
+    - `migrate-status` — One-time migration: rewrite legacy status: active jewels to status: accepted
+    - `show` — Show a single item's (jewel or potion) full content
+    - `verify` — Promote item ids to status: verified (requires --evidence)
+  - `list` — Show treasure chest runtime status (explicit name for the default view)
+  - `remove` — Tombstone a treasure chest (mark inactive, do not hard-delete)
 - `upgrade` — Reconcile an installed .strategist/ runtime against the current embedded defaults
 - `validate` — Validate the .strategist/ configuration tree
 - `version` — Print the strategist version

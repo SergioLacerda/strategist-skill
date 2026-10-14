@@ -191,14 +191,3 @@ func promptTreasureChest(p Prompter, b i18n.WizardStrings, verbose bool) (string
 // (withRankedOption, splitRankedChoice, promptSlotProvider) live in
 // wizard_prompts_ranked.go — both split out to keep this file under the
 // repo's file-size budget.
-
-func promptProvider(p Prompter, prompt, defaultVal string, options []string, customLabel string, providerRisk map[string]string, expectedRisk, field string) (string, error) {
-	provider, err := p.SelectOrInput(prompt, defaultVal, options, customLabel)
-	if err != nil {
-		return "", fmt.Errorf("wizard: %s: %w", field, err)
-	}
-	if w := ValidateProvider(providerRisk, provider, expectedRisk); w != "" {
-		fmt.Println(w)
-	}
-	return provider, nil
-}

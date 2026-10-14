@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const (
+var (
 	// lockPollInterval and lockPollTimeout bound the retry loop openLock
 	// uses in place of a blocking primitive (see openLock's doc comment).
 	lockPollInterval = 5 * time.Millisecond
