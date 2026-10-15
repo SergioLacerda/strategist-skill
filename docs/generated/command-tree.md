@@ -43,7 +43,6 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `context` — Materialize declared mission context
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent
-  - `route` — Record Scout's route decision for a mission (JSON on stdin)
   - `start` — Start a mission
   - `status` — Inspect a mission status
   - `submit` — Submit one authoritative mission event
