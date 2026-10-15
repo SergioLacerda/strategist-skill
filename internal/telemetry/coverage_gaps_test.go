@@ -421,7 +421,7 @@ func TestCoverageTelemetryHistoryErrorPaths(t *testing.T) {
 	require.NoError(t, os.WriteFile(blocker, []byte("blocked"), 0o600))
 	validRecord := ConfidenceRecord{EventID: "event-coverage", MissionID: "m", ClaimID: "c", Agent: ConfidenceAgentRanger, ClaimKind: domain.ClaimKindQuestion, ConfidenceLevel: domain.ConfidenceLow, ConfidencePercent: 20, Timestamp: "2026-10-10T00:00:00Z"}
 	require.Error(t, AppendConfidenceRecord(filepath.Join(blocker, "memory", "records.jsonl"), validRecord))
-	_, _, err = ReadConfidenceRecordsWithDiagnostics(filepath.Join(blocker, "memory", "records.jsonl"))
+	_, _, err = ReadConfidenceRecordsWithDiagnostics(filepath.Join(t.TempDir(), "records\x00.jsonl"))
 	require.Error(t, err)
 
 	_, err = AppendRefinementHandoffLine(filepath.Join(blocker, "handoff.jsonl"), RefinementHandoffLine{MissionID: "m"})
@@ -436,7 +436,7 @@ func TestCoverageTelemetryHistoryErrorPaths(t *testing.T) {
 	claimDir := filepath.Join(t.TempDir(), "claims-dir")
 	require.NoError(t, os.MkdirAll(claimDir, 0o755))
 	require.Error(t, AppendSniperClaim(claimDir, SniperClaimRecord{MissionID: "m", TargetPath: "docs/a.md", ClaimedAt: time.Now()}))
-	_, err = ReadRecentSniperClaims(claimPath, time.Now(), SniperClaimWindow)
+	_, err = ReadRecentSniperClaims(filepath.Join(t.TempDir(), "claims\x00.jsonl"), time.Now(), SniperClaimWindow)
 	require.Error(t, err)
 
 	label := gtLabel("m", GroundTruthSubjectRoute, RouteLabelConfirmed)
@@ -444,17 +444,17 @@ func TestCoverageTelemetryHistoryErrorPaths(t *testing.T) {
 		_, err := AppendGroundTruthLabel(filepath.Join(blocker, "labels.jsonl"), label)
 		return err
 	}())
-	_, err = ReadGroundTruthLabels(filepath.Join(blocker, "labels.jsonl"), "")
+	_, err = ReadGroundTruthLabels(filepath.Join(t.TempDir(), "labels\x00.jsonl"), "")
 	require.Error(t, err)
 
 	usage := MissionTokenUsageRecord{MissionID: "m", TokensIn: 1, TokensOut: 2, Source: MissionUsageSourceAgentReport, ReportedAt: "2026-10-10T00:00:00Z"}
 	require.Error(t, AppendMissionTokenUsage(filepath.Join(blocker, "usage.jsonl"), usage))
-	_, err = ReadMissionTokenUsage(filepath.Join(blocker, "usage.jsonl"))
+	_, err = ReadMissionTokenUsage(filepath.Join(t.TempDir(), "usage\x00.jsonl"))
 	require.Error(t, err)
 
 	publication := RefinedPackagePublicationRecord{MissionID: "m", ProviderChangeID: "change", SourceDigest: "source", PackageDigest: "package", PublishedAt: time.Now().UTC()}
 	require.Error(t, AppendRefinedPackagePublication(filepath.Join(blocker, "publications.jsonl"), publication))
-	_, err = ReadRefinedPackagePublications(filepath.Join(blocker, "publications.jsonl"))
+	_, err = ReadRefinedPackagePublications(filepath.Join(t.TempDir(), "publications\x00.jsonl"))
 	require.Error(t, err)
 
 	event := NewEvent("strategist.coverage", SeverityInfo, "run", true)
@@ -462,7 +462,7 @@ func TestCoverageTelemetryHistoryErrorPaths(t *testing.T) {
 
 	checkpoint := &MissionCheckpoint{MissionID: "m"}
 	require.Error(t, SaveCheckpoint(filepath.Join(blocker, "checkpoint.json"), checkpoint))
-	_, err = LoadCheckpoint(filepath.Join(blocker, "checkpoint.json"))
+	_, err = LoadCheckpoint(filepath.Join(t.TempDir(), "checkpoint\x00.json"))
 	assert.Error(t, err)
 }
 

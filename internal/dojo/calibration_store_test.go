@@ -130,6 +130,8 @@ func TestProposalsAreRecordedPendingAndNeverAddOperators(t *testing.T) {
 func TestCriteriaValidationOfACalibrationCase(t *testing.T) {
 	valid := criteriaFor("case", policyCase())
 	require.NoError(t, dojo.ValidateCriteria(valid))
+	absoluteRoot, err := filepath.Abs("abs")
+	require.NoError(t, err)
 
 	for name, mutate := range map[string]func(*domain.DojoCriteria){
 		"no block":         func(c *domain.DojoCriteria) { c.Calibration = nil },
@@ -140,7 +142,7 @@ func TestCriteriaValidationOfACalibrationCase(t *testing.T) {
 		"unknown operator": func(c *domain.DojoCriteria) { c.Calibration.Operators = []string{"nope"} },
 		"stage three":      func(c *domain.DojoCriteria) { c.Calibration.Stage = 3 },
 		"escaping output":  func(c *domain.DojoCriteria) { c.Calibration.Output = "../outside" },
-		"escaping root":    func(c *domain.DojoCriteria) { c.Calibration.Corpus.Roots = []string{"/abs"} },
+		"escaping root":    func(c *domain.DojoCriteria) { c.Calibration.Corpus.Roots = []string{absoluteRoot} },
 		"held-out too big": func(c *domain.DojoCriteria) { c.Calibration.Corpus.HeldOutPercent = 95 },
 		"bad include":      func(c *domain.DojoCriteria) { c.Calibration.Corpus.Include = []string{"a/b"} },
 		"bad provider":     func(c *domain.DojoCriteria) { c.Calibration.Provider = "other" },

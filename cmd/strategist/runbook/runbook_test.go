@@ -73,6 +73,9 @@ func TestNewProviderFailsClosedWithoutCatalog(t *testing.T) {
 }
 
 func TestNewProviderResolvesAdmittedWeaponAndRunSelectUsesIt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("provider fixture uses a POSIX shell script")
+	}
 	root := t.TempDir()
 	writeProviderCatalog(t, root)
 	providerScript := writeProviderScript(t, root)

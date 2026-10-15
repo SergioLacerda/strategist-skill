@@ -43,8 +43,10 @@ func TestNewCasePaths_ConfiguredOutputIsValidated(t *testing.T) {
 	paths, err := dojo.NewCasePaths(base, "jev-handoff", "dojo/out/jev")
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(base, "dojo", "out", "jev"), paths.Output)
+	absoluteOutput, err := filepath.Abs(filepath.Join("abs", "path"))
+	require.NoError(t, err)
 
-	for _, bad := range []string{"../outside", "/abs/path", "refined/x", "done", "pending/y", ".strategist/z"} {
+	for _, bad := range []string{"../outside", absoluteOutput, "refined/x", "done", "pending/y", ".strategist/z"} {
 		_, err := dojo.NewCasePaths(base, "jev-handoff", bad)
 		require.Error(t, err, bad)
 	}

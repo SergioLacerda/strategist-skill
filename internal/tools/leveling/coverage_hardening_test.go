@@ -366,7 +366,7 @@ func TestCoverageTelemetryAndFilesystemFailures(t *testing.T) {
 	parent := filepath.Join(t.TempDir(), "parent")
 	require.NoError(t, os.WriteFile(parent, []byte("x"), 0o600))
 	require.Error(t, scanLedger(filepath.Join(parent, "ledger.jsonl"), func(string, Record) {}))
-	_, err = RotateLedgerIfLarge(filepath.Join(parent, "ledger.jsonl"), 1, 1)
+	_, err = RotateLedgerIfLarge(filepath.Join(t.TempDir(), "ledger\x00.jsonl"), 1, 1)
 	require.Error(t, err)
 	require.Error(t, normalizeProviders(&Policy{Providers: map[string]Provider{" ": {}}}))
 	spacedProviderID := strings.Join([]string{" ", "P", " "}, "")

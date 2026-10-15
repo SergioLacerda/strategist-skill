@@ -52,7 +52,7 @@ func TestValidateRepositoryAcceptsSupportedForms(t *testing.T) {
 		"https://github.com/SergioLacerda/skill-for-hire",
 		"ssh://git@github.com/SergioLacerda/skill-for-hire",
 		"git@github.com:SergioLacerda/skill-for-hire.git",
-		"/tmp/skill-for-hire.git",
+		filepath.Join(t.TempDir(), "skill-for-hire.git"),
 	} {
 		require.NoError(t, ValidateRepository(repository), repository)
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -157,6 +158,9 @@ func missionCounts(t *testing.T, path string) map[string]int {
 }
 
 func TestAppendRefinementHandoffLineConcurrentAppendsKeepEveryMission(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows telemetry locking is advisory only")
+	}
 	path := handoffLinePath(t)
 	ids := []string{"a", "b", "c", "d", "e", "f"}
 	appendConcurrently(t, path, append(append([]string{}, ids...), ids...))

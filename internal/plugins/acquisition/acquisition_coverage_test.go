@@ -33,7 +33,7 @@ func TestValidationAndErrorBranches(t *testing.T) {
 	assert.NoError(t, ValidateRepository("https://github.com/example/repo"))
 	assert.NoError(t, ValidateRepository("ssh://git@example.com/repo"))
 	assert.NoError(t, ValidateRepository("git@example.com:repo"))
-	assert.NoError(t, ValidateRepository("/tmp/repo"))
+	assert.NoError(t, ValidateRepository(filepath.Join(t.TempDir(), "repo")))
 
 	assertCodedError(t, validateRequest(Request{}), "source_unsupported")
 	assertCodedError(t, validateRequest(Request{Source: SourceGit}), "repository_invalid")
@@ -204,7 +204,7 @@ func TestGitAndQuarantineFailureBranches(t *testing.T) {
 	assert.True(t, isWithinRoot("."))
 	assert.True(t, isWithinRoot("child"))
 	assert.False(t, isWithinRoot(".."))
-	assert.False(t, isWithinRoot("../child"))
+	assert.False(t, isWithinRoot(filepath.Join("..", "child")))
 
 	link := filepath.Join(work, "root-link")
 	if err := os.Symlink(managed, link); err == nil {

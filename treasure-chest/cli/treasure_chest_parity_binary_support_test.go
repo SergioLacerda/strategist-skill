@@ -24,9 +24,12 @@ func buildStrategistForParityTest(t *testing.T) string {
 	require.True(t, ok)
 	repo := filepath.Clean(filepath.Join(filepath.Dir(file), "../.."))
 	bin := filepath.Join(t.TempDir(), "strategist")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
 	cache := os.Getenv("GOCACHE")
 	if cache == "" {
-		cache = "/tmp/strategist-treasure-binary-cache"
+		cache = filepath.Join(os.TempDir(), "strategist-treasure-binary-cache")
 	}
 
 	cmd := exec.Command("go", "build", "-o", bin, "./cmd/strategist")

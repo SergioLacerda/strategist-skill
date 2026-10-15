@@ -9,7 +9,7 @@ import (
 )
 
 func TestBuildInventoryIsStableAndReadOnly(t *testing.T) {
-	root := t.TempDir()
+	root := inventoryTempDir(t)
 	writeInventoryFixture(t, root, "legacy/jewels.yaml", "jewel-one\n")
 	writeInventoryFixture(t, root, "legacy/index.gz", "index-one\n")
 	sources := []InventorySource{
@@ -35,7 +35,7 @@ func TestBuildInventoryIsStableAndReadOnly(t *testing.T) {
 }
 
 func TestBuildInventoryChangesDigestWhenSourceChanges(t *testing.T) {
-	root := t.TempDir()
+	root := inventoryTempDir(t)
 	path := filepath.Join(root, "jewels.yaml")
 	require.NoError(t, os.WriteFile(path, []byte("one\n"), 0o600))
 	source := []InventorySource{{Key: "jewels", Kind: "jewels", SourcePath: "jewels.yaml", Status: "captured", Provenance: "legacy:jewels"}}
@@ -54,7 +54,7 @@ func TestBuildInventoryChangesDigestWhenSourceChanges(t *testing.T) {
 }
 
 func TestBuildWorkspaceInventoryCapturesLegacyProjectionInputs(t *testing.T) {
-	root := t.TempDir()
+	root := inventoryTempDir(t)
 	for _, path := range []string{
 		".strategist/treasure-chests.yaml",
 		".strategist/jewels.yaml",
@@ -78,7 +78,7 @@ func TestBuildWorkspaceInventoryCapturesLegacyProjectionInputs(t *testing.T) {
 }
 
 func TestBuildInventoryRejectsUnsafeAndDuplicateSources(t *testing.T) {
-	root := t.TempDir()
+	root := inventoryTempDir(t)
 	writeInventoryFixture(t, root, "safe.yaml", "safe\n")
 	base := InventorySource{Key: "safe", Kind: "jewel", SourcePath: "safe.yaml", Status: "captured", Provenance: "legacy"}
 
@@ -90,7 +90,9 @@ func TestBuildInventoryRejectsUnsafeAndDuplicateSources(t *testing.T) {
 	require.ErrorContains(t, err, "must stay within the workspace")
 
 	link := filepath.Join(root, "link.yaml")
-	require.NoError(t, os.Symlink(filepath.Join(root, "safe.yaml"), link))
+	if err := os.Symlink(filepath.Join(root, "safe.yaml"), link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
 	unsafe = base
 	unsafe.SourcePath = "link.yaml"
 	_, err = BuildInventory(root, []InventorySource{unsafe})
@@ -102,4 +104,12 @@ func writeInventoryFixture(t *testing.T, root, relative, content string) {
 	path := filepath.Join(root, filepath.FromSlash(relative))
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+}
+
+func inventoryTempDir(t *testing.T) string {
+	t.Helper()
+	root, err := os.MkdirTemp(".", ".jeweler-inventory-")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	return root
 }
