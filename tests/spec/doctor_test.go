@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -17,6 +18,9 @@ import (
 
 func runDoctor(t *testing.T, fakeBin map[string]string, env ...string) (string, int) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("doctor.sh contract requires a POSIX shell; run with Git Bash or WSL on Windows")
+	}
 	dir := t.TempDir()
 	for name, body := range fakeBin {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"+body+"\n"), 0o755); err != nil {
@@ -90,6 +94,9 @@ func TestDoctorReportsAStaleStrategistOnPath(t *testing.T) {
 
 func runDriftHook(t *testing.T, staged, checkCmd string) (string, int) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("embedded-drift hook contract requires a POSIX shell; run with Git Bash or WSL on Windows")
+	}
 	cmd := exec.Command("bash", "scripts/hooks/check-embedded-drift.sh")
 	cmd.Dir = repoRoot(t)
 	cmd.Env = append(os.Environ(), "STAGED_FILES="+staged, "EMBED_CHECK_CMD="+checkCmd)

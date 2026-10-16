@@ -89,21 +89,28 @@ func requireRefinement(t *testing.T, dir, provider, runtimeKind string) {
 // activation_requires_successful_probe) and `strategist check` kept reporting
 // the previous Weapon.
 func TestInstall_WizardRerunSwitchesTheRefinementWeaponBetweenCertifiedRankedChoices(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	// No t.Parallel(): t.Setenv modifies the process-global PATH.
 	dir := t.TempDir()
 	binDir := t.TempDir()
-	fakeScript := `#!/bin/sh
-set -eu
-if [ "$1" = "init" ]; then
-  mkdir -p "$PWD/openspec"
-  printf 'schema: spec-driven\n' > "$PWD/openspec/config.yaml"
-  exit 0
-fi
-printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
-`
-	require.NoError(t, os.WriteFile(filepath.Join(binDir, "openspec"), []byte(fakeScript), 0o755))
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	openspec := testutil.BuildGoExecutableAt(t, binDir, "openspec", `package main
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	cwd, _ := os.Getwd()
+	if len(os.Args) > 1 && os.Args[1] == "init" {
+		_ = os.MkdirAll(filepath.Join(cwd, "openspec"), 0o755)
+		_ = os.WriteFile(filepath.Join(cwd, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644)
+		return
+	}
+	_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"root": map[string]string{"path": filepath.Dir(cwd)}, "members": []any{}, "status": []any{}})
+}
+`)
+	t.Setenv("PATH", testutil.PrependPath(filepath.Dir(openspec)))
 
 	require.NoError(t, installWithRefinementChoice(t, dir, "openspec-propose::ranked"))
 	requireRefinement(t, dir, "openspec-propose", domain.RankedRuntimeOpenSpecRoot)

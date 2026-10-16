@@ -9,7 +9,6 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/install/names"
-	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -47,7 +46,6 @@ func bindingModes(t *testing.T, dir string) map[string]string {
 // With a supported host Node the silent install must reach the same ranked
 // runtime state as the wizard install: nothing is left green but unrunnable.
 func TestSilentInstall_WithHostNodeMaterializesRankedRuntime(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
 	registerFakeHostNode(t, dir)
 	t.Setenv("PATH", t.TempDir())
@@ -68,7 +66,6 @@ func TestSilentInstall_WithHostNodeMaterializesRankedRuntime(t *testing.T) {
 // Slots whose provider has no runtime keep their custom binding: the silent
 // install only promotes what needs a runtime.
 func TestSilentInstall_PromotesOnlyProvidersThatDeclareARuntime(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
 	registerFakeHostNode(t, dir)
 	t.Setenv("PATH", t.TempDir())

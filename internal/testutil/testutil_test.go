@@ -2,6 +2,7 @@ package testutil_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -81,4 +82,17 @@ func TestSetHome_SetsPortableHomeVariables(t *testing.T) {
 
 	assert.Equal(t, dir, os.Getenv("HOME"))
 	assert.Equal(t, dir, os.Getenv("USERPROFILE"))
+}
+
+func TestBuildGoExecutableUsesPortablePathAndRuns(t *testing.T) {
+	exe := testutil.BuildGoExecutable(t, "portable-stub", `package main
+
+import "fmt"
+
+func main() { fmt.Print("portable") }
+`)
+	got, err := exec.Command(exe).Output()
+	require.NoError(t, err)
+	assert.Equal(t, "portable", string(got))
+	assert.Contains(t, testutil.PrependPath(filepath.Dir(exe)), filepath.Dir(exe))
 }

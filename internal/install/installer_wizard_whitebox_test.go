@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -149,25 +150,31 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersDoNotMaterializeManifests(t 
 // decision boundary: a Ranked selection must reach both active.yaml and the
 // corresponding plugins.lock binding for each configurable role.
 func TestInstall_WizardPath_PersistsRankedBindingModes(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	// No t.Parallel(): t.Setenv modifies the process-global PATH.
 	dir := t.TempDir()
 	// Inject a minimal fake openspec binary so prepareRankedProviderRuntimes
 	// can bootstrap the openspec-propose runtime without requiring the real
 	// openspec executable in $PATH (which is absent on CI runners).
 	binDir := t.TempDir()
-	openspecBin := filepath.Join(binDir, "openspec")
-	fakeScript := `#!/bin/sh
-set -eu
-if [ "$1" = "init" ]; then
-  mkdir -p "$PWD/openspec"
-  printf 'schema: spec-driven\n' > "$PWD/openspec/config.yaml"
-  exit 0
-fi
-printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
-`
-	require.NoError(t, os.WriteFile(openspecBin, []byte(fakeScript), 0o755))
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	openspecBin := testutil.BuildGoExecutableAt(t, binDir, "openspec", `package main
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	cwd, _ := os.Getwd()
+	if len(os.Args) > 1 && os.Args[1] == "init" {
+		_ = os.MkdirAll(filepath.Join(cwd, "openspec"), 0o755)
+		_ = os.WriteFile(filepath.Join(cwd, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644)
+		return
+	}
+	_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"root": map[string]string{"path": filepath.Dir(cwd)}, "members": []any{}, "status": []any{}})
+}
+`)
+	t.Setenv("PATH", testutil.PrependPath(filepath.Dir(openspecBin)))
 	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
 	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: wizard.NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
@@ -188,7 +195,6 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 }
 
 func TestInstall_WizardRankedPathBootstrapsContainedOpenSpecRuntime(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
 	t.Setenv("OPEN_SPEC_CONFIG", filepath.Join(t.TempDir(), "foreign-config.yaml"))
 
@@ -208,8 +214,12 @@ func TestInstall_WizardRankedPathBootstrapsContainedOpenSpecRuntime(t *testing.T
 	assert.Contains(t, string(state), "openspec-propose")
 	assert.Contains(t, string(state), "sha256:openspec-propose")
 	assert.NotContains(t, string(state), `"mode":`)
-	assert.Contains(t, string(state), `"node": "/`)
 	assert.Contains(t, string(state), `"script": "weapon-runtime/openspec-propose/openspec/`)
+	var rankedState domain.RankedRuntimeState
+	require.NoError(t, json.Unmarshal(state, &rankedState))
+	require.NotEmpty(t, rankedState.Entries)
+	require.NotNil(t, rankedState.Entries[0].Runtime)
+	assert.True(t, filepath.IsAbs(rankedState.Entries[0].Runtime.Node), "host Node is recorded as an absolute path")
 }
 
 type rankedWizardExtractor struct{}

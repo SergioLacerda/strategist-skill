@@ -15,8 +15,9 @@ DOC_GENERATOR_SCRIPTS := \
 # zero diff — that determinism is what docs-generated-gate (make/governance.mk)
 # checks. See docs/adr/0025-generated-documentation-anti-drift.md.
 #
-# command-tree.md requires the built binary (bin/strategist) to exist and be
-# up to date with the current source — run `make build` first if it is stale.
-docs-generate:
+# command-tree.md is generated from the freshly built, platform-correct binary
+# so the inventory cannot silently read a stale Unix or Windows executable.
+docs-generate: build
 	@mkdir -p docs/generated
-	@set -e; for generator in $(DOC_GENERATOR_SCRIPTS); do bash "$$generator"; done
+	@bash scripts/generate-command-tree.sh "$(STRATEGIST_BIN)"
+	@set -e; for generator in $(filter-out scripts/generate-command-tree.sh,$(DOC_GENERATOR_SCRIPTS)); do bash "$$generator"; done

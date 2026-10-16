@@ -11,7 +11,6 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/install/names"
 	"github.com/SergioLacerda/strategist-skill/internal/install/wizard"
-	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +26,6 @@ func readRankedState(t *testing.T, strategist string) domain.RankedRuntimeState 
 // A workspace installed before a certification digest change must be repairable
 // by `strategist upgrade`, not only by rerunning the wizard install.
 func TestApplyUpgrade_RepairsStaleRankedRuntimeState(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
 	registerFakeHostNode(t, dir)
 	t.Setenv("PATH", t.TempDir())
@@ -60,7 +58,6 @@ func TestApplyUpgrade_RepairsStaleRankedRuntimeState(t *testing.T) {
 // A record from an earlier release (schema v1, private Node) is rewritten by
 // `strategist upgrade` as the current schema with the host Node.
 func TestApplyUpgrade_RewritesLegacyRankedRuntimeState(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
 	registerFakeHostNode(t, dir)
 	t.Setenv("PATH", t.TempDir())

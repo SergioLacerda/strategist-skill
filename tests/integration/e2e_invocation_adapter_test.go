@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,15 +41,43 @@ func artifactText(t *testing.T, workspace, missionID string) string {
 
 func fakeCodexEnv(t *testing.T, fail bool) map[string]string {
 	t.Helper()
-	bin := t.TempDir()
-	script := "#!/bin/sh\noutput=\"\"\nwhile [ \"$#\" -gt 0 ]; do if [ \"$1\" = \"--output-last-message\" ]; then shift; output=\"$1\"; fi; shift; done\ncat >/dev/null\n"
+	failure := `		fmt.Fprintln(os.Stderr, "boom")
+		_ = output
+		os.Exit(1)`
 	if fail {
-		script += "echo boom >&2\nexit 1\n"
+		// Keep the failure path identical to the old shell stub.
 	} else {
-		script += "printf '%s\\n' '## mission_objective' 'x' '## known_facts' '- f' '## confidence_summary' 'c' '## handoff' 'h' > \"$output\"\n"
+		failure = `		if output == "" {
+			fmt.Fprintln(os.Stderr, "missing output path")
+			os.Exit(2)
+		}
+		if err := os.WriteFile(output, []byte(result), 0o600); err != nil {
+			panic(err)
+		}`
 	}
-	require.NoError(t, os.WriteFile(filepath.Join(bin, "codex"), []byte(script), 0o700))
-	return map[string]string{"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "CODEX_HOME": t.TempDir()}
+	source := `package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+)
+
+const result = ` + strconv.Quote(e2eRankerResult) + `
+
+func main() {
+	output := ""
+	for i := 0; i < len(os.Args); i++ {
+		if os.Args[i] == "--output-last-message" && i+1 < len(os.Args) {
+			output = os.Args[i+1]
+		}
+	}
+	_, _ = io.Copy(io.Discard, os.Stdin)
+` + failure + `
+}
+`
+	stub := testutil.BuildGoExecutable(t, "codex", source)
+	return map[string]string{"PATH": testutil.PrependPath(filepath.Dir(stub)), "CODEX_HOME": t.TempDir()}
 }
 
 // TestE2E_InstalledBinaryHonorsTheInvocationAndAdapterContract exercises the

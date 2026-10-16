@@ -6,12 +6,81 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+var goTool = discoverGoTool()
+
+// BuildGoExecutable compiles a small native test double and returns its
+// platform-correct executable path. It is the portable replacement for tests
+// that write a #!/bin/sh fixture and then skip on Windows.
+func BuildGoExecutable(t testing.TB, name, source string) string {
+	t.Helper()
+	return BuildGoExecutableAt(t, t.TempDir(), name, source)
+}
+
+// BuildGoExecutableAt compiles a native test double into dir. Use this when a
+// test needs the executable to live at a specific path, for example to verify
+// that a subprocess does not inherit its launcher's directory.
+func BuildGoExecutableAt(t testing.TB, dir, name, source string) string {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	sourcePath := filepath.Join(dir, "main.go")
+	require.NoError(t, os.WriteFile(sourcePath, []byte(source), 0o600))
+	binaryPath := filepath.Join(dir, ExecutableName(name))
+	cmd := exec.Command(goTool, "build", "-buildvcs=false", "-o", binaryPath, sourcePath) //nolint:gosec // G204: tool path is resolved once from the test process PATH
+	cmd.Dir = moduleRoot()
+	cmd.Env = overrideEnv(os.Environ(), "GOFLAGS", "-buildvcs=false")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "build test executable %s: %s", name, output)
+	return binaryPath
+}
+
+func discoverGoTool() string {
+	if path, err := exec.LookPath("go"); err == nil {
+		return path
+	}
+	return "go"
+}
+
+// ExecutableName returns name with the extension required by the host OS.
+func ExecutableName(name string) string {
+	if runtime.GOOS == "windows" && filepath.Ext(name) == "" {
+		return name + ".exe"
+	}
+	return name
+}
+
+// PrependPath returns a PATH value with dir first, using the host separator.
+func PrependPath(dir string) string {
+	return dir + string(os.PathListSeparator) + os.Getenv("PATH")
+}
+
+func moduleRoot() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return "."
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+}
+
+func overrideEnv(env []string, key, value string) []string {
+	prefix := key + "="
+	result := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		if strings.HasPrefix(entry, prefix) {
+			continue
+		}
+		result = append(result, entry)
+	}
+	return append(result, prefix+value)
+}
 
 // ValidMinimalPersonaYAML returns the smallest persona fixture accepted by runtime validation.
 func ValidMinimalPersonaYAML() []byte {

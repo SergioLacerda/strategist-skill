@@ -2,13 +2,13 @@ package env
 
 import (
 	"context"
-	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,9 +23,19 @@ func TestForRootDoesNotInheritHostConfiguration(t *testing.T) {
 }
 
 func TestCommandUsesRestrictedEnvironment(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	t.Setenv("OPEN_SPEC_CONFIG", "/outside/config.yaml")
-	cmd, err := Command(context.Background(), t.TempDir(), "sh", "-c", "test -z \"$OPEN_SPEC_CONFIG\" && test -n \"$PATH\"")
+	exe := testutil.BuildGoExecutable(t, "env-check", `package main
+
+import "os"
+
+func main() {
+	if os.Getenv("OPEN_SPEC_CONFIG") != "" || os.Getenv("PATH") == "" {
+		os.Exit(1)
+	}
+}
+`)
+	t.Setenv("PATH", testutil.PrependPath(filepath.Dir(exe)))
+	cmd, err := Command(context.Background(), t.TempDir(), filepath.Base(exe))
 	require.NoError(t, err)
 	_, err = cmd.Output()
 	require.NoError(t, err)
@@ -69,12 +79,16 @@ func TestPlatformEnvIsEmptyOffWindowsAndSkipsUnsetVariables(t *testing.T) {
 // its PATH is empty. Handing it the launcher's own directory would, in
 // host_node mode, be handing it a system binary directory such as /usr/bin.
 func TestPrivateCommandRunsAbsoluteExecutableWithAnEmptyPath(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("uses a POSIX shell script as the private executable")
-	}
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "node")
-	require.NoError(t, os.WriteFile(exe, []byte("#!/bin/sh\nprintf '%s' \"$PATH\"\n"), 0o755))
+	exe := testutil.BuildGoExecutable(t, "node", `package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() { fmt.Print(os.Getenv("PATH")) }
+`)
 	t.Setenv("PATH", "/host/only")
 
 	cmd, err := PrivateCommand(context.Background(), dir, exe)
@@ -88,12 +102,16 @@ func TestPrivateCommandRunsAbsoluteExecutableWithAnEmptyPath(t *testing.T) {
 // The host Node's directory is a system binary directory. Regression guard for
 // the host_node hermeticity gap: it must not reach the subprocess.
 func TestPrivateCommandDoesNotExposeTheLauncherDirectoryInHostNodeMode(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("uses a POSIX shell script as the private executable")
-	}
 	hostBin := t.TempDir()
-	exe := filepath.Join(hostBin, "node")
-	require.NoError(t, os.WriteFile(exe, []byte("#!/bin/sh\nprintf '%s' \"$PATH\"\n"), 0o755))
+	exe := testutil.BuildGoExecutableAt(t, hostBin, "node", `package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() { fmt.Print(os.Getenv("PATH")) }
+`)
 
 	cmd, err := PrivateCommand(context.Background(), t.TempDir(), exe)
 	require.NoError(t, err)
@@ -133,10 +151,14 @@ func envValue(env []string, key string) string {
 func TestForRootReturnsAbsolutePathsForRelativeRoot(t *testing.T) {
 	base := chdirTemp(t)
 	env := ForRoot("rt")
+	resolvedBase := base
+	if runtime.GOOS != "windows" {
+		resolvedBase = evalSymlinks(t, base)
+	}
 	for _, key := range []string{"HOME", "USERPROFILE", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME"} {
 		value := envValue(env, key)
 		require.True(t, filepath.IsAbs(value), "%s must be absolute, got %q", key, value)
-		require.True(t, strings.HasPrefix(value, filepath.Join(evalSymlinks(t, base), "rt")+string(filepath.Separator)) ||
+		require.True(t, strings.HasPrefix(value, filepath.Join(resolvedBase, "rt")+string(filepath.Separator)) ||
 			strings.HasPrefix(value, filepath.Join(base, "rt")+string(filepath.Separator)), "%s=%q must be under the absolute root", key, value)
 	}
 }
@@ -149,9 +171,12 @@ func evalSymlinks(t *testing.T, path string) string {
 }
 
 func TestCommandUsesSameAbsoluteRootForDirAndEnv(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	chdirTemp(t)
-	cmd, err := Command(context.Background(), "rt", "sh", "-c", "true")
+	exe := testutil.BuildGoExecutable(t, "true", `package main
+func main() {}
+`)
+	t.Setenv("PATH", testutil.PrependPath(filepath.Dir(exe)))
+	cmd, err := Command(context.Background(), "rt", filepath.Base(exe))
 	require.NoError(t, err)
 	require.True(t, filepath.IsAbs(cmd.Dir), "cmd.Dir must be absolute, got %q", cmd.Dir)
 	for _, key := range []string{"HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME"} {
@@ -160,11 +185,18 @@ func TestCommandUsesSameAbsoluteRootForDirAndEnv(t *testing.T) {
 }
 
 func TestCommandWithRelativeRootCreatesNoNestedProviderState(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("uses a POSIX shell")
-	}
 	base := chdirTemp(t)
-	cmd, err := Command(context.Background(), "rt", "sh", "-c", `mkdir -p "$XDG_CONFIG_HOME/x"`)
+	exe := testutil.BuildGoExecutable(t, "mkdir-state", `package main
+
+import (
+	"os"
+	"path/filepath"
+)
+
+func main() { _ = os.MkdirAll(filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "x"), 0o755) }
+`)
+	t.Setenv("PATH", testutil.PrependPath(filepath.Dir(exe)))
+	cmd, err := Command(context.Background(), "rt", filepath.Base(exe))
 	require.NoError(t, err)
 	require.NoError(t, cmd.Run())
 	require.DirExists(t, filepath.Join(base, "rt", ".provider-config", "x"))
@@ -172,12 +204,10 @@ func TestCommandWithRelativeRootCreatesNoNestedProviderState(t *testing.T) {
 }
 
 func TestPrivateCommandUsesAbsoluteRootForRelativeDir(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("uses a POSIX shell script as the private executable")
-	}
-	base := chdirTemp(t)
-	exe := filepath.Join(base, "node")
-	require.NoError(t, os.WriteFile(exe, []byte("#!/bin/sh\ntrue\n"), 0o755))
+	chdirTemp(t)
+	exe := testutil.BuildGoExecutable(t, "node", `package main
+func main() {}
+`)
 	cmd, err := PrivateCommand(context.Background(), "rt", exe)
 	require.NoError(t, err)
 	require.True(t, filepath.IsAbs(cmd.Dir))
@@ -194,12 +224,12 @@ func TestCommandFailsWhenRelativeRootCannotBeResolved(t *testing.T) {
 		t.Skip("filepath.Abs still resolves after the working directory is removed on this platform")
 	}
 
-	cmd, err := Command(context.Background(), "rt", "sh", "-c", "true")
+	cmd, err := Command(context.Background(), "rt", "not-needed")
 	require.Error(t, err)
 	require.Nil(t, cmd)
 	require.ErrorContains(t, err, `resolve provider root "rt"`)
 
-	cmd, err = PrivateCommand(context.Background(), "rt", "/bin/sh")
+	cmd, err = PrivateCommand(context.Background(), "rt", "not-needed")
 	require.Error(t, err)
 	require.Nil(t, cmd)
 	require.ErrorContains(t, err, `resolve provider root "rt"`)

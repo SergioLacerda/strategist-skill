@@ -14,6 +14,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -298,12 +299,9 @@ func appendEnvOverrides(base, overrides map[string]string) []string {
 // runtime itself is covered by its own tests and by the standalone smoke.
 func withHostOpenSpec(t *testing.T) map[string]string {
 	t.Helper()
-	if runtime.GOOS == "windows" {
-		t.Skip("stands in for openspec with a POSIX shell script")
-	}
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "openspec"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil { //nolint:gosec // test stub must be executable
-		t.Fatalf("write openspec stub: %v", err)
-	}
-	return map[string]string{"PATH": dir + string(os.PathListSeparator) + os.Getenv("PATH")}
+	stub := testutil.BuildGoExecutable(t, "openspec", `package main
+
+func main() {}
+`)
+	return map[string]string{"PATH": testutil.PrependPath(filepath.Dir(stub))}
 }

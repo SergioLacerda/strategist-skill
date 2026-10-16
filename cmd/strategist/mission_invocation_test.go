@@ -3,13 +3,13 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -140,11 +140,21 @@ func TestClaudeArgsKeepPromptOffArgvAndToolsNonVariadic(t *testing.T) {
 }
 
 func TestRunClaudePromptSendsPromptOnStdinAndSeparatesStderr(t *testing.T) {
-	skipPOSIXHostFixture(t)
-	bin := t.TempDir()
-	script := "#!/bin/sh\ncat >&2 <<'EOF'\nwarn\nEOF\nprintf 'got:'; cat\n"
-	require.NoError(t, os.WriteFile(filepath.Join(bin, "claude"), []byte(script), 0o700))
-	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	bin := testutil.BuildGoExecutable(t, "claude", `package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+)
+
+func main() {
+	fmt.Fprintln(os.Stderr, "warn")
+	fmt.Print("got:")
+	_, _ = io.Copy(os.Stdout, os.Stdin)
+}
+`)
+	t.Setenv("PATH", testutil.PrependPath(filepath.Dir(bin)))
 
 	got, err := runClaudePrompt(t.Context(), t.TempDir(), "hello prompt")
 
@@ -177,9 +187,15 @@ func TestLinkCodexAuthToleratesMissingCredentials(t *testing.T) {
 }
 
 func TestRunClaudeBinaryRejectsRunawayOutput(t *testing.T) {
-	skipPOSIXHostFixture(t)
-	bin := filepath.Join(t.TempDir(), "claude")
-	require.NoError(t, os.WriteFile(bin, []byte("#!/bin/sh\nyes x | head -c 100000\n"), 0o700))
+	bin := testutil.BuildGoExecutable(t, "claude", `package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() { fmt.Print(strings.Repeat("x", 100000)) }
+`)
 
 	_, err := runClaudeBinary(t.Context(), bin, t.TempDir(), "p", 1024)
 
@@ -196,22 +212,25 @@ func TestHostBridgePromptCarriesTheDiscoveryOutputContract(t *testing.T) {
 }
 
 func TestRunCodexPromptExecutesTheHostBinaryAndReadsItsResult(t *testing.T) {
-	skipPOSIXHostFixture(t)
-	bin := t.TempDir()
-	script := `#!/bin/sh
-output=""
-while [ "$#" -gt 0 ]; do
-  if [ "$1" = "--output-last-message" ]; then
-    shift
-    output="$1"
-  fi
-  shift
-done
-cat >/dev/null
-printf '%s\n' '## mission_objective' 'delegated' > "$output"
-`
-	require.NoError(t, os.WriteFile(filepath.Join(bin, "codex"), []byte(script), 0o700))
-	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	bin := testutil.BuildGoExecutable(t, "codex", `package main
+
+import (
+	"io"
+	"os"
+)
+
+func main() {
+	output := ""
+	for i := 0; i+1 < len(os.Args); i++ {
+		if os.Args[i] == "--output-last-message" {
+			output = os.Args[i+1]
+		}
+	}
+	_, _ = io.Copy(io.Discard, os.Stdin)
+	_ = os.WriteFile(output, []byte("## mission_objective\ndelegated\n"), 0o600)
+}
+`)
+	t.Setenv("PATH", testutil.PrependPath(filepath.Dir(bin)))
 	t.Setenv("CODEX_HOME", t.TempDir())
 
 	got, err := runCodexPrompt(t.Context(), t.TempDir(), "compiled weapon prompt")
@@ -223,21 +242,23 @@ printf '%s\n' '## mission_objective' 'delegated' > "$output"
 
 func writeFakeHost(t *testing.T, name, script string) string {
 	t.Helper()
-	skipPOSIXHostFixture(t)
-	bin := filepath.Join(t.TempDir(), name)
-	require.NoError(t, os.WriteFile(bin, []byte(script), 0o700))
-	return bin
-}
-
-func skipPOSIXHostFixture(t *testing.T) {
-	t.Helper()
-	if runtime.GOOS == "windows" {
-		t.Skip("host fixture uses a POSIX shell script")
-	}
+	return testutil.BuildGoExecutable(t, name, script)
 }
 
 func TestRunClaudeBinaryRejectsRunawayStderr(t *testing.T) {
-	bin := writeFakeHost(t, "claude", "#!/bin/sh\nyes x | head -c 3000000 >&2\nprintf ok\n")
+	bin := writeFakeHost(t, "claude", `package main
+
+import (
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() {
+	fmt.Fprint(os.Stderr, strings.Repeat("x", 3000000))
+	fmt.Print("ok")
+}
+`)
 
 	_, err := runClaudeBinary(t.Context(), bin, t.TempDir(), "p", 1024)
 
@@ -245,7 +266,18 @@ func TestRunClaudeBinaryRejectsRunawayStderr(t *testing.T) {
 }
 
 func TestRunCodexBinaryRejectsRunawayStdout(t *testing.T) {
-	bin := writeFakeHost(t, "codex", "#!/bin/sh\ncat >/dev/null\nyes x | head -c 100000\n")
+	bin := writeFakeHost(t, "codex", `package main
+
+import (
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() {
+	fmt.Fprint(os.Stdout, strings.Repeat("x", 100000))
+}
+`)
 	t.Setenv("CODEX_HOME", t.TempDir())
 
 	_, err := runCodexBinary(t.Context(), bin, t.TempDir(), "p", 1024)
@@ -254,7 +286,16 @@ func TestRunCodexBinaryRejectsRunawayStdout(t *testing.T) {
 }
 
 func TestRunCodexBinaryRejectsRunawayStderr(t *testing.T) {
-	bin := writeFakeHost(t, "codex", "#!/bin/sh\ncat >/dev/null\nyes x | head -c 3000000 >&2\n")
+	bin := writeFakeHost(t, "codex", `package main
+
+import (
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() { fmt.Fprint(os.Stderr, strings.Repeat("x", 3000000)) }
+`)
 	t.Setenv("CODEX_HOME", t.TempDir())
 
 	_, err := runCodexBinary(t.Context(), bin, t.TempDir(), "p", maxHostResultBytes)
@@ -263,7 +304,20 @@ func TestRunCodexBinaryRejectsRunawayStderr(t *testing.T) {
 }
 
 func TestHostFailureKeepsABoundedStderrTail(t *testing.T) {
-	bin := writeFakeHost(t, "codex", "#!/bin/sh\ncat >/dev/null\nyes line | head -c 100000 >&2\necho final-cause >&2\nexit 3\n")
+	bin := writeFakeHost(t, "codex", `package main
+
+import (
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() {
+	fmt.Fprint(os.Stderr, strings.Repeat("line\n", 20000))
+	fmt.Fprintln(os.Stderr, "final-cause")
+	os.Exit(3)
+}
+`)
 	t.Setenv("CODEX_HOME", t.TempDir())
 
 	_, err := runCodexBinary(t.Context(), bin, t.TempDir(), "p", maxHostResultBytes)
@@ -274,15 +328,23 @@ func TestHostFailureKeepsABoundedStderrTail(t *testing.T) {
 }
 
 func TestHostStderrNeverEntersASuccessfulResult(t *testing.T) {
-	bin := writeFakeHost(t, "codex", `#!/bin/sh
-output=""
-while [ "$#" -gt 0 ]; do
-  if [ "$1" = "--output-last-message" ]; then shift; output="$1"; fi
-  shift
-done
-cat >/dev/null
-echo noisy-diagnostic >&2
-echo "## mission_objective" > "$output"
+	bin := writeFakeHost(t, "codex", `package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	output := ""
+	for i := 0; i+1 < len(os.Args); i++ {
+		if os.Args[i] == "--output-last-message" {
+			output = os.Args[i+1]
+		}
+	}
+	fmt.Fprintln(os.Stderr, "noisy-diagnostic")
+	_ = os.WriteFile(output, []byte("## mission_objective\n"), 0o600)
+}
 `)
 	t.Setenv("CODEX_HOME", t.TempDir())
 

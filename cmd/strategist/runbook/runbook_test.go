@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/roles/jeweler"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
 )
 
@@ -73,12 +74,9 @@ func TestNewProviderFailsClosedWithoutCatalog(t *testing.T) {
 }
 
 func TestNewProviderResolvesAdmittedWeaponAndRunSelectUsesIt(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("provider fixture uses a POSIX shell script")
-	}
 	root := t.TempDir()
 	writeProviderCatalog(t, root)
-	providerScript := writeProviderScript(t, root)
+	providerScript := writeProviderStub(t)
 	if _, err := newProvider(root, providerScript); err != nil {
 		t.Fatal(err)
 	}
@@ -119,14 +117,24 @@ func writeProviderCatalog(t *testing.T, root string) {
 	}
 }
 
-func writeProviderScript(t *testing.T, root string) string {
+func writeProviderStub(t *testing.T) string {
 	t.Helper()
-	providerScript := filepath.Join(root, "provider.sh")
-	script := "#!/bin/sh\nif [ \"$1\" = status ]; then echo '{\"Provider\":\"treasure-chest-tmp\",\"Version\":\"0.1.0\",\"SchemaVersion\":1,\"Healthy\":true}'; else echo '{\"Envelope\":{\"Provider\":\"treasure-chest-tmp\",\"Version\":\"0.1.0\",\"SchemaVersion\":1,\"Freshness\":\"fresh\",\"FallbackState\":\"none\"},\"Items\":[{\"ID\":\"fix\",\"Kind\":\"potion\",\"Score\":1,\"Trust\":1,\"Freshness\":\"fresh\",\"Applicability\":\"accepted\",\"Reason\":\"matched\",\"Source\":{\"Path\":\"docs/runbooks/fix.md\"}}]}'; fi\n"
-	if err := os.WriteFile(providerScript, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
+	source := `package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "status" {
+		fmt.Println("{\"Provider\":\"treasure-chest-tmp\",\"Version\":\"0.1.0\",\"SchemaVersion\":1,\"Healthy\":true}")
+		return
 	}
-	return providerScript
+	fmt.Println("{\"Envelope\":{\"Provider\":\"treasure-chest-tmp\",\"Version\":\"0.1.0\",\"SchemaVersion\":1,\"Freshness\":\"fresh\",\"FallbackState\":\"none\"},\"Items\":[{\"ID\":\"fix\",\"Kind\":\"potion\",\"Score\":1,\"Trust\":1,\"Freshness\":\"fresh\",\"Applicability\":\"accepted\",\"Reason\":\"matched\",\"Source\":{\"Path\":\"docs/runbooks/fix.md\"}}]}")
+}
+`
+	return testutil.BuildGoExecutable(t, "provider-stub", source)
 }
 
 func TestRunSelectRejectsMissingSignalAndBinding(t *testing.T) {

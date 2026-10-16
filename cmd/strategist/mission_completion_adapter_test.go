@@ -10,6 +10,7 @@ import (
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -25,25 +26,45 @@ func readArtifact(t *testing.T, input missionadapter.InvocationCompleteInput) st
 // no live provider or developer configuration is needed.
 func fakeChildHost(t *testing.T, name string) {
 	t.Helper()
-	skipPOSIXHostFixture(t)
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("CODEX_HOME", t.TempDir())
 	t.Setenv("ANTHROPIC_API_KEY", "")
-	script := "#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' '## mission_objective' 'child'\n"
+	source := `package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+)
+
+func main() {
+	_, _ = io.Copy(io.Discard, os.Stdin)
+	fmt.Println("## mission_objective")
+	fmt.Println("child")
+}
+`
 	if name == "codex" {
-		script = `#!/bin/sh
-output=""
-while [ "$#" -gt 0 ]; do
-  if [ "$1" = "--output-last-message" ]; then shift; output="$1"; fi
-  shift
-done
-cat >/dev/null
-printf '%s\n' '## mission_objective' 'child' > "$output"
+		source = `package main
+
+import (
+	"io"
+	"os"
+)
+
+func main() {
+	output := ""
+	for i := 0; i+1 < len(os.Args); i++ {
+		if os.Args[i] == "--output-last-message" {
+			output = os.Args[i+1]
+		}
+	}
+	_, _ = io.Copy(io.Discard, os.Stdin)
+	_ = os.WriteFile(output, []byte("## mission_objective\nchild\n"), 0o600)
+}
 `
 	}
-	bin := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(bin, name), []byte(script), 0o700))
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	bin := testutil.BuildGoExecutable(t, name, source)
+	t.Setenv("PATH", testutil.PrependPath(filepath.Dir(bin)))
 }
 
 func recordOf(t *testing.T, root, id string) domain.MissionInvocationRecord {

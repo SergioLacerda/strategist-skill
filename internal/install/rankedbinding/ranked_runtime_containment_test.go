@@ -13,21 +13,32 @@ import (
 )
 
 func TestBootstrapOpenSpecRuntime_UsesContainedCommandsAndDirectConfig(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	root := filepath.Join(t.TempDir(), ".strategist", "openspec")
 	binDir := t.TempDir()
-	script := filepath.Join(binDir, "openspec")
-	scriptBody := `#!/bin/sh
-set -eu
-printf '%s|%s|%s\n' "$PWD" "$*" "${OPEN_SPEC_CONFIG:-}" >> "$PWD/command.log"
-if [ "$1" = "init" ]; then
-  command -p mkdir -p "$PWD/openspec"
-  printf 'schema: spec-driven\n' > "$PWD/openspec/config.yaml"
-  exit 0
-fi
-printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(command -p dirname "$PWD")"
-`
-	require.NoError(t, os.WriteFile(script, []byte(scriptBody), 0o755))
+	script := testutil.BuildGoExecutableAt(t, binDir, "openspec", `package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+func main() {
+	cwd, _ := os.Getwd()
+	log, _ := os.OpenFile(filepath.Join(cwd, "command.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if log != nil {
+		_, _ = fmt.Fprintf(log, "%s|%s|%s\n", cwd, strings.Join(os.Args[1:], " "), os.Getenv("OPEN_SPEC_CONFIG"))
+		_ = log.Close()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "init" {
+		_ = os.MkdirAll(filepath.Join(cwd, "openspec"), 0o755)
+		_ = os.WriteFile(filepath.Join(cwd, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644)
+		return
+	}
+	_, _ = fmt.Fprintf(os.Stdout, "{\"root\":{\"path\":%q},\"members\":[],\"status\":[]}", filepath.Dir(cwd))
+}
+`)
 	t.Setenv("OPEN_SPEC_CONFIG", filepath.Join(t.TempDir(), "foreign-config.yaml"))
 
 	runtime := domain.WeaponRuntime{

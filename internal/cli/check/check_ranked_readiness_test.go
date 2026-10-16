@@ -2,6 +2,7 @@ package check
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -243,32 +244,60 @@ func TestBlockedRuntimeIsReportedAsTheDependenciesDimension(t *testing.T) {
 	require.NotContains(t, runtimeErrs[0], "permission_grant")
 }
 
-// fakeHostNode is a POSIX script standing in for the host Node: it reports
-// version on --version and otherwise runs body (the healthcheck answer).
+// fakeHostNode is a native executable standing in for the host Node. The
+// behavior names preserve the healthcheck cases without requiring /bin/sh.
 func fakeHostNode(version, body string) string {
-	return "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then printf 'v" + version + "\\n'; exit 0; fi\n" + body + "\n"
+	mode, reportedRoot := "correct", ""
+	switch {
+	case body == "exit 1":
+		mode = "fail"
+	case body == "exit 3":
+		mode = "unexec"
+	case strings.HasPrefix(body, "report:"):
+		mode, reportedRoot = "report", strings.TrimPrefix(body, "report:")
+	case strings.Contains(body, " 1"):
+		mode = "sleep"
+	}
+	return fmt.Sprintf(`package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+func main() {
+	if %q == "unexec" {
+		os.Exit(3)
+	}
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Printf("v%%s\n", %q)
+		return
+	}
+	switch %q {
+	case "fail":
+		os.Exit(1)
+	case "sleep":
+		time.Sleep(time.Second)
+	case "report":
+		fmt.Printf("{\"root\":{\"path\":%%q}}", %q)
+	default:
+		cwd, _ := os.Getwd()
+		fmt.Printf("{\"root\":{\"path\":%%q}}", filepath.Dir(cwd))
+	}
+}
+`, mode, version, mode, reportedRoot)
 }
 
 // correctlyRootedAnswer answers the healthcheck the way a correctly rooted
 // OpenSpec bundle does: root.path is the parent of the runtime root (cwd).
-const correctlyRootedAnswer = `printf '{"root":{"path":"%s"}}' "${PWD%/*}"`
+const correctlyRootedAnswer = "correct-root"
 
 // reportingRoot answers with a fixed root.path, so a test can assert that a
 // runtime root pointing somewhere else is rejected.
 func reportingRoot(semanticRoot string) string {
-	return `printf '{"root":{"path":"` + semanticRoot + `"}}'`
-}
-
-// absoluteTool resolves a host tool for use inside a fake Node script. A
-// runtime subprocess gets an empty PATH, so such a script cannot call even
-// `sleep` by name.
-func absoluteTool(t *testing.T, tool string) string {
-	t.Helper()
-	target, err := exec.LookPath(tool)
-	if err != nil {
-		t.Skipf("%s not available: %v", tool, err)
-	}
-	return target
+	return "report:" + semanticRoot
 }
 
 // writeHostRuntime installs a fake host Node running nodeBody, a one-file
@@ -277,8 +306,11 @@ func absoluteTool(t *testing.T, tool string) string {
 func writeHostRuntime(t *testing.T, strategist, nodeBody string) domain.RankedRuntimeStateRuntime {
 	t.Helper()
 	node := filepath.Join(strategist, "host", "node")
-	require.NoError(t, os.MkdirAll(filepath.Dir(node), 0o755))
-	require.NoError(t, os.WriteFile(node, []byte(nodeBody), 0o755))
+	if nodeBody != "" {
+		node = testutil.BuildGoExecutableAt(t, filepath.Dir(node), "node", nodeBody)
+	} else {
+		require.NoError(t, os.MkdirAll(filepath.Dir(node), 0o755))
+	}
 	runtimeDir := filepath.Join(strategist, "weapon-runtime", "openspec-propose")
 	require.NoError(t, os.MkdirAll(filepath.Join(runtimeDir, "openspec"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(runtimeDir, "openspec", "openspec.mjs"), []byte("// bundle\n"), 0o644))
@@ -291,11 +323,15 @@ func writeHostRuntime(t *testing.T, strategist, nodeBody string) domain.RankedRu
 	}
 }
 
+func replaceHostNode(t *testing.T, node, source string) {
+	t.Helper()
+	testutil.BuildGoExecutableAt(t, filepath.Dir(node), filepath.Base(node), source)
+}
+
 // hostRuntimeFixture prepares a Strategist root with its runtime root and a
 // host runtime answering with nodeBody.
 func hostRuntimeFixture(t *testing.T, nodeBody string) (strategist, runtimeRoot string, state domain.RankedRuntimeStateRuntime) {
 	t.Helper()
-	testutil.RequirePOSIXShell(t)
 	strategist = t.TempDir()
 	runtimeRoot = filepath.Join(strategist, "openspec")
 	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
@@ -320,7 +356,7 @@ func TestHostNodeRankedRuntimeHealthcheckReportsFailureAndSuccess(t *testing.T) 
 	require.Equal(t, domain.ReadinessBlocked, failed.Status)
 	require.Equal(t, "ranked_runtime_healthcheck_failed", failed.ReasonCode)
 
-	require.NoError(t, os.WriteFile(state.Node, []byte(fakeHostNode("22.23.2", correctlyRootedAnswer)), 0o755))
+	replaceHostNode(t, state.Node, fakeHostNode("22.23.2", correctlyRootedAnswer))
 	passed := runHostNodeRankedRuntimeHealthcheck(strategist, runtimeRoot, "openspec-propose", hostNodeContract(), state)
 	require.Equal(t, domain.ReadinessReady, passed.Status, passed.Detail)
 	require.Equal(t, "ranked_runtime_healthy", passed.ReasonCode)
@@ -340,7 +376,6 @@ func TestHostNodeRankedRuntimeHealthcheckRejectsSemanticRootMismatch(t *testing.
 // Drift regression: the provider reports an absolute root.path while the
 // declared runtime root is relative.
 func TestHostNodeRankedRuntimeHealthcheckAcceptsRelativeRootWithAbsoluteReport(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	base := t.TempDir()
 	strategist := filepath.Join(base, ".strategist")
 	require.NoError(t, os.MkdirAll(filepath.Join(strategist, "openspec"), 0o755))
@@ -522,13 +557,14 @@ func TestCustomRuntimeReadinessIsUnchangedWhenTheProviderNeedsNoRuntimeOrTheCata
 }
 
 func TestCustomRuntimeReadinessAcceptsAHostExecutableOrARecordedRuntime(t *testing.T) {
-	testutil.RequirePOSIXShell(t)
 	root := t.TempDir()
 	writeRuntimeCatalog(t, root, true)
 
 	bin := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(bin, "openspec"), []byte("#!/bin/sh\nexit 0\n"), 0o755))
-	t.Setenv("PATH", bin)
+	openspec := testutil.BuildGoExecutableAt(t, bin, "openspec", `package main
+func main() {}
+`)
+	t.Setenv("PATH", filepath.Dir(openspec))
 	require.Equal(t, domain.ReadinessReady, customRuntimeReadiness(root, "refinement", "provider").Status, "host executable")
 
 	t.Setenv("PATH", t.TempDir())
@@ -567,13 +603,15 @@ func TestRankedHealthcheckTimeoutIsConfigurableAndBounded(t *testing.T) {
 }
 
 func TestRankedHealthcheckReportsATimeoutDistinctFromAFailure(t *testing.T) {
-	sleep := absoluteTool(t, "sleep")
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows process termination does not reliably surface context deadlines for this synthetic timeout")
+	}
 	// 1s, not the timeout being tested (300ms): the process-group kill in
 	// env.PrivateCommand (see command_unix.go) now reaps this
 	// grandchild on cancellation, so the exact duration no longer dominates
 	// the test's wall time — kept short only as a margin against a platform
 	// where that fix is a no-op (command_windows.go).
-	strategist, runtimeRoot, state := hostRuntimeFixture(t, fakeHostNode("22.23.2", sleep+" 1"))
+	strategist, runtimeRoot, state := hostRuntimeFixture(t, fakeHostNode("22.23.2", "sleep 1"))
 	t.Setenv(rankedHealthcheckTimeoutEnv, "300ms")
 
 	got := runHostNodeRankedRuntimeHealthcheck(strategist, runtimeRoot, "openspec-propose", hostNodeContract(), state)
@@ -592,7 +630,7 @@ func TestHostNodeRankedRuntimeHealthcheckReportsSkewAgainstTheCertifiedPin(t *te
 	require.Equal(t, domain.ReasonRankedRuntimeVersionSkew, skewed.ReasonCode)
 	require.Contains(t, skewed.Detail, "22.23.2")
 
-	require.NoError(t, os.WriteFile(state.Node, []byte(fakeHostNode("22.23.2", correctlyRootedAnswer)), 0o755))
+	replaceHostNode(t, state.Node, fakeHostNode("22.23.2", correctlyRootedAnswer))
 	matching := runHostNodeRankedRuntimeHealthcheck(strategist, runtimeRoot, "openspec-propose", hostNodeContract(), state)
 	require.Equal(t, domain.ReadinessReady, matching.Status, matching.Detail)
 	require.Equal(t, "ranked_runtime_healthy", matching.ReasonCode)
@@ -604,7 +642,7 @@ func TestHostNodeRankedRuntimeHealthcheckSeparatesAFailingNodeFromAnOldOne(t *te
 	require.Equal(t, domain.ReadinessBlocked, old.Status)
 	require.Equal(t, "ranked_runtime_host_node_unsupported", old.ReasonCode)
 
-	require.NoError(t, os.WriteFile(state.Node, []byte("#!/bin/sh\nexit 3\n"), 0o755))
+	replaceHostNode(t, state.Node, fakeHostNode("22.23.2", "exit 3"))
 	got := runHostNodeRankedRuntimeHealthcheck(strategist, runtimeRoot, "openspec-propose", hostNodeContract(), state)
 	require.Equal(t, domain.ReadinessBlocked, got.Status)
 	require.Equal(t, "ranked_runtime_healthcheck_failed", got.ReasonCode,

@@ -64,6 +64,20 @@ while IFS=$'\t' read -r pkg owner reason extra; do
   exemption_packages["$pkg"]="$owner"
 done < "$exemptions"
 
+# go list can still answer package metadata when the configured cache path is
+# unusable, so validate the cache's existing directory (or its parent) before
+# attempting discovery. Use shell-free path creation here: this script also
+# runs under Git Bash, where a Windows cache path is not a portable mkdir input.
+if [[ "$go_cache" != "off" ]]; then
+  cache_probe="$go_cache"
+  [[ -d "$cache_probe" ]] || cache_probe="$(dirname "$go_cache")"
+  if [[ ! -d "$cache_probe" || ! -w "$cache_probe" ]]; then
+    fail_msg COVERAGE_INVENTORY_DISCOVERY_FAILED "unable to discover production Go packages"
+    printf '%s\n' "${diagnostics[@]}" | LC_ALL=C sort -u >&2
+    exit "$fail"
+  fi
+fi
+
 module_path="$(GOCACHE="$go_cache" go list -m -f '{{.Path}}')" || {
   fail_msg COVERAGE_INVENTORY_DISCOVERY_FAILED "unable to determine Go module path"
   printf '%s\n' "${diagnostics[@]}" | LC_ALL=C sort -u >&2

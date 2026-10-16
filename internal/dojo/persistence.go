@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	storageLockName    = ".state.lock"
-	storageLockTimeout = 5 * time.Second
+	storageLockName = ".state.lock"
+	// Windows can hold a directory briefly while antivirus/indexing observes
+	// the atomic write. Give concurrent writers enough time to take their turn.
+	storageLockTimeout = 30 * time.Second
 	storageLockStale   = 30 * time.Second
 	storageLockRetry   = 10 * time.Millisecond
 )

@@ -3,10 +3,13 @@
 package integration_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,15 +44,27 @@ func installedTelemetryWorkspace(t *testing.T) (workspace, strategistDir string)
 func writeRunbookProvider(t *testing.T, workspace, items string) string {
 	t.Helper()
 
-	provider := filepath.Join(workspace, "treasure-chest-tmp")
-	script := "#!/bin/sh\n" +
-		"if [ \"$1\" = status ]; then\n" +
-		"  printf '%s\\n' '{\"Provider\":\"treasure-chest-tmp\",\"Version\":\"0.1.0\",\"SchemaVersion\":1,\"Healthy\":true}'\n" +
-		"  exit 0\n" +
-		"fi\n" +
-		"printf '%s\\n' '{\"Envelope\":{\"Provider\":\"treasure-chest-tmp\",\"Version\":\"0.1.0\",\"SchemaVersion\":1,\"Freshness\":\"fresh\",\"FallbackState\":\"none\"},\"Items\":[" + items + "]}'\n"
-	require.NoError(t, os.WriteFile(provider, []byte(script), 0o755))
-	return provider
+	status := `{"Provider":"treasure-chest-tmp","Version":"0.1.0","SchemaVersion":1,"Healthy":true}`
+	search := `{"Envelope":{"Provider":"treasure-chest-tmp","Version":"0.1.0","SchemaVersion":1,"Freshness":"fresh","FallbackState":"none"},"Items":[` + items + `]}`
+	source := fmt.Sprintf(`package main
+
+import (
+	"fmt"
+	"os"
+)
+
+const statusResponse = %s
+const searchResponse = %s
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "status" {
+		fmt.Println(statusResponse)
+		return
+	}
+	fmt.Println(searchResponse)
+}
+`, strconv.Quote(status), strconv.Quote(search))
+	return testutil.BuildGoExecutable(t, filepath.Base(filepath.Join(workspace, "treasure-chest-tmp")), source)
 }
 
 // TestE2E_CLI_MetricsHandoff_EmptyMemory covers `metrics handoff` against a
