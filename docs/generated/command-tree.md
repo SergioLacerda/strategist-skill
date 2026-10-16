@@ -8,7 +8,7 @@ do not edit manually — regenerate with: make docs-generate
 
 # Command Tree
 
-Full command surface of the `strategist` CLI, walked from `bin/strategist.exe --help`.
+Full command surface of the `strategist` CLI, walked from `bin/strategist --help`.
 
 `strategist` — Strategist — install, compile, and manage the Strategist skill for Claude agents.
 

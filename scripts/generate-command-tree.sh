@@ -13,6 +13,9 @@ source scripts/lib-provenance.sh
 
 BIN="${1:-bin/strategist}"
 OUT="docs/generated/command-tree.md"
+# Keep the generated prose stable across host platforms. BIN still points to
+# the real executable used below; only its documentation label is normalized.
+BIN_DISPLAY="${BIN%.exe}"
 
 if [[ ! -x "$BIN" ]]; then
   echo "generate-command-tree: $BIN not found or not executable — run 'make build' first" >&2
@@ -47,7 +50,7 @@ walk() {
   echo
   echo "# Command Tree"
   echo
-  echo "Full command surface of the \`strategist\` CLI, walked from \`$BIN --help\`."
+  echo "Full command surface of the \`strategist\` CLI, walked from \`$BIN_DISPLAY --help\`."
   echo
   root_short=$("$BIN" --help 2>&1 | sed -n '1p')
   echo "\`strategist\` — ${root_short}"
